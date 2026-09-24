@@ -31,6 +31,10 @@ Result core_info(const char *path, FileInfo *out);
 uint64_t core_monotonic_ms(void);
 Result core_create(const char *directory, const char *name, bool is_directory);
 Result core_transfer(bool move, const char *source, const char *directory, const char *name, char **destination);
+Result core_delete_progress(const char *path, OperationCallback callback, void *context);
+/* Same-filesystem move remains a single non-cancellable call; callback ignored. */
+Result core_transfer_progress(bool move, const char *source, const char *directory, const char *name,
+                              char **destination, OperationCallback callback, void *context);
 Result core_delete(const char *path);
 Result core_link_target(const char *path, char **out);
 

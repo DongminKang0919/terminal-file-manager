@@ -1,6 +1,18 @@
 #include "../src/ui/ui.h"
 #include <assert.h>
-static bool fail_refresh;
+static bool fail_refresh, cancel_operation;
+static bool cancel_callback(const OperationProgress *p, void *context) {
+    unsigned *calls = context;
+    return ++*calls < 3 && !p->completed_items;
+}
+Result __real_run_file_operation(UiContext *, bool, const char *, const char *, const char *, char **);
+Result __wrap_run_file_operation(UiContext *ui, bool copy, const char *source,
+                                 const char *directory, const char *name, char **destination) {
+    if (!cancel_operation) return __real_run_file_operation(ui,copy,source,directory,name,destination);
+    unsigned calls = 0;
+    return copy ? core_transfer_progress(false,source,directory,name,destination,cancel_callback,&calls) :
+                  core_delete_progress(source,cancel_callback,&calls);
+}
 Result __real_app_refresh(AppState *app);
 Result __wrap_app_refresh(AppState *app) {
     return fail_refresh ? result_make(RESULT_ACCESS, "Injected refresh failure") : __real_app_refresh(app);
@@ -30,6 +42,13 @@ int main(int argc, char **argv) {
     preserved(&ui, files, len, "Directory created");
     assert(transfer_path(&ui, false, created, root, "copy.txt", warning, sizeof warning));
     preserved(&ui, files, len, "Copied");
+    cancel_operation = true;
+    assert(!transfer_path(&ui, false, created, root, "cancelled-copy", warning, sizeof warning));
+    preserved(&ui, files, len, "Copy cancelled");
+    assert(strstr(ui.status, "incomplete files/directories kept") && strstr(ui.status, "completed: 0"));
+    char *cancelled = core_path_join(root, "cancelled-copy");
+    ok(core_info(cancelled, &info)); file_info_free(&info); free(cancelled);
+    cancel_operation = false;
     assert(transfer_path(&ui, true, created, root, "moved.txt", warning, sizeof warning));
     preserved(&ui, files, len, "Moved");
     assert(core_info(created, &info).code == RESULT_NOT_FOUND);

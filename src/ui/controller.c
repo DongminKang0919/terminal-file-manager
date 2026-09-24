@@ -38,7 +38,7 @@ bool open_search_result(UiContext *ui, const char *path) {
 static void refresh_after_operation(UiContext *ui, const char *highlight, const char *success) {
     Result r = load_dir(ui, highlight);
     if (r.code == RESULT_OK) message(ui, success);
-    else snprintf(ui->status, sizeof ui->status, "%.200s; list refresh failed: %.250s", success, r.detail);
+    else snprintf(ui->status, sizeof ui->status, "%.370s; list refresh failed: %.100s", success, r.detail);
 }
 void history_dir(UiContext *ui, bool forward) {
     Result r = app_history(&ui->app, forward);
@@ -90,20 +90,39 @@ void delete_entry(UiContext *ui) {
     if (!confirm(ui, it->name, it->kind == FILE_DIRECTORY)) {
         free(path); message(ui, "Delete cancelled"); return;
     }
-    Result r = core_delete(path); free(path);
-    if (r.code == RESULT_OK) refresh_after_operation(ui, NULL, "Deleted");
-    else {
-        Result refreshed = load_dir(ui, NULL);
-        if (refreshed.code == RESULT_OK) show_failure(ui, "Delete", r);
-        else snprintf(ui->status, sizeof ui->status, "Delete: %.220s; list refresh failed: %.220s", r.detail, refreshed.detail);
-    }
+    Result r = run_file_operation(ui, false, path, NULL, NULL, NULL); free(path);
+    char summary[sizeof ui->status];
+    snprintf(summary, sizeof summary, "%s%.190s; completed: %llu%s",
+             r.code == RESULT_OK ? "Deleted" : "Delete: ", r.code == RESULT_OK ? "" : r.detail,
+             (unsigned long long)r.completed_items,
+             r.partial ? "; some items already deleted; no rollback" : "");
+    if (r.code == RESULT_CANCELLED)
+        snprintf(summary, sizeof summary, "Delete cancelled; deleted: %llu%s; %.190s",
+                 (unsigned long long)r.completed_items,
+                 r.partial ? "; already deleted items are not restored" : "; no changes", r.detail);
+    refresh_after_operation(ui, NULL, summary);
 }
 bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *directory, const char *name, char *warning, size_t size) {
     char *destination = NULL;
-    Result r = core_transfer(move_it, source, directory, name, &destination);
-    if (r.code != RESULT_OK) { operation_warning(r, warning, size); return false; }
+    Result r = move_it ? core_transfer(true, source, directory, name, &destination) :
+                         run_file_operation(ui, true, source, directory, name, &destination);
+    if (r.code != RESULT_OK) {
+        operation_warning(r, warning, size);
+        if (!move_it) {
+            char summary[sizeof ui->status];
+            snprintf(summary, sizeof summary, "%s; %s; completed: %llu; bytes: %llu; %.140s",
+                     r.code == RESULT_CANCELLED ? "Copy cancelled" : "Copy failed",
+                     r.partial ? "incomplete files/directories kept" : "no changes",
+                     (unsigned long long)r.completed_items, (unsigned long long)r.copied_bytes, warning);
+            refresh_after_operation(ui, NULL, summary);
+            snprintf(warning, size, "%s", ui->status);
+        }
+        return false;
+    }
     char success[sizeof ui->status];
     snprintf(success, sizeof success, "%s to %.450s", move_it ? "Moved" : "Copied", destination);
+    if (!move_it) snprintf(success, sizeof success, "Copied; completed: %llu; bytes: %llu; to %.300s",
+                           (unsigned long long)r.completed_items, (unsigned long long)r.copied_bytes, destination);
     refresh_after_operation(ui, name, success);
     free(destination); return true;
 }

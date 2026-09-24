@@ -154,6 +154,8 @@ extern void platform_test_hook(const char *stage, int parent, const char *name);
 
 typedef struct {
     Result error;
+    OperationCallback callback;
+    void *context;
     bool changed;
     mode_t mask;
     char *buffer; /* Reused file buffer; never allocated on recursive frames. */
@@ -171,6 +173,16 @@ static bool op_error(Operation *op, const char *path, ResultCode code, const cha
         diagnostic_path(op->error.path, sizeof op->error.path, path);
     }
     return false;
+}
+static bool op_poll(Operation *op, const char *path) {
+    if (!op->callback) return true;
+    OperationProgress progress = {path, op->error.completed_items, op->error.copied_bytes};
+    return op->callback(&progress, op->context) ||
+        op_error(op, path, RESULT_CANCELLED, "Cancelled by user");
+}
+static bool op_complete(Operation *op, bool ok) {
+    if (ok) op->error.completed_items++;
+    return ok;
 }
 static bool op_errno(Operation *op, const char *path) {
     Result r = failure(); return op_error(op, path, r.code, r.detail);
@@ -263,15 +275,17 @@ static bool copy_file_at(Operation *op, int sp, const char *sn, int dp, const ch
     if (!ok) op_errno(op, dst);
     OP_HOOK("copy-file-created", dp, dn);
     while (ok) {
+        if (!op_poll(op, src)) { ok = false; break; }
         ssize_t n = read(in, op->buffer, 65536);
         if (n < 0 && errno == EINTR) continue;
         if (n < 0) { ok = op_errno(op, src); break; }
         if (!n) break;
         for (ssize_t at = 0; at < n;) {
+            if (!op_poll(op, src)) { ok = false; break; }
             ssize_t written = write(out, op->buffer + at, (size_t)(n - at));
             if (written < 0 && errno == EINTR) continue;
             if (written <= 0) { if (!written) errno = EIO; ok = op_errno(op, dst); break; }
-            at += written;
+            at += written; op->error.copied_bytes += (uint64_t)written;
         }
     }
     if (ok && fchmod(out, st->st_mode & 0777 & ~op->mask) < 0) ok = op_errno(op, dst);
@@ -298,13 +312,14 @@ static bool copy_link_at(Operation *op, int sp, const char *sn, int dp, const ch
 }
 static bool copy_at(Operation *op, int sp, const char *sn, int dp, const char *dn,
                     const char *src, const char *dst, unsigned depth) {
+    if (!op_poll(op, src)) return false;
     if (depth >= OP_MAX_DEPTH)
         return op_error(op, src, RESULT_IO, "Recursive operation depth limit (64) reached");
     struct stat st;
     if (fstatat(sp, sn, &st, AT_SYMLINK_NOFOLLOW) < 0) return op_errno(op, src);
     OP_HOOK("copy-stat", sp, sn);
-    if (S_ISLNK(st.st_mode)) return copy_link_at(op, sp, sn, dp, dn, &st, src, dst);
-    if (S_ISREG(st.st_mode)) return copy_file_at(op, sp, sn, dp, dn, &st, src, dst);
+    if (S_ISLNK(st.st_mode)) return op_complete(op, copy_link_at(op, sp, sn, dp, dn, &st, src, dst));
+    if (S_ISREG(st.st_mode)) return op_complete(op, copy_file_at(op, sp, sn, dp, dn, &st, src, dst));
     if (!S_ISDIR(st.st_mode)) return op_error(op, src, RESULT_UNSUPPORTED, "Unsupported file type");
     int in = open_verified(op, sp, sn, &st, src, O_RDONLY | O_DIRECTORY);
     if (in < 0) return false;
@@ -338,14 +353,16 @@ static bool copy_at(Operation *op, int sp, const char *sn, int dp, const char *d
         free(a); free(b);
         if (!ok) break;
     }
+    if (ok) ok = op_poll(op, src);
     if (closedir(dir) < 0 && ok) ok = op_errno(op, src);
     if (ok) ok = verify_name(op, sp, sn, &st, src);
     if (ok) ok = verify_name(op, dp, dn, &created, dst);
     if (ok && fchmod(out, st.st_mode & 0777 & ~op->mask) < 0) ok = op_errno(op, dst);
     if (close(out) < 0 && ok) ok = op_errno(op, dst);
-    return ok;
+    return op_complete(op, ok);
 }
 static bool remove_at(Operation *op, int parent, const char *name, const char *path, unsigned depth) {
+    if (!op_poll(op, path)) return false;
     if (depth >= OP_MAX_DEPTH)
         return op_error(op, path, RESULT_IO, "Recursive operation depth limit (64) reached");
     struct stat st;
@@ -370,10 +387,11 @@ static bool remove_at(Operation *op, int parent, const char *name, const char *p
         if (closedir(dir) < 0 && ok) ok = op_errno(op, path);
         if (!ok) return false;
     }
+    if (!op_poll(op, path)) return false;
     OP_HOOK("remove-unlink", parent, name);
     if (!verify_name(op, parent, name, &st, path)) return false;
     if (unlinkat(parent, name, S_ISDIR(st.st_mode) ? AT_REMOVEDIR : 0) < 0) return op_errno(op, path);
-    op->changed = true; return true;
+    op->changed = true; return op_complete(op, true);
 }
 static Result operation_result(Operation *op) {
     if (op->error.code != RESULT_OK) {
@@ -387,7 +405,11 @@ static Result operation_result(Operation *op) {
     return op->error;
 }
 Result platform_copy(const char *src, const char *dst) {
-    Operation op = {0};
+    return platform_copy_progress(src, dst, NULL, NULL);
+}
+Result platform_copy_progress(const char *src, const char *dst, OperationCallback callback, void *context) {
+    Operation op = {.callback = callback, .context = context};
+    if (!op_poll(&op, src)) return operation_result(&op);
     op.mask = umask(0); umask(op.mask);
     char *sn = NULL, *dn = NULL;
     int sp = operation_parent(&op, src, &sn), dp = -1;
@@ -398,7 +420,11 @@ Result platform_copy(const char *src, const char *dst) {
     free(sn); free(dn); free(op.buffer); return operation_result(&op);
 }
 Result platform_remove(const char *path) {
-    Operation op = {0}; char *name = NULL;
+    return platform_remove_progress(path, NULL, NULL);
+}
+Result platform_remove_progress(const char *path, OperationCallback callback, void *context) {
+    Operation op = {.callback = callback, .context = context}; char *name = NULL;
+    if (!op_poll(&op, path)) return operation_result(&op);
     int parent = operation_parent(&op, path, &name);
     if (parent >= 0) { remove_at(&op, parent, name, path, 0); close(parent); }
     free(name); return operation_result(&op);

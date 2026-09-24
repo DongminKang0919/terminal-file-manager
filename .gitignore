@@ -36,3 +36,7 @@ __pycache__/
 /.codex/
 
 /tests/preview_test
+
+/tests/progress_test
+/tests/tfile_progress
+/tests/progress_ui_test

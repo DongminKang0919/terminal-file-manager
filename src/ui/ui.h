@@ -46,6 +46,8 @@ int join(char *out, size_t size, const char *directory, const char *name);
 bool create_named_entry(UiContext *ui, bool directory, const char *name, char *warning, size_t size);
 void create_entry(UiContext *ui, bool directory);
 void delete_entry(UiContext *ui);
+Result run_file_operation(UiContext *ui, bool copy, const char *source,
+                          const char *directory, const char *name, char **destination);
 bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *directory, const char *name, char *warning, size_t size);
 bool mouse_click(const MEVENT *e);
 void dialog_frame(WINDOW *win, const char *title);

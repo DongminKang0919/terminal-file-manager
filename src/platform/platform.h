@@ -18,6 +18,10 @@ Result platform_directory_open(const char *path, PlatformDirectory **out);
 Result platform_directory_next(PlatformDirectory *dir, FileInfo *out, bool *end, Result *metadata_error);
 void platform_directory_close(PlatformDirectory *dir);
 Result platform_create(const char *path, bool directory);
+/* Poll before traversal/mutation and between read/write chunks. Cleanup never
+   invokes callbacks; false preserves prior changes and returns CANCELLED. */
+Result platform_copy_progress(const char *source, const char *destination, OperationCallback callback, void *context);
+Result platform_remove_progress(const char *path, OperationCallback callback, void *context);
 Result platform_copy(const char *source, const char *destination);
 Result platform_move(const char *source, const char *destination);
 Result platform_remove(const char *path);

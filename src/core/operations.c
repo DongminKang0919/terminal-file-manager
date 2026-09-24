@@ -7,8 +7,15 @@ Result core_create(const char *directory, const char *name, bool is_directory) {
     if (!path) return result_make(RESULT_NO_MEMORY, "Out of memory");
     Result r = platform_create(path, is_directory); free(path); return r;
 }
-Result core_delete(const char *path) { return platform_remove(path); }
+Result core_delete_progress(const char *path, OperationCallback callback, void *context) {
+    return platform_remove_progress(path, callback, context);
+}
+Result core_delete(const char *path) { return core_delete_progress(path, NULL, NULL); }
 Result core_transfer(bool move, const char *source, const char *directory, const char *name, char **destination) {
+    return core_transfer_progress(move, source, directory, name, destination, NULL, NULL);
+}
+Result core_transfer_progress(bool move, const char *source, const char *directory, const char *name,
+                              char **destination, OperationCallback callback, void *context) {
     *destination = NULL;
     if (!*source) return result_make(RESULT_NOT_FOUND, "Source is empty");
     if (!platform_name_valid(name)) return result_make(RESULT_INVALID_NAME, NULL);
@@ -30,7 +37,7 @@ Result core_transfer(bool move, const char *source, const char *directory, const
         if (r.code != RESULT_OK) goto done;
         if (descendant) { r = result_make(RESULT_SELF_TRANSFER, NULL); goto done; }
     }
-    r = move ? platform_move(source, dst) : platform_copy(source, dst);
+    r = move ? platform_move(source, dst) : platform_copy_progress(source, dst, callback, context);
     if (r.code == RESULT_OK) { *destination = dst; dst = NULL; }
 done:
     free(resolved); free(dst); return r;
