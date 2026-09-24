@@ -1,0 +1,32 @@
+# Build and test outputs
+/tfile
+/tests/core_test
+/tests/platform_test
+/tests/operations_test
+/build/
+/dist/
+*.o
+*.a
+*.so
+*.su
+*.gcda
+*.gcno
+*.profraw
+*.profdata
+
+# Python caches and editor scratch files
+__pycache__/
+*.py[cod]
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+/.agents/
+/.codex/
