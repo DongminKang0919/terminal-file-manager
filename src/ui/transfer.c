@@ -25,21 +25,21 @@ static bool pick_path(UiContext *ui, bool folders_only, const char *initial, cha
         if (choice >= offset + (size_t)rows) offset = choice - rows + 1;
         dialog_frame(win, folders_only ? "Choose destination directory" : "Choose source file or directory");
         wattron(win, COLOR_PAIR(UI_PATH) | A_BOLD);
-        mvwhline(win, 1, 1, ' ', w - 2); mvwaddnstr(win, 1, 2, folder, w - 4);
+        mvwhline(win, 1, 1, ' ', w - 2); draw_window_text(win, 1, 2, w - 4, folder);
         wattroff(win, COLOR_PAIR(UI_PATH) | A_BOLD);
-        mvwaddnstr(win, 2, 2, "[Parent]  [Enter path...]", w - 4);
+        draw_window_text(win, 2, 2, w - 4, "[Parent]  [Enter path...]");
         for (int i = 0; i < rows && offset + (size_t)i < picker_count; i++) {
             FileInfo *it = &entries[offset + i]; bool active = offset + i == choice;
             wattron(win, COLOR_PAIR(active ? UI_SELECTED : it->directory_target ? UI_DIR : UI_FILE));
             mvwhline(win, i + 3, 1, ' ', w - 2);
-            mvwaddnstr(win, i + 3, 2, it->directory_target ? "Directory  " : "File       ", 11);
-            mvwaddnstr(win, i + 3, 13, it->name, w - 15);
+            draw_window_text(win, i + 3, 2, 11, it->directory_target ? "Directory  " : "File       ");
+            draw_window_text(win, i + 3, 13, w - 15, it->name);
             wattroff(win, COLOR_PAIR(active ? UI_SELECTED : it->directory_target ? UI_DIR : UI_FILE));
         }
-        if (!picker_count) mvwaddnstr(win, 3, 2, folders_only ? "No subdirectories. You can use this directory." : "This directory is empty.", w - 4);
-        mvwaddnstr(win, h - 3, 2, *warning ? warning : "Double-click/Enter: open   Space: use   p: path", w - 4);
+        if (!picker_count) draw_window_text(win, 3, 2, w - 4, folders_only ? "No subdirectories. You can use this directory." : "This directory is empty.");
+        draw_window_text(win, h - 3, 2, w - 4, *warning ? warning : "Double-click/Enter: open   Space: use   p: path");
         wattron(win, COLOR_PAIR(UI_HEADER) | A_BOLD);
-        mvwaddnstr(win, h - 2, 2, folders_only ? "[ Use directory ]    [ Open ]  [ Cancel ]" : "[ Use selected ]     [ Open ]  [ Cancel ]", w - 4);
+        draw_window_text(win, h - 2, 2, w - 4, folders_only ? "[ Use directory ]    [ Open ]  [ Cancel ]" : "[ Use selected ]     [ Open ]  [ Cancel ]");
         wattroff(win, COLOR_PAIR(UI_HEADER) | A_BOLD); wrefresh(win);
         int key = input_key(win);
         bool use = false, open = false, up = false, path = false;
@@ -141,20 +141,20 @@ void transfer_entry(UiContext *ui, bool move_it) {
         dialog_frame(win, move_it ? "Move / Rename" : "Copy");
         for (int i = 0; i < rows && offset + i < 6; i++) {
             wattron(win, COLOR_PAIR(offset + i == focus ? UI_SELECTED : UI_BASE));
-            mvwhline(win, i + 1, 1, ' ', w - 2); mvwaddnstr(win, i + 1, 2, labels[offset + i], w - 4);
+            mvwhline(win, i + 1, 1, ' ', w - 2); draw_window_text(win, i + 1, 2, w - 4, labels[offset + i]);
             wattroff(win, COLOR_PAIR(offset + i == focus ? UI_SELECTED : UI_BASE));
         }
-        if (rows > 6) mvwaddnstr(win, 7, 2, move_it ? "Moves the original. Same directory + new name = rename." : "Creates a separate copy. The original stays where it is.", w - 4);
+        if (rows > 6) draw_window_text(win, 7, 2, w - 4, move_it ? "Moves the original. Same directory + new name = rename." : "Creates a separate copy. The original stays where it is.");
         if (rows > 7) {
             char result[UI_INPUT_CAP * 2 + 16];
             char *destination = core_path_join(folder, name);
             snprintf(result, sizeof result, "Result: %s", destination ? destination : "Out of memory"); free(destination);
-            wattron(win, COLOR_PAIR(UI_DIR)); mvwaddnstr(win, 8, 2, result, w - 4); wattroff(win, COLOR_PAIR(UI_DIR));
+            wattron(win, COLOR_PAIR(UI_DIR)); draw_window_text(win, 8, 2, w - 4, result); wattroff(win, COLOR_PAIR(UI_DIR));
         }
         wattron(win, COLOR_PAIR(*warning ? UI_SPECIAL : UI_MUTED));
-        mvwaddnstr(win, h - 3, 2, *warning ? warning : "Click a field to change it, then choose the action below.", w - 4);
+        draw_window_text(win, h - 3, 2, w - 4, *warning ? warning : "Click a field to change it, then choose the action below.");
         wattroff(win, COLOR_PAIR(*warning ? UI_SPECIAL : UI_MUTED));
-        mvwaddnstr(win, h - 2, 2, "Tab / Arrows: select   Enter: choose   Esc: cancel", w - 4); wrefresh(win);
+        draw_window_text(win, h - 2, 2, w - 4, "Tab / Arrows: select   Enter: choose   Esc: cancel"); wrefresh(win);
         int key = input_key(win), action = -1;
         if (key == KEY_MOUSE) {
             MEVENT e; if (getmouse(&e) != OK) continue;

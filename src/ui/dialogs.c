@@ -10,7 +10,7 @@ void dialog_frame(WINDOW *win, const char *title) {
     wattron(win, COLOR_PAIR(UI_BORDER)); box(win, 0, 0); wattroff(win, COLOR_PAIR(UI_BORDER));
     wattron(win, COLOR_PAIR(UI_HEADER) | A_BOLD);
     mvwhline(win, 0, 1, ' ', w - 2);
-    mvwaddnstr(win, 0, 2, title, w - 9);
+    draw_window_text(win, 0, 2, w - 9, title);
     mvwaddstr(win, 0, w - 6, "[ x ]");
     wattroff(win, COLOR_PAIR(UI_HEADER) | A_BOLD);
 }
@@ -47,8 +47,9 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
     wchar_t value[UI_INPUT_CAP] = L"";
     size_t len = 0, cursor = 0, start = 0;
     if (initial) {
-        size_t n = mbstowcs(value, initial, UI_INPUT_CAP - 1);
-        if (n != (size_t)-1) { value[n] = 0; len = cursor = n; }
+        for (size_t at = 0; initial[at] && len + 1 < UI_INPUT_CAP; ++len)
+            at += ui_text_decode(initial + at, &value[len]);
+        value[len] = 0; cursor = len;
     }
     int focus = 0;
     bool accepted = false;
@@ -63,27 +64,27 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
             wattroff(win, A_REVERSE);
             mvwaddstr(win, 2, 2, "Name:");
             wattron(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
-            mvwaddnstr(win, 4, 2, warning, w - 4);
+            draw_window_text(win, 4, 2, w - 4, warning);
             wattroff(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
-            if (h > 7) mvwaddnstr(win, h - 3, 2, "Tab: next field   Type: Left/Right   Esc: cancel", w - 4);
+            if (h > 7) draw_window_text(win, h - 3, 2, w - 4, "Tab: next field   Type: Left/Right   Esc: cancel");
         } else {
-            mvwaddnstr(win, 1, 2, ui->app.directory, w - 4);
+            draw_window_text(win, 1, 2, w - 4, ui->app.directory);
             if (host) {
                 mvwaddstr(win, 2, 2, "Name contains:");
-                mvwaddnstr(win, 4, 2, warning, w - 4);
-                if (h > 8) mvwaddnstr(win, 5, 2, "Search below this directory. Enter a name, then Search.", w - 4);
+                draw_window_text(win, 4, 2, w - 4, warning);
+                if (h > 8) draw_window_text(win, 5, 2, w - 4, "Search below this directory. Enter a name, then Search.");
             }
         }
         if (cursor < start) start = cursor;
         int cols = 0;
-        for (size_t i = start; i < cursor; i++) { int n = wcwidth(value[i]); cols += n > 0 ? n : 1; }
-        while (cols >= w - 5 && start < cursor) { int n = wcwidth(value[start++]); cols -= n > 0 ? n : 1; }
+        for (size_t i = start; i < cursor; i++) { cols += ui_text_token(value[i]).cells; }
+        while (cols >= w - 5 && start < cursor) { cols -= ui_text_token(value[start++]).cells; }
         wattron(win, COLOR_PAIR(UI_SELECTED)); mvwhline(win, 3, 2, ' ', w - 4);
         int used = 0;
         for (size_t i = start; i < len; i++) {
-            int n = wcwidth(value[i]); if (n < 1) n = 1;
-            if (used + n > w - 5) break;
-            mvwaddnwstr(win, 3, 2 + used, &value[i], 1); used += n;
+            UiTextToken token = ui_text_token(value[i]);
+            if (used + token.cells > w - 5) break;
+            mvwaddnwstr(win, 3, 2 + used, token.text, token.length); used += token.cells;
         }
         wattroff(win, COLOR_PAIR(UI_SELECTED));
         wattron(win, focus == 1 ? A_REVERSE : A_NORMAL); mvwaddstr(win, h - 2, 2, directory ? "[ Create ]" : host ? "[ Search ]" : "[ OK ]"); wattroff(win, A_REVERSE);
@@ -109,7 +110,7 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
             if (e.y == y + h - 2 && e.x >= x + 2 && e.x < x + ((directory || host) ? 12 : 8)) { key = '\n'; kind = OK; focus = 1; }
             else if (e.y == y + 3 && e.x >= x + 2 && e.x < x + w - 2) {
                 focus = 0; cursor = start; int col = 0;
-                while (cursor < len) { int n = wcwidth(value[cursor]); if (n < 1) n = 1; if (col + n > e.x - x - 2) break; col += n; cursor++; }
+                while (cursor < len) { int n = ui_text_token(value[cursor]).cells; if (col + n > e.x - x - 2) break; col += n; cursor++; }
                 continue;
             } else continue;
         }
@@ -119,8 +120,7 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
             if (focus == 2) break;
             if (focus == 3) { focus = 0; continue; }
             if (!len) { snprintf(warning, sizeof warning, "Enter a name to continue."); focus = 0; continue; }
-            size_t n = wcstombs(out, value, size);
-            if (n != (size_t)-1 && n < size) {
+            if (ui_text_encode(value, len, out, size)) {
                 if (!directory || create_named_entry(ui, *directory, out, warning, sizeof warning)) { accepted = true; break; }
                 focus = 0;
             } else snprintf(warning, sizeof warning, "Name is too long.");
@@ -158,12 +158,28 @@ bool confirm(UiContext *ui, const char *name, bool directory) {
     WINDOW *win = dialog_open(ui, "Confirm deletion", 8, 78);
     if (!win) return false;
     bool yes = false, result = false;
+    size_t start = 0;
     for (;;) {
         int h, w; getmaxyx(win, h, w);
         dialog_frame(win, "Confirm deletion");
-        mvwaddnstr(win, 1, 2, directory ? "Delete directory and all its contents?" : "Delete this file?", w - 4);
-        wattron(win, A_BOLD); mvwaddnstr(win, 2, 2, name, w - 4); wattroff(win, A_BOLD);
-        mvwaddnstr(win, 3, 2, "This cannot be undone.", w - 4);
+        draw_window_text(win, 1, 2, w - 4, directory ? "Delete directory and all its contents?" : "Delete this file?");
+        size_t pages = 0, page = 0;
+        for (size_t at = 0;;) {
+            if (at == start) page = pages;
+            pages++;
+            size_t end = ui_text_span(name, at, w - 4).end;
+            if (!name[end]) break;
+            at = end;
+        }
+        wattron(win, A_BOLD);
+        size_t next = draw_window_page(win, 2, 2, w - 4, name, start);
+        wattroff(win, A_BOLD);
+        if (pages > 1) {
+            mvwaddstr(win, h - 3, 2, "[<]"); mvwaddstr(win, h - 3, w - 5, "[>]");
+            char hint[80]; snprintf(hint, sizeof hint, "Name %zu/%zu  PgUp/PgDn", page + 1, pages);
+            draw_window_text(win, h - 3, 7, w - 14, hint);
+        }
+        draw_window_text(win, 3, 2, w - 4, "This cannot be undone.");
         wattron(win, yes ? A_REVERSE : A_NORMAL); mvwaddstr(win, h - 2, 2, "[ Delete ]"); wattroff(win, A_REVERSE);
         wattron(win, !yes ? A_REVERSE : A_NORMAL); mvwaddstr(win, h - 2, 16, "[ Cancel ]"); wattroff(win, A_REVERSE); wrefresh(win);
         int key = input_key(win);
@@ -171,10 +187,21 @@ bool confirm(UiContext *ui, const char *name, bool directory) {
             MEVENT e; if (getmouse(&e) != OK) continue;
             if (dialog_closed(win, &e)) break;
             int y, x; getbegyx(win, y, x);
+            if (mouse_click(&e) && e.y == y + h - 3) {
+                if (e.x >= x + 2 && e.x < x + 5) key = KEY_PPAGE;
+                else if (e.x >= x + w - 5 && e.x < x + w - 2) key = KEY_NPAGE;
+            }
             if (mouse_click(&e) && e.y == y + h - 2) {
                 if (e.x >= x + 2 && e.x < x + 12) { result = true; break; }
                 if (e.x >= x + 16 && e.x < x + 26) break;
             }
+        }
+        if (key == KEY_NPAGE && name[next]) { start = next; yes = false; }
+        if (key == KEY_PPAGE && start) {
+            size_t previous = 0;
+            while (ui_text_span(name, previous, w - 4).end < start)
+                previous = ui_text_span(name, previous, w - 4).end;
+            start = previous; yes = false;
         }
         if (key == 27 || key == KEY_RESIZE || key == 'n') break;
         if (key == '\t' || key == KEY_LEFT || key == KEY_RIGHT) yes = !yes;
@@ -194,9 +221,9 @@ static int choice_dialog(UiContext *ui, const char *title, const char **labels, 
         dialog_frame(win, title);
         for (int i = 0; i < rows && offset + i < total; i++) {
             if (offset + i == selected_row) wattron(win, A_REVERSE);
-            mvwaddnstr(win, i + 1, 2, labels[offset + i], w - 4); wattroff(win, A_REVERSE);
+            draw_window_text(win, i + 1, 2, w - 4, labels[offset + i]); wattroff(win, A_REVERSE);
         }
-        mvwaddnstr(win, h - 2, 2, "Up/Down  Enter: choose  Esc: close", w - 4); wrefresh(win);
+        draw_window_text(win, h - 2, 2, w - 4, "Up/Down  Enter: choose  Esc: close"); wrefresh(win);
         int key = input_key(win);
         if (key == KEY_MOUSE) {
             MEVENT e; if (getmouse(&e) != OK) continue;

@@ -1,6 +1,7 @@
 #ifndef TFILE_UI_H
 #define TFILE_UI_H
 #include "../core/core.h"
+#include "text.h"
 #include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,6 +55,8 @@ bool confirm(UiContext *ui, const char *name, bool directory);
 int show_menu(UiContext *ui);
 void show_options(UiContext *ui);
 void draw_text(int y, int x, int width, const char *s);
+void draw_window_text(WINDOW *win, int y, int x, int width, const char *text);
+size_t draw_window_page(WINDOW *win, int y, int x, int width, const char *text, size_t start);
 int header_action(int x, int width);
 void draw(UiContext *ui);
 FileType item_type(const Item *it);

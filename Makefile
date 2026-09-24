@@ -34,11 +34,20 @@ check-core: tests/core_test tests/platform_test tests/operations_test tests/sear
 	python3 tests/run_operations.py
 	python3 tests/run_regressions.py search
 
-check: tfile check-core tests/controller_test
+tests/text_test: tests/text_test.c src/ui/text.c src/ui/text.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/text_test.c src/ui/text.c
+
+tests/text_window_test: tests/text_window_test.c src/ui/text.c src/ui/text_window.c $(HEADERS)
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/text_window_test.c src/ui/text.c src/ui/text_window.c $(LDLIBS)
+
+check: tfile check-core tests/controller_test tests/text_test tests/text_window_test
+	./tests/text_test
+	./tests/text_window_test
 	python3 tests/run_regressions.py controller
 	python3 tests/smoke.py
+	python3 tests/display_pty.py
 
 clean:
-	rm -f tfile tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test
+	rm -f tfile tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
 
 .PHONY: all clean check check-core

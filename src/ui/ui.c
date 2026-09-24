@@ -1,19 +1,5 @@
 #include "ui.h"
 
-void draw_text(int y, int x, int width, const char *s) {
-    if (width <= 0) return;
-    mbstate_t state = {0};
-    int col = 0;
-    while (*s && col < width) {
-        wchar_t ch; size_t n = mbrtowc(&ch, s, MB_CUR_MAX, &state);
-        if (n == (size_t)-1 || n == (size_t)-2) { ch = L'?'; n = 1; memset(&state, 0, sizeof state); }
-        if (!n) break;
-        int cells = wcwidth(ch);
-        if (cells < 0) { ch = L'?'; cells = 1; }
-        if (col + cells > width) break;
-        mvaddnwstr(y, x + col, &ch, 1); col += cells; s += n;
-    }
-}
 static void draw_box(int x, int y, int w, int h, const char *title) {
     if (w < 2 || h < 2) return;
     attron(COLOR_PAIR(UI_BORDER));
@@ -76,23 +62,12 @@ void draw(UiContext *ui) {
     if (ui->app.history_at + 1 >= ui->app.history_len) attron(A_DIM);
     draw_text(1, 5, 3, "[>]"); attroff(A_DIM);
     draw_text(1, 8, 10, "Location:");
-    /* Preserve the current folder at the right end of a long UTF-8 path. */
-    size_t capacity = strlen(ui->app.directory) + 1;
-    wchar_t *path = calloc(capacity, sizeof *path);
-    size_t length = path ? mbstowcs(path, ui->app.directory, capacity - 1) : (size_t)-1;
-    if (length != (size_t)-1) {
-        path[length] = 0;
-        int available = w - 19, cells = wcswidth(path, length);
-        size_t start = 0;
-        if (cells > available) {
-            while (start < length && cells > available - 4) {
-                int n = wcwidth(path[start++]); cells -= n > 0 ? n : 0;
-            }
-            mvaddstr(1, 18, "... ");
-            mvaddnwstr(1, 22, path + start, (int)(length - start));
-        } else draw_text(1, 18, available, ui->app.directory);
-    } else draw_text(1, 18, w - 19, ui->app.directory);
-    free(path);
+    int available = w - 19;
+    if (ui_text_span(ui->app.directory, 0, available).more) {
+        mvaddstr(1, 18, "... ");
+        size_t start = ui_text_tail(ui->app.directory, available - 4);
+        draw_window_page(stdscr, 1, 22, available - 4, ui->app.directory, start);
+    } else draw_text(1, 18, available, ui->app.directory);
     attroff(COLOR_PAIR(UI_PATH) | A_BOLD);
     int mid = ui->app.show_preview ? w / 2 : w, panel_h = h - 4, rows = panel_h - 3;
     char title[320];

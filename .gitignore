@@ -5,6 +5,8 @@
 /tests/operations_test
 /tests/search_test
 /tests/controller_test
+/tests/text_test
+/tests/text_window_test
 /build/
 /dist/
 *.o

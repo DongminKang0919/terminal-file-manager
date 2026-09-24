@@ -16,8 +16,8 @@ static void search_draw(Search *s, size_t choice, size_t offset, bool scanning) 
     int h, w; getmaxyx(s->win, h, w);
     dialog_frame(s->win, "Search");
     wattron(s->win, COLOR_PAIR(UI_DIR));
-    mvwaddnstr(s->win, 1, 2, "Name: ", w - 4);
-    mvwaddnstr(s->win, 1, 8, s->term, w - 10);
+    draw_window_text(s->win, 1, 2, w - 4, "Name: ");
+    draw_window_text(s->win, 1, 8, w - 10, s->term);
     wattroff(s->win, COLOR_PAIR(UI_DIR));
     char info[128];
     if (scanning) {
@@ -29,7 +29,7 @@ static void search_draw(Search *s, size_t choice, size_t offset, bool scanning) 
         const char *state = s->outcome.code != RESULT_OK ? "Error" : s->stopped ? "Cancelled" : s->incomplete ? "Incomplete" : "Complete";
         snprintf(info, sizeof info, "%s%s: %zu found, %zu dirs / %zu entries skipped", state, s->limited ? " (limit)" : "", s->len, s->skipped_directories, s->skipped_entries);
     }
-    wattron(s->win, COLOR_PAIR(UI_MUTED)); mvwaddnstr(s->win, 2, 2, info, w - 4); wattroff(s->win, COLOR_PAIR(UI_MUTED));
+    wattron(s->win, COLOR_PAIR(UI_MUTED)); draw_window_text(s->win, 2, 2, w - 4, info); wattroff(s->win, COLOR_PAIR(UI_MUTED));
     for (int row = 0; row < h - 6 && offset + (size_t)row < s->len; ++row) {
         Item *it = &s->entries[offset + (size_t)row];
         bool active = !scanning && offset + (size_t)row == choice;
@@ -37,16 +37,16 @@ static void search_draw(Search *s, size_t choice, size_t offset, bool scanning) 
         int pair = item_color(it, active);
         wattron(s->win, COLOR_PAIR(pair) | (active ? A_BOLD : A_NORMAL));
         mvwaddch(s->win, row + 3, 2, type_letter(item_type(it)));
-        mvwaddnstr(s->win, row + 3, 4, it->name, w - 6);
+        draw_window_text(s->win, row + 3, 4, w - 6, it->name);
         wattroff(s->win, COLOR_PAIR(pair) | (active ? A_BOLD : A_NORMAL));
     }
-    if (!scanning && !s->len) mvwaddnstr(s->win, 3, 2, "No results collected. Use Search to try again.", w - 4);
+    if (!scanning && !s->len) draw_window_text(s->win, 3, 2, w - 4, "No results collected. Use Search to try again.");
     char detail[256];
     const Result *issue = s->outcome.code != RESULT_OK ? &s->outcome : &s->omission;
     if (issue->code != RESULT_OK) snprintf(detail, sizeof detail, "%.100s: %.150s", issue->detail, issue->path);
     else snprintf(detail, sizeof detail, "Enter: open  /: search  Esc: close");
-    mvwaddnstr(s->win, h - 3, 2, detail, w - 4);
-    mvwaddnstr(s->win, h - 2, 2, scanning ? "[ Cancel ]" : "[ Search ]  [ Open ]", w - 4);
+    draw_window_text(s->win, h - 3, 2, w - 4, detail);
+    draw_window_text(s->win, h - 2, 2, w - 4, scanning ? "[ Cancel ]" : "[ Search ]  [ Open ]");
     wrefresh(s->win);
 }
 
