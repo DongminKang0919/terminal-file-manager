@@ -40,7 +40,11 @@ tests/text_test: tests/text_test.c src/ui/text.c src/ui/text.h
 tests/text_window_test: tests/text_window_test.c src/ui/text.c src/ui/text_window.c $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/text_window_test.c src/ui/text.c src/ui/text_window.c $(LDLIBS)
 
-check: tfile check-core tests/controller_test tests/text_test tests/text_window_test
+tests/preview_test: tests/preview_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/preview_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_reader_open,--wrap=platform_reader_line,--wrap=platform_reader_close
+
+check: tests/preview_test tfile check-core tests/controller_test tests/text_test tests/text_window_test
+	./tests/preview_test
 	./tests/text_test
 	./tests/text_window_test
 	python3 tests/run_regressions.py controller
@@ -48,6 +52,6 @@ check: tfile check-core tests/controller_test tests/text_test tests/text_window_
 	python3 tests/display_pty.py
 
 clean:
-	rm -f tfile tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
+	rm -f tfile tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
 
 .PHONY: all clean check check-core

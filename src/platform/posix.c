@@ -407,7 +407,7 @@ Result platform_move(const char *src, const char *dst) {
     /* Linux/WSL backend: guarantee no replacement even if a target appears after validation. */
     return renameat2(AT_FDCWD, src, AT_FDCWD, dst, RENAME_NOREPLACE) < 0 ? failure() : result_make(RESULT_OK, NULL);
 }
-struct PlatformReader { FILE *handle; };
+struct PlatformReader { FILE *handle; struct stat version; };
 Result platform_reader_open(const char *path, PlatformReader **out) {
     *out = NULL;
     int fd = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
@@ -419,7 +419,18 @@ Result platform_reader_open(const char *path, PlatformReader **out) {
     if (!f) { Result r = failure(); close(fd); return r; }
     PlatformReader *reader = malloc(sizeof *reader);
     if (!reader) { fclose(f); return oom(); }
-    reader->handle = f; *out = reader; return result_make(RESULT_OK, NULL);
+    reader->handle = f; reader->version = st; *out = reader; return result_make(RESULT_OK, NULL);
+}
+static bool same_version(const struct stat *a, const struct stat *b) {
+    return a->st_dev == b->st_dev && a->st_ino == b->st_ino && a->st_size == b->st_size &&
+        a->st_mtim.tv_sec == b->st_mtim.tv_sec && a->st_mtim.tv_nsec == b->st_mtim.tv_nsec &&
+        a->st_ctim.tv_sec == b->st_ctim.tv_sec && a->st_ctim.tv_nsec == b->st_ctim.tv_nsec;
+}
+Result platform_reader_changed(PlatformReader *reader, const char *path, bool *changed) {
+    struct stat current, held; *changed = false;
+    if (lstat(path, &current) < 0 || fstat(fileno(reader->handle), &held) < 0) return failure();
+    *changed = !same_version(&reader->version, &current) || !same_version(&reader->version, &held);
+    return result_make(RESULT_OK, NULL);
 }
 Result platform_reader_peek(PlatformReader *reader, unsigned char *buffer, size_t capacity, size_t *read_count) {
     *read_count = 0;

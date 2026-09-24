@@ -58,5 +58,13 @@ typedef struct {
 /* Returns at most limit content chunks; chunks match the existing preview's
    4175-byte line limit. Memory usage is bounded by the requested page. */
 Result core_preview_text(const char *path, size_t start, size_t limit, PreviewText *out);
+/* Session owns one reader and a 512-chunk ring. Pages are independent owned copies.
+   Check metadata before requesting a new viewport; changed files restart at row 0. */
+#define PREVIEW_PAGE_MAX 256
+typedef struct PreviewSession PreviewSession;
+Result preview_session_open(const char *path, PreviewSession **out);
+void preview_session_close(PreviewSession *session);
+Result preview_session_check(PreviewSession *session, bool *changed);
+Result preview_session_page(PreviewSession *session, size_t start, size_t limit, PreviewText *out);
 void preview_text_free(PreviewText *text);
 #endif

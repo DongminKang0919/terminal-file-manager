@@ -24,6 +24,8 @@ Result platform_remove(const char *path);
 Result platform_link_target(const char *path, char **out);
 typedef struct PlatformReader PlatformReader;
 Result platform_reader_open(const char *path, PlatformReader **out);
+/* Compare the opened version with both its handle and the current path. */
+Result platform_reader_changed(PlatformReader *reader, const char *path, bool *changed);
 /* Read a sample at the current position without advancing the reader. */
 Result platform_reader_peek(PlatformReader *reader, unsigned char *buffer, size_t capacity, size_t *read_count);
 Result platform_reader_line(PlatformReader *reader, char *buffer, size_t size, bool *end);

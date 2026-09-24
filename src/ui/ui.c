@@ -43,6 +43,7 @@ int header_action(int x, int width) {
 
 void draw(UiContext *ui) {
     erase(); int h, w; getmaxyx(stdscr, h, w);
+    preview_prepare(ui, h >= 9 && w >= 50 ? h - 7 : 0);
     if (h < 9 || w < 50) { mvaddstr(0, 0, "Terminal too small (minimum 50x9)"); refresh(); return; }
     attron(COLOR_PAIR(UI_HEADER) | A_BOLD); mvhline(0, 0, ' ', w);
     int at = 1;

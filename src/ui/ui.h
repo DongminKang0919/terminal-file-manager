@@ -22,7 +22,13 @@ typedef struct {
     AppState app;
     size_t selected, top, preview_offset;
     bool preview_more;
-    char *preview_path;
+    char *preview_path, *preview_link;
+    PreviewSession *preview_session;
+    PreviewText preview_page;
+    Result preview_result;
+    size_t preview_start, preview_limit;
+    uint64_t preview_checked;
+    bool preview_ready;
     char status[512];
 } UiContext;
 enum { UI_BASE = 1, UI_BORDER, UI_HEADER, UI_SELECTED, UI_DIR, UI_MUTED, UI_STATUS, UI_PATH,
@@ -64,6 +70,7 @@ char type_letter(FileType type);
 int item_color(const Item *it, bool active);
 void init_theme(void);
 void show_help(UiContext *ui);
+void preview_prepare(UiContext *ui, int rows);
 void preview_reset(UiContext *ui);
 void preview_scroll(UiContext *ui, bool down);
 void preview(UiContext *ui, int x, int y, int w, int h);
