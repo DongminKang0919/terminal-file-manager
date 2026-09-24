@@ -248,19 +248,23 @@ int show_menu(UiContext *ui) {
 }
 void show_options(UiContext *ui) {
     for (;;) {
-        char hidden[64], preview_text[64], wheel[64];
+        char hidden[64], preview_text[64], wheel[64], sort[64], direction[64];
         snprintf(hidden, sizeof hidden, "[%c] Show hidden files", ui->app.show_hidden ? 'x' : ' ');
         snprintf(preview_text, sizeof preview_text, "[%c] Show preview panel", ui->app.show_preview ? 'x' : ' ');
         snprintf(wheel, sizeof wheel, "Wheel scroll: %d rows (click to change)", ui->app.wheel_step);
-        const char *labels[] = {hidden, preview_text, wheel, "Done (settings apply to this session)"};
-        int i = choice_dialog(ui, "Options", labels, 4);
-        if (i < 0 || i == 3) break;
+        snprintf(sort, sizeof sort, "Sort by: %s (click to change)", sort_label(ui->app.sort.key));
+        snprintf(direction, sizeof direction, "Sort order: %s (click to change)", ui->app.sort.descending ? "Descending" : "Ascending");
+        const char *labels[] = {hidden, preview_text, wheel, sort, direction, "Done (settings apply to this session)"};
+        int i = choice_dialog(ui, "Options", labels, 6);
+        if (i < 0 || i == 5) break;
         if (i == 0) {
             ui->app.show_hidden = !ui->app.show_hidden;
             if (load_dir(ui, NULL).code != RESULT_OK) ui->app.show_hidden = !ui->app.show_hidden;
         }
         if (i == 1) ui->app.show_preview = !ui->app.show_preview;
         if (i == 2) ui->app.wheel_step = ui->app.wheel_step == 1 ? 3 : ui->app.wheel_step == 3 ? 5 : 1;
+        if (i == 3) change_sort(ui, (SortSettings){(ui->app.sort.key + 1) % 4, ui->app.sort.descending});
+        if (i == 4) change_sort(ui, (SortSettings){ui->app.sort.key, !ui->app.sort.descending});
         draw(ui);
     }
 }

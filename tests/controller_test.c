@@ -28,6 +28,7 @@ static void preserved(UiContext *ui, FileInfo *files, size_t len, const char *su
 int main(int argc, char **argv) {
     assert(argc == 2); const char *root = argv[1];
     UiContext ui = {0}; ok(app_init(&ui.app, root));
+    change_sort(&ui, (SortSettings){SORT_SIZE, true});
     FileInfo *files = ui.app.files.entries; size_t len = ui.app.files.len;
     ui.selected = 2; ui.top = 1; ui.preview_offset = 10;
     fail_refresh = true;
@@ -54,6 +55,9 @@ int main(int argc, char **argv) {
     assert(core_info(created, &info).code == RESULT_NOT_FOUND);
     fail_refresh = false; ok(load_dir(&ui, "moved.txt"));
     assert(!strcmp(ui.app.files.entries[ui.selected].name, "moved.txt"));
+    assert(ui.app.sort.key == SORT_SIZE && ui.app.sort.descending);
+    for (size_t i = 1; i < ui.app.files.len; i++)
+        assert(main_file_compare(&ui.app.files.entries[i - 1], &ui.app.files.entries[i], ui.app.sort) <= 0);
     files = ui.app.files.entries; len = ui.app.files.len; fail_refresh = true;
     delete_entry(&ui); preserved(&ui, files, len, "Deleted");
     char *moved = core_path_join(root, "moved.txt"); assert(core_info(moved, &info).code == RESULT_NOT_FOUND);

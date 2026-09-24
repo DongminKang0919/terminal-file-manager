@@ -10,13 +10,30 @@ static void reset_selection(UiContext *ui, const char *highlight) {
     if (highlight) for (size_t i = 0; i < ui->app.files.len; i++)
         if (!strcmp(ui->app.files.entries[i].name, highlight)) { ui->selected = i; break; }
 }
+void change_sort(UiContext *ui, SortSettings sort) {
+    app_set_sort(&ui->app, sort, &ui->selected);
+    fit_selection(ui, stdscr && LINES > 7 ? LINES - 7 : 1);
+}
+const char *sort_label(SortKey key) {
+    static const char *const labels[] = {"Name", "Size", "Modified", "Kind"};
+    return key >= SORT_NAME && key <= SORT_KIND ? labels[key] : "Name";
+}
 Result load_dir(UiContext *ui, const char *highlight) {
-    char *name = highlight ? text_copy(highlight) : NULL;
-    if (highlight && !name) {
+    size_t previous = ui->selected;
+    const char *wanted = highlight ? highlight : previous < ui->app.files.len ? ui->app.files.entries[previous].name : NULL;
+    /* Refresh replaces the list, so copy identity before calling core. */
+    char *name = wanted ? text_copy(wanted) : NULL;
+    if (wanted && !name) {
         Result r = result_make(RESULT_NO_MEMORY, "Out of memory"); show_failure(ui, "Refresh failed", r); return r;
     }
     Result r = app_refresh(&ui->app);
-    if (r.code == RESULT_OK) reset_selection(ui, name); else show_failure(ui, "Refresh failed", r);
+    if (r.code == RESULT_OK) {
+        preview_reset(ui);
+        ui->selected = ui->app.files.len ? (previous < ui->app.files.len ? previous : ui->app.files.len - 1) : 0;
+        if (name) for (size_t i = 0; i < ui->app.files.len; i++)
+            if (!strcmp(ui->app.files.entries[i].name, name)) { ui->selected = i; break; }
+        fit_selection(ui, stdscr && LINES > 7 ? LINES - 7 : 1);
+    } else show_failure(ui, "Refresh failed", r);
     free(name); return r;
 }
 bool navigate(UiContext *ui, const char *path, const char *highlight) {

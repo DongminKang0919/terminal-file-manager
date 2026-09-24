@@ -10,7 +10,7 @@ static void draw_box(int x, int y, int w, int h, const char *title) {
     if (w > 5) { mvaddch(y, x + 2, ' '); draw_text(y, x + 3, w - 5, title); }
     attroff(COLOR_PAIR(UI_BORDER));
 }
-static void fit_selection(UiContext *ui, int rows) {
+void fit_selection(UiContext *ui, int rows) {
     if (ui->app.files.len && ui->selected >= ui->app.files.len) ui->selected = ui->app.files.len - 1;
     if (!ui->app.files.len) ui->selected = 0;
     if (ui->selected < ui->top) ui->top = ui->selected;
@@ -72,7 +72,11 @@ void draw(UiContext *ui) {
     attroff(COLOR_PAIR(UI_PATH) | A_BOLD);
     int mid = ui->app.show_preview ? w / 2 : w, panel_h = h - 4, rows = panel_h - 3;
     char title[320];
-    snprintf(title, sizeof title, " Files (%zu) ", ui->app.files.len);
+    if (mid < 44)
+        snprintf(title, sizeof title, " %s%c Files (%zu) ", ui->app.sort.key == SORT_MODIFIED ? "Time" : sort_label(ui->app.sort.key),
+                 ui->app.sort.descending ? '-' : '+', ui->app.files.len);
+    else snprintf(title, sizeof title, " %s %s | Files (%zu) ", sort_label(ui->app.sort.key),
+                  ui->app.sort.descending ? "descending" : "ascending", ui->app.files.len);
     draw_box(0, 2, mid, panel_h, title); if (ui->app.show_preview) draw_box(mid, 2, w - mid, panel_h, " Preview ");
     attron(COLOR_PAIR(UI_HEADER)); mvhline(3, 1, ' ', mid - 2);
     draw_text(3, 2, mid - 4, "[Parent]  [Open]");

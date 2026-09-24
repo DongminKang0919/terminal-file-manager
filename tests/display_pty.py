@@ -172,100 +172,101 @@ def prefix_transfer(t, move, prefix):
     t.send('\x1bOH' + prefix + '\n')
     t.send('\t\t\n')
 
-names = [b'n0\nline', b'n1\tname', b'n2\x01\x1b[99;99H', b'n3\xff\xc0',
-         'n4-한글이름'.encode(), 'n5-e\u0301'.encode(), '\u0301n6'.encode()]
-with tempfile.TemporaryDirectory(prefix='tfile-display-') as directory:
-    root = os.fsencode(directory) + b'/path\n\t\xff'
-    os.mkdir(root)
-    twins = [shown(name).encode() for name in names]
-    for i, name in enumerate(names):
-        with open(root + b'/' + name, 'wb') as f: f.write(f'original-{i}'.encode())
-        if twins[i] != name:
-            with open(root + b'/' + twins[i], 'wb') as f: f.write(b'ordinary twin')
-    t = Terminal(root)
-    try:
-        assert r'path\n\t\xFF' in t.screen.row(1), t.screen.row(1)
+if __name__ == '__main__':
+    names = [b'n0\nline', b'n1\tname', b'n2\x01\x1b[99;99H', b'n3\xff\xc0',
+             'n4-한글이름'.encode(), 'n5-e\u0301'.encode(), '\u0301n6'.encode()]
+    with tempfile.TemporaryDirectory(prefix='tfile-display-') as directory:
+        root = os.fsencode(directory) + b'/path\n\t\xff'
+        os.mkdir(root)
+        twins = [shown(name).encode() for name in names]
         for i, name in enumerate(names):
-            select_name(t, root, name)
-            # Main list and preview metadata use the same escaping policy.
-            assert shown(name) in '\n'.join(t.screen.row(y) for y in range(4, 21))
-            t.send('\x1b[19~')
-            t.frame(11, 8, 78, 8)
-            assert shown(name) in t.screen.row(10), t.screen.row(10)
-            assert '[ Delete ]' in t.screen.row(14) and '[ Cancel ]' in t.screen.row(14)
-            t.send('\n')  # Cancel remains the default.
-            assert os.path.exists(root + b'/' + name)
-            # Copy preserves raw bytes in the prefilled name, including invalid UTF-8.
-            prefix_transfer(t, False, 'copy-')
-            assert open(root + b'/copy-' + name, 'rb').read() == f'original-{i}'.encode()
-            assert os.path.exists(root + b'/' + name)
-            select_name(t, root, name)
-            prefix_transfer(t, True, 'moved-')
-            moved = b'moved-' + name
-            assert not os.path.exists(root + b'/' + name)
-            assert open(root + b'/' + moved, 'rb').read() == f'original-{i}'.encode()
-            t.send('\x1b[19~')
-            assert shown(moved) in t.screen.row(10)
-            t.send('\t\n')
-            assert not os.path.exists(root + b'/' + moved)
-            if twins[i] != name: assert open(root + b'/' + twins[i], 'rb').read() == b'ordinary twin'
-        # Inspect selector and search rows; no raw control bytes may move the cursor.
-        t.send('\x1b[15~\n')  # Copy -> Choose source picker
-        t.frame(7, 1, 86, 22)
-        assert 'copy-n0\\nline' in '\n'.join(t.screen.row(y) for y in range(5, 18))
-        select_name(t, root, b'copy-n0\nline')
-        t.send(' ')  # Choose the raw newline item, not its literal-escape twin.
-        t.send('\t\t\n\x1bOHpicked-\n\t\t\n')
-        assert open(root + b'/picked-copy-n0\nline', 'rb').read() == b'original-0'
-        t.send('\x1bORcopy-n0\n')
-        t.frame(5, 1, 90, 22)
-        assert 'copy-n0\\nline' in t.screen.row(4)
-        t.send('\n\x1b[19~')
-        assert 'copy-n0\\nline' in t.screen.row(10) and 'picked-' not in t.screen.row(10)
-        t.send('\n')
-    finally:
-        t.close()
-
-for width, height in [(50, 9), (100, 24)]:
-    with tempfile.TemporaryDirectory(prefix='tfile-display-small-') as directory:
-        root = os.fsencode(directory)
-        first = ('long-' + '한' * 65 + '-first\tend').encode()
-        second = ('long-' + '한' * 65 + '-second\tend').encode()
-        for name in (first, second):
-            with open(root + b'/' + name, 'wb') as f: f.write(name)
-        t = Terminal(root, width, height)
+            with open(root + b'/' + name, 'wb') as f: f.write(f'original-{i}'.encode())
+            if twins[i] != name:
+                with open(root + b'/' + twins[i], 'wb') as f: f.write(b'ordinary twin')
+        t = Terminal(root)
         try:
-            select_name(t, root, second)
-            if width == 50:
-                t.send('\x1bORlong\n')
-                t.frame(4, 1, 42, 7)
-                assert '...' in t.screen.row(4) and '[ Open ]' in t.screen.row(6)
-                t.send('\x1b')
-                t.send('\x1b[15~\n')
-                t.frame(2, 1, 46, 7)
-                assert '...' in t.screen.row(4) and '[ Cancel ]' in t.screen.row(6)
-                t.send('\x1b\x1b')
-            t.send('\x1b[19~')
-            dw, dh = min(78, width-4), min(8, height-2)
-            x, y = (width-dw)//2, (height-dh)//2
-            collected = []
-            for _ in range(8):
-                t.frame(x, y, dw, dh)
-                row = ''.join(t.screen.rows[y+2][x+2:x+dw-2]).rstrip()
-                collected.append(row)
-                assert '[ Delete ]' in t.screen.row(y+dh-2) and '[ Cancel ]' in t.screen.row(y+dh-2)
-                match = re.search(r'Name (\d+)/(\d+)', t.screen.row(y+dh-3))
-                assert match, t.screen.row(y+dh-3)
-                if match[1] == match[2]: break
-                t.click(x+dw-4, y+dh-3)
-            assert ''.join(collected) == shown(second), collected
-            # Previous page is available by keyboard, next page by mouse.
-            t.send('\x1b[5~')
-            assert ''.join(t.screen.rows[y+2][x+2:x+dw-2]).rstrip() == collected[-2]
+            assert r'path\n\t\xFF' in t.screen.row(1), t.screen.row(1)
+            for i, name in enumerate(names):
+                select_name(t, root, name)
+                # Main list and preview metadata use the same escaping policy.
+                assert shown(name) in '\n'.join(t.screen.row(y) for y in range(4, 21))
+                t.send('\x1b[19~')
+                t.frame(11, 8, 78, 8)
+                assert shown(name) in t.screen.row(10), t.screen.row(10)
+                assert '[ Delete ]' in t.screen.row(14) and '[ Cancel ]' in t.screen.row(14)
+                t.send('\n')  # Cancel remains the default.
+                assert os.path.exists(root + b'/' + name)
+                # Copy preserves raw bytes in the prefilled name, including invalid UTF-8.
+                prefix_transfer(t, False, 'copy-')
+                assert open(root + b'/copy-' + name, 'rb').read() == f'original-{i}'.encode()
+                assert os.path.exists(root + b'/' + name)
+                select_name(t, root, name)
+                prefix_transfer(t, True, 'moved-')
+                moved = b'moved-' + name
+                assert not os.path.exists(root + b'/' + name)
+                assert open(root + b'/' + moved, 'rb').read() == f'original-{i}'.encode()
+                t.send('\x1b[19~')
+                assert shown(moved) in t.screen.row(10)
+                t.send('\t\n')
+                assert not os.path.exists(root + b'/' + moved)
+                if twins[i] != name: assert open(root + b'/' + twins[i], 'rb').read() == b'ordinary twin'
+            # Inspect selector and search rows; no raw control bytes may move the cursor.
+            t.send('\x1b[15~\n')  # Copy -> Choose source picker
+            t.frame(7, 1, 86, 22)
+            assert 'copy-n0\\nline' in '\n'.join(t.screen.row(y) for y in range(5, 18))
+            select_name(t, root, b'copy-n0\nline')
+            t.send(' ')  # Choose the raw newline item, not its literal-escape twin.
+            t.send('\t\t\n\x1bOHpicked-\n\t\t\n')
+            assert open(root + b'/picked-copy-n0\nline', 'rb').read() == b'original-0'
+            t.send('\x1bORcopy-n0\n')
+            t.frame(5, 1, 90, 22)
+            assert 'copy-n0\\nline' in t.screen.row(4)
+            t.send('\n\x1b[19~')
+            assert 'copy-n0\\nline' in t.screen.row(10) and 'picked-' not in t.screen.row(10)
             t.send('\n')
-            assert os.path.exists(root+b'/'+second)
-            t.send('\x1b[19~\t\n')
-            assert not os.path.exists(root+b'/'+second) and os.path.exists(root+b'/'+first)
         finally:
             t.close()
-print('PASS: PTY popup guards, escaped names, full delete-name paging and byte-exact copy/rename/delete')
+
+    for width, height in [(50, 9), (100, 24)]:
+        with tempfile.TemporaryDirectory(prefix='tfile-display-small-') as directory:
+            root = os.fsencode(directory)
+            first = ('long-' + '한' * 65 + '-first\tend').encode()
+            second = ('long-' + '한' * 65 + '-second\tend').encode()
+            for name in (first, second):
+                with open(root + b'/' + name, 'wb') as f: f.write(name)
+            t = Terminal(root, width, height)
+            try:
+                select_name(t, root, second)
+                if width == 50:
+                    t.send('\x1bORlong\n')
+                    t.frame(4, 1, 42, 7)
+                    assert '...' in t.screen.row(4) and '[ Open ]' in t.screen.row(6)
+                    t.send('\x1b')
+                    t.send('\x1b[15~\n')
+                    t.frame(2, 1, 46, 7)
+                    assert '...' in t.screen.row(4) and '[ Cancel ]' in t.screen.row(6)
+                    t.send('\x1b\x1b')
+                t.send('\x1b[19~')
+                dw, dh = min(78, width-4), min(8, height-2)
+                x, y = (width-dw)//2, (height-dh)//2
+                collected = []
+                for _ in range(8):
+                    t.frame(x, y, dw, dh)
+                    row = ''.join(t.screen.rows[y+2][x+2:x+dw-2]).rstrip()
+                    collected.append(row)
+                    assert '[ Delete ]' in t.screen.row(y+dh-2) and '[ Cancel ]' in t.screen.row(y+dh-2)
+                    match = re.search(r'Name (\d+)/(\d+)', t.screen.row(y+dh-3))
+                    assert match, t.screen.row(y+dh-3)
+                    if match[1] == match[2]: break
+                    t.click(x+dw-4, y+dh-3)
+                assert ''.join(collected) == shown(second), collected
+                # Previous page is available by keyboard, next page by mouse.
+                t.send('\x1b[5~')
+                assert ''.join(t.screen.rows[y+2][x+2:x+dw-2]).rstrip() == collected[-2]
+                t.send('\n')
+                assert os.path.exists(root+b'/'+second)
+                t.send('\x1b[19~\t\n')
+                assert not os.path.exists(root+b'/'+second) and os.path.exists(root+b'/'+first)
+            finally:
+                t.close()
+    print('PASS: PTY popup guards, escaped names, full delete-name paging and byte-exact copy/rename/delete')

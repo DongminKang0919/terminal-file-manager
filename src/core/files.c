@@ -59,6 +59,7 @@ static Result navigate_to(AppState *app, const char *directory, bool record, boo
     FileList list;
     r = core_list(resolved, hidden, false, &list);
     if (r.code != RESULT_OK) { free(resolved); return r; }
+    main_list_sort(&list, app->sort);
     size_t choice = 0;
     if (required_name) {
         for (; choice < list.len; ++choice)

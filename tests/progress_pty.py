@@ -50,7 +50,7 @@ for copy, action, width, height in [(True,'esc',100,24),(True,'mouse',50,9),(Tru
             assert b'Completed items:' in output and b'Cancel stops here' in output
             if copy: assert b'Copied bytes:' in output
             # None of these keys may be dispatched as main-window commands.
-            payload=b'qqqcn\x1bOP'  # quit, copy, new, help
+            payload=b'qqqcn\x1bOP\x1b[18~\x1b[20~'  # quit, copy, new, help, Options, Menu
             if action=='esc': payload+=b'\x1b'
             elif action=='mouse':
                 w=min(76,width-4); x=(width-w)//2+4; y=(height-7)//2+5

@@ -2,7 +2,10 @@
 #define TFILE_CORE_H
 #include "../model.h"
 
+typedef enum { SORT_NAME, SORT_SIZE, SORT_MODIFIED, SORT_KIND } SortKey;
+typedef struct { SortKey key; bool descending; } SortSettings;
 typedef struct {
+    SortSettings sort;
     char *directory;
     FileList files;
     bool show_hidden, show_preview;
@@ -10,6 +13,11 @@ typedef struct {
     char **history;
     size_t history_len, history_at;
 } AppState;
+/* Main-list sorting only; core_list/search keep their legacy ordering.
+   Reordering preserves owned strings and performs no filesystem queries. */
+int main_file_compare(const FileInfo *a, const FileInfo *b, SortSettings sort);
+void main_list_sort(FileList *list, SortSettings sort);
+void app_set_sort(AppState *app, SortSettings sort, size_t *selected);
 Result app_init(AppState *app, const char *directory);
 void app_free(AppState *app);
 Result app_navigate(AppState *app, const char *directory);

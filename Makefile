@@ -31,7 +31,11 @@ tests/controller_test: tests/controller_test.c $(CORE_SOURCES) $(PLATFORM_SOURCE
 tests/progress_test: tests/progress_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/progress_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES)
 
-check-core: tests/progress_test tests/core_test tests/platform_test tests/operations_test tests/search_test
+tests/sort_test: tests/sort_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/sort_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES)
+
+check-core: tests/sort_test tests/progress_test tests/core_test tests/platform_test tests/operations_test tests/search_test
+	./tests/sort_test
 	./tests/progress_test
 	python3 tests/check_architecture.py
 	python3 tests/run_native.py
@@ -45,7 +49,7 @@ tests/text_window_test: tests/text_window_test.c src/ui/text.c src/ui/text_windo
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/text_window_test.c src/ui/text.c src/ui/text_window.c $(LDLIBS)
 
 tests/preview_test: tests/preview_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
-	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/preview_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_reader_open,--wrap=platform_reader_line,--wrap=platform_reader_close
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/preview_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_reader_open,--wrap=platform_reader_line,--wrap=platform_reader_close,--wrap=platform_reader_changed,--wrap=platform_directory_open,--wrap=platform_info,--wrap=app_refresh
 
 tests/tfile_progress: tests/progress_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/progress_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_transfer_progress,--wrap=core_delete_progress
@@ -62,8 +66,9 @@ check: tests/progress_ui_test tests/tfile_progress tests/preview_test tfile chec
 	python3 tests/progress_pty.py
 	python3 tests/smoke.py
 	python3 tests/display_pty.py
+	python3 tests/sort_pty.py
 
 clean:
-	rm -f tfile tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
+	rm -f tfile tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
 
 .PHONY: all clean check check-core

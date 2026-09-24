@@ -40,3 +40,5 @@ __pycache__/
 /tests/progress_test
 /tests/tfile_progress
 /tests/progress_ui_test
+
+/tests/sort_test

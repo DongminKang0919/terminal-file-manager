@@ -91,7 +91,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-search-state-') as directory:
     t = Terminal(directory)
     try:
         t.send('\x1b[18~')  # F7 options; hide dotfiles.
-        t.click(30, 9)
+        t.click(30, 8)
         t.send('\x1b')
         t.send('\x1bOR')
         assert b'Complete:' in t.send('.hidden-target\n')
@@ -243,8 +243,8 @@ with tempfile.TemporaryDirectory(prefix='tfile-test-') as directory:
         # Menu and options can be opened/closed with only the mouse.
         assert b'Menu' in t.click(79, 0)
         assert b'Options' in t.click(30, 11)
-        t.click(30, 9)  # hidden files option
-        t.click(70, 8)  # options close
+        t.click(30, 8)  # hidden files option
+        t.click(70, 7)  # options close
         # Help close, search input close, then result close.
         t.send('\x1bOP')
         t.click(84, 1)
