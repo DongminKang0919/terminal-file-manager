@@ -101,8 +101,9 @@ Result platform_directory_open(const char *path, PlatformDirectory **out) {
     if (!dir->path) { platform_directory_close(dir); return oom(); }
     *out = dir; return result_make(RESULT_OK, NULL);
 }
-Result platform_directory_next(PlatformDirectory *dir, FileInfo *out, bool *end) {
+Result platform_directory_next(PlatformDirectory *dir, FileInfo *out, bool *end, Result *metadata_error) {
     *out = (FileInfo){0}; *end = false;
+    if (metadata_error) *metadata_error = result_make(RESULT_OK, NULL);
     for (;;) {
         errno = 0; struct dirent *entry = readdir(dir->handle);
         if (!entry) { *end = true; return errno ? failure() : result_make(RESULT_OK, NULL); }
@@ -111,6 +112,7 @@ Result platform_directory_next(PlatformDirectory *dir, FileInfo *out, bool *end)
         if (!path) return oom();
         Result r = platform_info(path, out);
         if (r.code != RESULT_OK && r.code != RESULT_NO_MEMORY) {
+            if (metadata_error) *metadata_error = r;
             /* Racy/unreadable metadata still leaves a selectable directory entry. */
             out->path = text_copy(path); out->name = text_copy(entry->d_name);
             out->kind = FILE_OTHER; out->hidden = entry->d_name[0] == '.';

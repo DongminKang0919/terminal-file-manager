@@ -1,5 +1,6 @@
 """Exercise actual curses input through a PTY, using disposable files only."""
 import fcntl
+import curses
 import os
 from pathlib import Path
 import pty
@@ -54,6 +55,107 @@ class Terminal:
             if self.proc.poll() is None:
                 self.proc.kill()
             os.close(self.master)
+
+# Wide characters whose codepoints equal ncurses special keys stay literal.
+with tempfile.TemporaryDirectory(prefix='tfile-unicode-') as directory:
+    root = Path(directory)
+    t = Terminal(directory)
+    try:
+        collisions = ''.join(chr(key) for key in [curses.KEY_RESIZE, curses.KEY_BTAB,
+            curses.KEY_ENTER, curses.KEY_BACKSPACE, curses.KEY_LEFT, curses.KEY_RIGHT,
+            curses.KEY_HOME, curses.KEY_END, curses.KEY_DC, curses.KEY_MOUSE])
+        name = collisions + '-한글.txt'
+        t.send('\x1bOQ')
+        t.send(name)
+        assert not list(root.iterdir()), 'Literal characters must not submit or close the form'
+        t.send('\n')
+        assert (root / name).is_file(), list(root.iterdir())
+        t.send('\x1bOQ')
+        t.send('edit-한글X')
+        t.send('\x1bOD\x1b[3~')  # Real Left and Delete remove X.
+        t.send('\x1bOH\x1bOF.txt')  # Home, End and insertion.
+        t.send('\t\x1b[Z!\x7f')  # Tab, Backtab, insertion and Backspace.
+        t.send('\x1bOM')  # Keypad Enter.
+        assert (root / 'edit-한글.txt').is_file()
+        t.send('\x1bOQstill-file\t\t\t')
+        t.send(chr(curses.KEY_LEFT) + '\n\n')
+        assert (root / 'still-file').is_file(), 'Literal KEY_LEFT must not change the type'
+    finally:
+        t.close()
+
+with tempfile.TemporaryDirectory(prefix='tfile-search-state-') as directory:
+    root = Path(directory)
+    (root / '.hidden-target').write_text('UNIQUE_HIDDEN_PREVIEW')
+    (root / 'visible.txt').write_text('visible preview')
+    (root / 'vanishes.txt').write_text('will disappear')
+    t = Terminal(directory)
+    try:
+        t.send('\x1b[18~')  # F7 options; hide dotfiles.
+        t.click(30, 9)
+        t.send('\x1b')
+        t.send('\x1bOR')
+        assert b'Complete:' in t.send('.hidden-target\n')
+        opened = t.send('\n')
+        assert b'hidden files shown' in opened and b'UNIQUE_HIDDEN_PREVIEW' in opened
+        t.send('\x1b[15~')
+        t.rename_transfer('selected-copy.txt')
+        assert (root / 'selected-copy.txt').read_text() == 'UNIQUE_HIDDEN_PREVIEW'
+        t.send('\x1bORvanishes\n')
+        (root / 'vanishes.txt').unlink()
+        failed = t.send('\n')
+        assert b'open search result: No such file' in failed and b'Opened search result' not in failed
+        t.send('\x1bOR')
+        assert b'Cancelled:' in t.send('target\n\x1b')
+        t.click(90, 1)
+        t.send('\x1bOQafter-cancel\n')
+        assert (root / 'after-cancel').exists()
+    finally:
+        t.close()
+
+if os.geteuid() != 0:
+    with tempfile.TemporaryDirectory(prefix='tfile-search-permission-') as directory:
+        root = Path(directory)
+        locked = root / 'locked'
+        locked.mkdir()
+        (locked / 'wanted-secret').write_text('not accessible')
+        (root / 'wanted-visible').write_text('accessible')
+        t = Terminal(directory)
+        try:
+            locked.chmod(0)
+            t.send('\x1bOR')
+            output = t.send('wanted\n')
+            assert b'Incomplete:' in output and b'1 dirs / 0 entries skipped' in output
+            assert b'Permission denied' in output and b'wanted-visible' in output
+            assert b'Search incomplete' in t.click(90, 1)
+            t.send('\x1bOR')
+            root.chmod(0)
+            output = t.send('wanted\n')
+            assert b'Error:' in output and b'Permission denied' in output
+            root.chmod(0o700)
+            assert b'error:' in t.click(90, 1)
+        finally:
+            root.chmod(0o700)
+            locked.chmod(0o700)
+            t.close()
+    with tempfile.TemporaryDirectory(prefix='tfile-refresh-') as directory:
+        root = Path(directory)
+        (root / 'keep.txt').write_text('cached item')
+        t = Terminal(directory)
+        try:
+            root.chmod(0o300)  # Creation allowed, directory listing forbidden.
+            output = t.send('r')
+            assert b'Refresh failed' in output and b'Refreshed' not in output
+            t.send('\x1bOQ')
+            output = t.send('created-without-refresh\n')
+            assert (root / 'created-without-refresh').is_file()
+            assert b'File created' in output and b'list refresh failed' in output
+            root.chmod(0o700)
+            assert b'Refreshed' in t.send('r')
+        finally:
+            root.chmod(0o700)
+            t.close()
+else:
+    print('SKIP: PTY permission cases require non-root (native regressions drop privileges)')
 
 # Top actions remain clickable in full and compact layouts. Deletion always
 # requires an explicit confirmation, including recursive directory removal.
@@ -409,4 +511,4 @@ with tempfile.TemporaryDirectory(prefix='tfile-history-') as directory:
     finally:
         t.close()
 
-print('PASS: single-window search close, one-row wheel, SGR side buttons/history, modals, file operations, preview')
+print('PASS: Unicode/key separation, search states/hidden results, refresh failures, mouse/history, modals, file operations and preview')

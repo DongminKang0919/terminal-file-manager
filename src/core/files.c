@@ -27,7 +27,7 @@ Result core_list(const char *directory, bool hidden, bool directories_only, File
     size_t capacity = 0;
     while (r.code == RESULT_OK) {
         FileInfo entry; bool end;
-        r = platform_directory_next(dir, &entry, &end);
+        r = platform_directory_next(dir, &entry, &end, NULL);
         if (r.code != RESULT_OK || end) break;
         if ((!hidden && entry.hidden) || (directories_only && !entry.directory_target)) { file_info_free(&entry); continue; }
         if (out->len == capacity) {
@@ -52,13 +52,22 @@ Result core_resolve_directory(const char *base, const char *input, char **out) {
     if (r.code == RESULT_OK) *out = resolved; else free(resolved);
     return r;
 }
-static Result navigate_to(AppState *app, const char *directory, bool record) {
+static Result navigate_to(AppState *app, const char *directory, bool record, bool hidden, const char *required_name, size_t *selected) {
     char *resolved = NULL;
     Result r = core_resolve_directory(app->directory, directory, &resolved);
     if (r.code != RESULT_OK) return r;
     FileList list;
-    r = core_list(resolved, app->show_hidden, false, &list);
+    r = core_list(resolved, hidden, false, &list);
     if (r.code != RESULT_OK) { free(resolved); return r; }
+    size_t choice = 0;
+    if (required_name) {
+        for (; choice < list.len; ++choice)
+            if (!strcmp(list.entries[choice].name, required_name) && list.entries[choice].valid) break;
+        if (choice == list.len) {
+            free(resolved); file_list_free(&list);
+            return result_make(RESULT_NOT_FOUND, "Search result is missing or unreadable");
+        }
+    }
     if (record && (!app->directory || strcmp(app->directory, resolved))) {
         char *entry = text_copy(resolved);
         size_t length = app->history_len ? app->history_at + 1 : 0;
@@ -70,9 +79,11 @@ static Result navigate_to(AppState *app, const char *directory, bool record) {
         history[length] = entry; app->history_at = length; app->history_len = length + 1;
     }
     free(app->directory); file_list_free(&app->files);
-    app->directory = resolved; app->files = list; return r;
+    app->directory = resolved; app->files = list; app->show_hidden = hidden;
+    if (selected) *selected = choice;
+    return r;
 }
-Result app_navigate(AppState *app, const char *directory) { return navigate_to(app, directory, true); }
+Result app_navigate(AppState *app, const char *directory) { return navigate_to(app, directory, true, app->show_hidden, NULL, NULL); }
 Result app_init(AppState *app, const char *directory) {
     *app = (AppState){ .show_hidden = true, .show_preview = true, .wheel_step = 1 };
     return app_navigate(app, directory ? directory : ".");
@@ -82,7 +93,7 @@ void app_free(AppState *app) {
     for (size_t i = 0; i < app->history_len; i++) free(app->history[i]);
     free(app->history); *app = (AppState){0};
 }
-Result app_refresh(AppState *app) { return navigate_to(app, app->directory, false); }
+Result app_refresh(AppState *app) { return navigate_to(app, app->directory, false, app->show_hidden, NULL, NULL); }
 char *core_path_join(const char *directory, const char *name) { return platform_path_join(directory, name); }
 char *core_path_parent(const char *path) { return platform_path_parent(path); }
 char *core_path_name(const char *path) { return platform_path_name(path); }
@@ -94,7 +105,22 @@ Result app_history(AppState *app, bool forward) {
     if (!app->history_len || (forward ? app->history_at + 1 >= app->history_len : app->history_at == 0))
         return result_make(RESULT_NOT_FOUND, forward ? "No forward history" : "No back history");
     size_t next = forward ? app->history_at + 1 : app->history_at - 1;
-    Result r = navigate_to(app, app->history[next], false);
+    Result r = navigate_to(app, app->history[next], false, app->show_hidden, NULL, NULL);
     if (r.code == RESULT_OK) app->history_at = next;
     return r;
+}
+
+Result app_open_search_result(AppState *app, const char *path, size_t *selected, bool *revealed) {
+    *revealed = false;
+    FileInfo info;
+    Result r = platform_info(path, &info);
+    if (r.code != RESULT_OK) return r;
+    bool directory = info.kind == FILE_DIRECTORY;
+    bool hidden = app->show_hidden || (!directory && info.hidden);
+    char *parent = directory ? text_copy(path) : platform_path_parent(path);
+    if (!parent) { file_info_free(&info); return result_make(RESULT_NO_MEMORY, "Out of memory"); }
+    bool was_hidden = app->show_hidden;
+    r = navigate_to(app, parent, true, hidden, directory ? NULL : info.name, selected);
+    if (r.code == RESULT_OK) *revealed = !was_hidden && hidden;
+    free(parent); file_info_free(&info); return r;
 }

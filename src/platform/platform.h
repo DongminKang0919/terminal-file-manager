@@ -13,7 +13,9 @@ Result platform_descendant(const char *source, const char *directory, bool *out)
 Result platform_info(const char *path, FileInfo *out);
 typedef struct PlatformDirectory PlatformDirectory;
 Result platform_directory_open(const char *path, PlatformDirectory **out);
-Result platform_directory_next(PlatformDirectory *dir, FileInfo *out, bool *end);
+/* Metadata failures can leave a selectable invalid entry. Optional metadata_error
+   reports why; hard failures are returned normally. All outputs are initialized. */
+Result platform_directory_next(PlatformDirectory *dir, FileInfo *out, bool *end, Result *metadata_error);
 void platform_directory_close(PlatformDirectory *dir);
 Result platform_create(const char *path, bool directory);
 Result platform_copy(const char *source, const char *destination);

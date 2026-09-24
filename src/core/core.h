@@ -15,6 +15,9 @@ void app_free(AppState *app);
 Result app_navigate(AppState *app, const char *directory);
 Result app_refresh(AppState *app);
 Result app_history(AppState *app, bool forward);
+/* Commit navigation/filter/history only if the searched item can be opened and
+   selected. selected changes only on success; revealed reports a filter change. */
+Result app_open_search_result(AppState *app, const char *path, size_t *selected, bool *revealed);
 /* All returned lists/strings are caller-owned; free lists via file_list_free,
    strings via free. Failed pointer-producing calls leave NULL outputs. */
 Result core_list(const char *directory, bool hidden, bool directories_only, FileList *out);
@@ -35,8 +38,10 @@ typedef struct { size_t max_visited, max_results; unsigned max_depth; } SearchLi
 typedef struct {
     FileList matches;
     size_t visited;
-    bool stopped, limited;
-    Result result;
+    bool stopped, limited, incomplete;
+    size_t skipped_directories, skipped_entries;
+    Result first_omission; /* First skipped path/reason; counts include all omissions. */
+    Result result; /* Non-OK means fatal error, with already-found matches retained. */
 } SearchResult;
 /* Borrowed progress and current_path are valid only during callback.
    Return false to cancel. No input/event-loop dependency in the engine. */

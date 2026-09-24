@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
             case KEY_F(5): transfer_entry(ui, false); break;
             case KEY_F(6): transfer_entry(ui, true); break;
             case KEY_F(8): case KEY_DC: delete_entry(ui); break;
-            case 'r': load_dir(ui, NULL); message(ui, "Refreshed"); break;
+            case 'r': if (load_dir(ui, NULL).code == RESULT_OK) message(ui, "Refreshed"); break;
             case KEY_RESIZE: break;
         }
     }

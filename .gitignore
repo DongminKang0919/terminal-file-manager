@@ -3,6 +3,8 @@
 /tests/core_test
 /tests/platform_test
 /tests/operations_test
+/tests/search_test
+/tests/controller_test
 /build/
 /dist/
 *.o

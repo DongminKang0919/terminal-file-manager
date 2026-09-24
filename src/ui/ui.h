@@ -29,7 +29,8 @@ enum { UI_BASE = 1, UI_BORDER, UI_HEADER, UI_SELECTED, UI_DIR, UI_MUTED, UI_STAT
        UI_EXEC, UI_HIDDEN, UI_SPECIAL, UI_EXEC_SELECTED, UI_HIDDEN_SELECTED, UI_SPECIAL_SELECTED };
 typedef enum { TYPE_DIR, TYPE_FILE, TYPE_EXEC, TYPE_HIDDEN, TYPE_LINK, TYPE_SPECIAL } FileType;
 void message(UiContext *ui, const char *text);
-void load_dir(UiContext *ui, const char *highlight);
+Result load_dir(UiContext *ui, const char *highlight);
+bool open_search_result(UiContext *ui, const char *path);
 bool navigate(UiContext *ui, const char *path, const char *highlight);
 void parent_dir(UiContext *ui);
 void history_dir(UiContext *ui, bool forward);

@@ -22,15 +22,23 @@ tests/platform_test: tests/platform_test.c src/model.c $(PLATFORM_SOURCES) $(HEA
 tests/operations_test: tests/operations_test.c src/model.c $(PLATFORM_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DTFILE_TEST_HOOKS -o $@ tests/operations_test.c src/model.c $(PLATFORM_SOURCES)
 
-check-core: tests/core_test tests/platform_test tests/operations_test
+tests/search_test: tests/search_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/search_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) -Wl,--wrap=lstat,--wrap=platform_directory_open,--wrap=platform_directory_next
+
+tests/controller_test: tests/controller_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/controller_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=app_refresh,--wrap=confirm
+
+check-core: tests/core_test tests/platform_test tests/operations_test tests/search_test
 	python3 tests/check_architecture.py
 	python3 tests/run_native.py
 	python3 tests/run_operations.py
+	python3 tests/run_regressions.py search
 
-check: tfile check-core
+check: tfile check-core tests/controller_test
+	python3 tests/run_regressions.py controller
 	python3 tests/smoke.py
 
 clean:
-	rm -f tfile tests/core_test tests/platform_test tests/operations_test
+	rm -f tfile tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test
 
 .PHONY: all clean check check-core

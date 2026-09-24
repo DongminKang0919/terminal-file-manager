@@ -91,8 +91,8 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
         curs_set(focus == 0); wmove(win, 3, 2 + cols); wrefresh(win);
         wint_t key; int kind = input_wide(win, &key);
         if (kind == ERR) continue;
-        if (key == KEY_RESIZE || key == 27) break;
-        if (directory && focus == 3 && (key == KEY_LEFT || key == KEY_RIGHT || key == ' ')) {
+        if ((kind == KEY_CODE_YES && key == KEY_RESIZE) || (kind == OK && key == 27)) break;
+        if (directory && focus == 3 && ((kind == KEY_CODE_YES && (key == KEY_LEFT || key == KEY_RIGHT)) || (kind == OK && key == ' '))) {
             *directory = !*directory; continue;
         }
         if (kind == KEY_CODE_YES && key == KEY_MOUSE) {
@@ -106,16 +106,16 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
                 continue;
             }
             if (e.y == y + h - 2 && e.x >= x + 12 && e.x < x + 22) break;
-            if (e.y == y + h - 2 && e.x >= x + 2 && e.x < x + ((directory || host) ? 12 : 8)) { key = '\n'; focus = 1; }
+            if (e.y == y + h - 2 && e.x >= x + 2 && e.x < x + ((directory || host) ? 12 : 8)) { key = '\n'; kind = OK; focus = 1; }
             else if (e.y == y + 3 && e.x >= x + 2 && e.x < x + w - 2) {
                 focus = 0; cursor = start; int col = 0;
                 while (cursor < len) { int n = wcwidth(value[cursor]); if (n < 1) n = 1; if (col + n > e.x - x - 2) break; col += n; cursor++; }
                 continue;
             } else continue;
         }
-        if (key == '\t') { focus = (focus + 1) % (directory ? 4 : 3); continue; }
-        if (key == KEY_BTAB) { focus = (focus + (directory ? 3 : 2)) % (directory ? 4 : 3); continue; }
-        if (key == '\n' || key == KEY_ENTER) {
+        if (kind == OK && key == '\t') { focus = (focus + 1) % (directory ? 4 : 3); continue; }
+        if (kind == KEY_CODE_YES && key == KEY_BTAB) { focus = (focus + (directory ? 3 : 2)) % (directory ? 4 : 3); continue; }
+        if ((kind == OK && (key == '\n' || key == '\r')) || (kind == KEY_CODE_YES && key == KEY_ENTER)) {
             if (focus == 2) break;
             if (focus == 3) { focus = 0; continue; }
             if (!len) { snprintf(warning, sizeof warning, "Enter a name to continue."); focus = 0; continue; }
@@ -131,7 +131,7 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
         else if (kind == KEY_CODE_YES && key == KEY_RIGHT) { if (cursor < len) cursor++; }
         else if (kind == KEY_CODE_YES && key == KEY_HOME) cursor = 0;
         else if (kind == KEY_CODE_YES && key == KEY_END) cursor = len;
-        else if (key == KEY_BACKSPACE || key == 127 || key == 8) {
+        else if ((kind == KEY_CODE_YES && key == KEY_BACKSPACE) || (kind == OK && (key == 127 || key == 8))) {
             if (cursor) { memmove(value + cursor - 1, value + cursor, (len - cursor + 1) * sizeof *value); cursor--; len--; }
         } else if (kind == KEY_CODE_YES && key == KEY_DC) {
             if (cursor < len) { memmove(value + cursor, value + cursor + 1, (len - cursor) * sizeof *value); len--; }
@@ -228,7 +228,10 @@ void show_options(UiContext *ui) {
         const char *labels[] = {hidden, preview_text, wheel, "Done (settings apply to this session)"};
         int i = choice_dialog(ui, "Options", labels, 4);
         if (i < 0 || i == 3) break;
-        if (i == 0) { ui->app.show_hidden = !ui->app.show_hidden; load_dir(ui, NULL); }
+        if (i == 0) {
+            ui->app.show_hidden = !ui->app.show_hidden;
+            if (load_dir(ui, NULL).code != RESULT_OK) ui->app.show_hidden = !ui->app.show_hidden;
+        }
         if (i == 1) ui->app.show_preview = !ui->app.show_preview;
         if (i == 2) ui->app.wheel_step = ui->app.wheel_step == 1 ? 3 : ui->app.wheel_step == 3 ? 5 : 1;
         draw(ui);
