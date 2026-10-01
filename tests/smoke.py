@@ -11,11 +11,13 @@ import subprocess
 import tempfile
 import termios
 import time
+from display_pty import Screen
 
 BINARY = Path(os.environ.get('TFILE_BINARY', Path(__file__).resolve().parents[1] / 'tfile'))
 
 class Terminal:
-    def __init__(self, directory, width=100):
+    def __init__(self, directory, width=100, track_screen=False):
+        self.screen = Screen(24, width) if track_screen else None
         self.master, slave = pty.openpty()
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 24, width, 0, 0))
         self.proc = subprocess.Popen([str(BINARY), directory], stdin=slave, stdout=slave,
@@ -32,6 +34,7 @@ class Terminal:
                     data += os.read(self.master, 65536)
                 except OSError:
                     break
+        if self.screen is not None: self.screen.feed(data)
         return data
 
     def send(self, text):
@@ -119,14 +122,15 @@ if os.geteuid() != 0:
         locked.mkdir()
         (locked / 'wanted-secret').write_text('not accessible')
         (root / 'wanted-visible').write_text('accessible')
-        t = Terminal(directory)
+        t = Terminal(directory, track_screen=True)
         try:
             locked.chmod(0)
             t.send('\x1bOR')
             output = t.send('wanted\n')
             assert b'Incomplete:' in output and b'1 dirs / 0 entries skipped' in output
             assert b'Permission denied' in output and b'wanted-visible' in output
-            assert b'Search incomplete' in t.click(90, 1)
+            t.click(90, 1)
+            assert 'Search incomplete' in t.screen.row(22)
             t.send('\x1bOR')
             root.chmod(0)
             output = t.send('wanted\n')

@@ -114,6 +114,11 @@ class Screen:
             self.scroll_top = (args[0] or 1) - 1
             self.scroll_bottom = (args[1] if len(args)>1 and args[1] else self.height) - 1
             self.y = self.x = 0
+        elif command in 'ST':
+            count = min(n, self.scroll_bottom-self.scroll_top+1)
+            region = self.rows[self.scroll_top:self.scroll_bottom+1]
+            blanks = [[' ']*self.width for _ in range(count)]
+            self.rows[self.scroll_top:self.scroll_bottom+1] = region[count:]+blanks if command=='S' else blanks+region[:-count]
         elif command in 'ML':
             if self.scroll_top <= self.y <= self.scroll_bottom:
                 count = min(n,self.scroll_bottom-self.y+1)

@@ -59,7 +59,10 @@ static bool action_bounds(size_t index, int width, int *at, int *length) {
     for (size_t i = 0; i <= index; i++) {
         *length = (int)strlen(action_label(i, width)) + 2;
         if (*at + *length >= width) return false;
-        if (i != index) *at += *length + 1;
+        if (i != index) {
+            int gap = width >= 120 && (i == 0 || i == 2 || i == 4 || i == 6) ? 3 : 1;
+            *at += *length + gap;
+        }
     }
     return true;
 }
@@ -154,9 +157,24 @@ static void draw_screen(UiContext *ui, bool prepare) {
         }
         attrset(A_NORMAL);
     }
+    if (ui->app.files.len && (ui->top || ui->app.files.len > (size_t)rows)) {
+        size_t end = ui->top + (size_t)rows;
+        if (end > ui->app.files.len) end = ui->app.files.len;
+        char range[96];
+        snprintf(range, sizeof range, " Shown %zu-%zu/%zu ", ui->top + 1, end, ui->app.files.len);
+        if ((int)strlen(range) > mid - 4)
+            snprintf(range, sizeof range, " %s %s ", ui->top ? "^ more" : "Top", end < ui->app.files.len ? "v more" : "End");
+        attrset(COLOR_PAIR(UI_MUTED));
+        draw_text(h - 3, 2, mid - 4, range);
+        attrset(A_NORMAL);
+    }
     if (ui->app.show_preview) preview(ui, mid, 2, w - mid, panel_h);
     if (!ui->app.files.len) draw_text(layout.list_y, 2, mid - 4, "Empty directory - F2 New");
-    attron(COLOR_PAIR(UI_STATUS)); mvhline(h - 2, 0, ' ', w); draw_text(h - 2, 1, w - 2, ui->status); attroff(COLOR_PAIR(UI_STATUS));
+    char summary[96];
+    snprintf(summary, sizeof summary, "Shown: %zu | Hidden: %s", ui->app.files.len, ui->app.show_hidden ? "on" : "off");
+    attron(COLOR_PAIR(UI_STATUS)); mvhline(h - 2, 0, ' ', w);
+    draw_text(h - 2, 1, w - 2, ui->status[0] ? ui->status : summary);
+    attroff(COLOR_PAIR(UI_STATUS));
     attrset(ui_bar()); mvhline(h - 1, 0, ' ', w);
     if (!ui->modal_depth) {
         const char *keys[] = {"Enter", "Backspace", "F1", "F9"};

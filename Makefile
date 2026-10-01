@@ -75,6 +75,7 @@ check: tests/popup_style_test tests/tfile_search tests/progress_ui_test tests/tf
 	python3 tests/display_pty.py
 	python3 tests/sort_pty.py
 	python3 tests/layout_pty.py
+	python3 tests/navigation_pty.py
 	python3 tests/search_ui_pty.py
 	python3 tests/help_pty.py
 

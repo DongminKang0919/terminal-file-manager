@@ -103,7 +103,7 @@ static void preview_content(UiContext *ui, View *v, const Item *it) {
         if (ui->preview_link) { preview_line(ui, v, "Link target:", UI_DIR); preview_line(ui, v, ui->preview_link, UI_BASE); }
         return;
     }
-    if ((it->kind == FILE_DIRECTORY)) { preview_line(ui, v, "Double-click or use Open to enter", UI_DIR); return; }
+    if ((it->kind == FILE_DIRECTORY)) { preview_line(ui, v, "Double-click or use Open to enter", UI_MUTED); return; }
     if (!(it->kind == FILE_REGULAR)) return;
     const PreviewText *page = &ui->preview_page;
     if (page->binary) { preview_line(ui, v, "Binary file - no text preview", UI_MUTED); return; }

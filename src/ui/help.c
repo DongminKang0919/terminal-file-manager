@@ -31,6 +31,7 @@ static const HelpEntry entries[] = {
     {"Results", "Arrows, wheel or PgUp/PgDn select. Enter/Open or double-click opens; relative paths distinguish matching names."},
     {"F3 or /", "Search again with the previous query ready to edit. Esc/x closes results. Resize closes the search window."},
     {NULL, "PREVIEW"},
+    {"F7 > Show preview", "Hide the preview panel for a full-width file list. Selection and list scroll stay in place."},
     {"Wheel on preview", "Scroll metadata and text. Row is the first visible display row; End means no content below."},
     {"", "Changing files resets scroll. Sorting preserves the selected file and preview. Refresh retries a read error. Directory and link details are shown without reading their contents."},
     {"", "Binary files have no text preview. Long lines are split, tabs become spaces, and unsafe characters are escaped. No file editing is provided."},
