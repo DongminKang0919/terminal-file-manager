@@ -44,3 +44,5 @@ __pycache__/
 /tests/sort_test
 
 /tests/tfile_search
+
+/tests/popup_style_test

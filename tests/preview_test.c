@@ -143,8 +143,12 @@ int main(void) {
     forbid_list=true; ui.preview_checked=0;
     WINDOW *modal=dialog_open(&ui,"Search",7,60); assert(modal);
     assert(ui.modal_depth==1 && !(mvinch(5,3)&A_BOLD));
-    assert(PAIR_NUMBER(mvinch(5,3))==UI_MUTED);
+    assert(PAIR_NUMBER(mvinch(5,3))==UI_INACTIVE);
     assert((mvinch(23,1)&A_CHARTEXT)==' ');
+    for (int y=0;y<24;y++) for (int x=0;x<100;x++) {
+        chtype c=mvinch(y,x);
+        assert(PAIR_NUMBER(c)==UI_INACTIVE && (c&A_DIM) && !(c&(A_BOLD|A_REVERSE)));
+    }
     WINDOW *nested=dialog_open(&ui,"Nested",7,50); assert(nested);
     dialog_close(&ui,nested); assert(ui.modal_depth==1 && !(mvinch(5,3)&A_BOLD));
     char term[256]="needle";

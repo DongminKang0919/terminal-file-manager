@@ -38,9 +38,12 @@ static bool pick_path(UiContext *ui, bool folders_only, const char *initial, cha
         }
         if (!picker_count) draw_window_text(win, 3, 2, w - 4, folders_only ? "No subdirectories. You can use this directory." : "This directory is empty.");
         draw_window_text(win, h - 3, 2, w - 4, *warning ? warning : "Double-click/Enter: open   Space: use   p: path");
-        wattron(win, COLOR_PAIR(UI_HEADER));
-        draw_window_text(win, h - 2, 2, w - 4, folders_only ? "[ Use directory ]    [ Open ]  [ Cancel ]" : "[ Use selected ]     [ Open ]  [ Cancel ]");
-        wattroff(win, COLOR_PAIR(UI_HEADER)); wrefresh(win);
+        const char *use_label = folders_only ? "[ Use directory ]" : "[ Use selected ]";
+        int open_x = 2 + (int)strlen(use_label) + 2, cancel_x = open_x + 8 + 2;
+        dialog_button(win, h - 2, 2, use_label, false, folders_only || picker_count);
+        dialog_button(win, h - 2, open_x, "[ Open ]", false, picker_count != 0);
+        dialog_button(win, h - 2, cancel_x, "[ Cancel ]", false, true);
+        dialog_refresh(win);
         int key = input_key(win);
         bool use = false, open = false, up = false, path = false;
         if (key == KEY_MOUSE) {
@@ -60,8 +63,8 @@ static bool pick_path(UiContext *ui, bool folders_only, const char *initial, cha
                 }
                 if (row == 2) { up = col >= 2 && col < 10; path = col >= 12 && col < 27; }
                 if (row == h - 2) {
-                    use = col >= 2 && col < 21; open = col >= 23 && col < 31;
-                    if (col >= 32 && col < 42) break;
+                    use = col >= 2 && col < open_x - 2; open = col >= open_x && col < open_x + 8;
+                    if (col >= cancel_x && col < cancel_x + 10) break;
                 }
             }
         }
@@ -154,7 +157,7 @@ void transfer_entry(UiContext *ui, bool move_it) {
         wattron(win, COLOR_PAIR(*warning ? UI_SPECIAL : UI_MUTED));
         draw_window_text(win, h - 3, 2, w - 4, *warning ? warning : "Click a field to change it, then choose the action below.");
         wattroff(win, COLOR_PAIR(*warning ? UI_SPECIAL : UI_MUTED));
-        draw_window_text(win, h - 2, 2, w - 4, "Tab / Arrows: select   Enter: choose   Esc: cancel"); wrefresh(win);
+        draw_window_text(win, h - 2, 2, w - 4, "Tab / Arrows: select   Enter: choose   Esc: cancel"); dialog_refresh(win);
         int key = input_key(win), action = -1;
         if (key == KEY_MOUSE) {
             MEVENT e; if (getmouse(&e) != OK) continue;

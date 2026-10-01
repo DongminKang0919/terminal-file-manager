@@ -43,6 +43,14 @@ class Screen:
         self.x += cells
         self.last = char
 
+    def index(self, reverse=False):
+        if reverse and self.y == self.scroll_top:
+            self.rows[self.scroll_top:self.scroll_bottom+1] = [[' ']*self.width] + self.rows[self.scroll_top:self.scroll_bottom]
+        elif not reverse and self.y == self.scroll_bottom:
+            self.rows[self.scroll_top:self.scroll_bottom+1] = self.rows[self.scroll_top+1:self.scroll_bottom+1] + [[' ']*self.width]
+        else:
+            self.y = max(0, min(self.height-1, self.y + (-1 if reverse else 1)))
+
     def feed(self, data):
         text = self.pending + self.decoder.decode(data)
         at = 0
@@ -63,10 +71,11 @@ class Screen:
                     if kind == '(': self.acs = text[at + 2] == '0'
                     at += 3
                     continue
+                if kind in 'DM': self.index(kind == 'M')
                 at += 2  # application keypad modes and other nonprinting escapes
                 continue
             if ch == '\r': self.x = 0
-            elif ch == '\n': self.y = min(self.height - 1, self.y + 1)
+            elif ch == '\n': self.index()
             elif ch == '\b': self.x = max(0, self.x - 1)
             elif ch == '\t': self.x = min(self.width - 1, (self.x // 8 + 1) * 8)
             elif ord(ch) >= 32: self.put(ch)

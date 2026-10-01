@@ -31,8 +31,8 @@ for width,height in [(100,24),(50,9)]:
             def choose(index,mouse=False):
                 if mouse:
                     h=min(10,height-2); x=(width-min(52,width-4))//2; y=(height-h)//2
-                    if index>=h-3:
-                        t.send(DOWN*index); row=h-3
+                    if index>=h-4:
+                        t.send(DOWN*index); row=h-4
                     else: row=index+1
                     t.click(x+3,y+row)
                 else: t.send(DOWN*index+'\n')

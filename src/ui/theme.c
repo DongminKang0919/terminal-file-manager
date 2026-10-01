@@ -73,6 +73,27 @@ void init_theme(void) {
         init_pair(UI_HIDDEN_SELECTED, COLOR_WHITE, COLOR_BLUE);
         init_pair(UI_SPECIAL_SELECTED, COLOR_WHITE, COLOR_BLUE);
     }
+    if (COLORS >= 256) {
+        init_pair(UI_INACTIVE, 242, 235);
+        init_pair(UI_POP_BODY, 255, 238);
+        init_pair(UI_POP_MUTED, 250, 238);
+        init_pair(UI_POP_BORDER, 250, 238);
+        init_pair(UI_POP_TITLE, 255, 60);
+        init_pair(UI_POP_FOOTER, 250, 237);
+        init_pair(UI_POP_WARNING, 222, 238);
+        init_pair(UI_POP_FOOT_WARNING, 222, 237);
+        init_pair(UI_POP_DISABLED, 244, 237);
+    } else {
+        init_pair(UI_INACTIVE, COLOR_WHITE, COLOR_BLACK);
+        init_pair(UI_POP_BODY, COLOR_BLACK, COLOR_WHITE);
+        init_pair(UI_POP_MUTED, COLOR_BLACK, COLOR_WHITE);
+        init_pair(UI_POP_BORDER, COLOR_WHITE, COLOR_BLACK);
+        init_pair(UI_POP_TITLE, COLOR_WHITE, COLOR_BLUE);
+        init_pair(UI_POP_FOOTER, COLOR_BLACK, COLOR_WHITE);
+        init_pair(UI_POP_WARNING, COLOR_RED, COLOR_WHITE);
+        init_pair(UI_POP_FOOT_WARNING, COLOR_RED, COLOR_WHITE);
+        init_pair(UI_POP_DISABLED, COLOR_BLACK, COLOR_WHITE);
+    }
     bkgd(COLOR_PAIR(UI_BASE));
 }
 

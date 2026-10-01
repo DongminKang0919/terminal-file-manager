@@ -6,6 +6,8 @@ bool mouse_click(const MEVENT *e) {
 }
 void dialog_frame(WINDOW *win, const char *title) {
     int h, w; getmaxyx(win, h, w); (void)h;
+    wbkgdset(win, COLOR_PAIR(UI_BASE));
+    wattrset(win, A_NORMAL);
     werase(win);
     wattron(win, COLOR_PAIR(UI_BORDER)); box(win, 0, 0); wattroff(win, COLOR_PAIR(UI_BORDER));
     wattron(win, COLOR_PAIR(UI_HEADER) | A_BOLD);
@@ -13,6 +15,42 @@ void dialog_frame(WINDOW *win, const char *title) {
     draw_window_text(win, 0, 2, w - 9, title);
     mvwaddstr(win, 0, w - 6, "[ x ]");
     wattroff(win, COLOR_PAIR(UI_HEADER) | A_BOLD);
+    /* Footer caption sits in a rule; two rows remain reserved at every size. */
+    mvwhline(win, h - 3, 1, ACS_HLINE, w - 2);
+}
+
+void dialog_button(WINDOW *win, int y, int x, const char *label, bool focused, bool enabled) {
+    attr_t style = !enabled ? A_DIM : focused ? ui_selection() : A_NORMAL;
+    wattron(win, style); draw_window_text(win, y, x, getmaxx(win) - x - 2, label);
+    wattroff(win, style);
+}
+
+/* Resolve existing semantic colors onto the popup surfaces without changing text,
+   coordinates, cursor, or input policy. Keep ACS and wide-character cells intact. */
+void dialog_refresh(WINDOW *win) {
+    int h, w, cy, cx; getmaxyx(win, h, w); getyx(win, cy, cx);
+    for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+        cchar_t cell; wchar_t text[CCHARW_MAX]; attr_t attr; short old;
+        mvwin_wch(win, y, x, &cell); getcchar(&cell, text, &attr, &old, NULL);
+        attr &= ~A_COLOR;
+        int pair;
+        bool selected = old == UI_SELECTED || old == UI_DIR_SELECTED || old == UI_FILE_SELECTED ||
+                        old == UI_LINK_SELECTED || old == UI_EXEC_SELECTED ||
+                        old == UI_HIDDEN_SELECTED || old == UI_SPECIAL_SELECTED;
+        bool footer = y >= h - 3;
+        if (x == 0 || x == w - 1 || y == h - 1) {
+            pair = UI_POP_BORDER; attr |= A_BOLD;
+        } else if (y == 0) {
+            pair = UI_POP_TITLE; attr |= A_BOLD;
+            if (!has_colors()) attr |= A_REVERSE;
+        } else if (selected) { pair = UI_SELECTED; attr |= A_BOLD; }
+        else if (attr & A_DIM) pair = UI_POP_DISABLED;
+        else if (old == UI_SPECIAL) pair = footer ? UI_POP_FOOT_WARNING : UI_POP_WARNING;
+        else if (footer) pair = UI_POP_FOOTER;
+        else pair = old == UI_MUTED ? UI_POP_MUTED : UI_POP_BODY;
+        mvwchgat(win, y, x, 1, attr, has_colors() ? pair : 0, NULL);
+    }
+    wmove(win, cy, cx); wrefresh(win);
 }
 WINDOW *dialog_open(UiContext *ui, const char *title, int height, int width) {
     int h, w; getmaxyx(stdscr, h, w);
@@ -60,7 +98,7 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
     for (;;) {
         int h, w; getmaxyx(win, h, w);
         dialog_frame(win, label);
-        int cancel_x = host ? 14 : 12;
+        int cancel_x = (host || directory) ? 14 : 10;
         if (directory) {
             mvwaddstr(win, 1, 2, "Type:");
             if (focus == 3) wattron(win, ui_selection());
@@ -84,7 +122,7 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
         int cols = 0;
         for (size_t i = start; i < cursor; i++) { cols += ui_text_token(value[i]).cells; }
         while (cols >= w - 5 && start < cursor) { cols -= ui_text_token(value[start++]).cells; }
-        attr_t field_style = host ? (focus == 0 ? ui_selection() : COLOR_PAIR(UI_BASE)) : COLOR_PAIR(UI_SELECTED);
+        attr_t field_style = focus == 0 ? ui_selection() : COLOR_PAIR(UI_BASE);
         wattron(win, field_style); mvwhline(win, 3, 2, ' ', w - 4);
         int used = 0;
         for (size_t i = start; i < len; i++) {
@@ -93,9 +131,9 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
             mvwaddnwstr(win, 3, 2 + used, token.text, token.length); used += token.cells;
         }
         wattroff(win, field_style);
-        wattron(win, focus == 1 ? ui_selection() : A_NORMAL); mvwaddstr(win, h - 2, 2, directory ? "[ Create ]" : host ? "[ Search ]" : "[ OK ]"); wattroff(win, ui_selection());
-        wattron(win, focus == 2 ? ui_selection() : A_NORMAL); mvwaddstr(win, h - 2, cancel_x, "[ Cancel ]"); wattroff(win, ui_selection());
-        curs_set(focus == 0); wmove(win, 3, 2 + cols); wrefresh(win);
+        dialog_button(win, h - 2, 2, directory ? "[ Create ]" : host ? "[ Search ]" : "[ OK ]", focus == 1, true);
+        dialog_button(win, h - 2, cancel_x, "[ Cancel ]", focus == 2, true);
+        curs_set(focus == 0); wmove(win, 3, 2 + cols); dialog_refresh(win);
         wint_t key; int kind = input_wide(win, &key);
         if (kind == ERR) continue;
         if ((kind == KEY_CODE_YES && key == KEY_RESIZE) || (kind == OK && key == 27)) break;
@@ -186,8 +224,8 @@ bool confirm(UiContext *ui, const char *name, bool directory) {
             draw_window_text(win, h - 3, 7, w - 14, hint);
         }
         draw_window_text(win, 3, 2, w - 4, "This cannot be undone.");
-        wattron(win, yes ? ui_selection() : A_NORMAL); mvwaddstr(win, h - 2, 2, "[ Delete ]"); wattroff(win, ui_selection());
-        wattron(win, !yes ? ui_selection() : A_NORMAL); mvwaddstr(win, h - 2, 16, "[ Cancel ]"); wattroff(win, ui_selection()); wrefresh(win);
+        dialog_button(win, h - 2, 2, "[ Delete ]", yes, true);
+        dialog_button(win, h - 2, 14, "[ Cancel ]", !yes, true); dialog_refresh(win);
         int key = input_key(win);
         if (key == KEY_MOUSE) {
             MEVENT e; if (getmouse(&e) != OK) continue;
@@ -199,7 +237,7 @@ bool confirm(UiContext *ui, const char *name, bool directory) {
             }
             if (mouse_click(&e) && e.y == y + h - 2) {
                 if (e.x >= x + 2 && e.x < x + 12) { result = true; break; }
-                if (e.x >= x + 16 && e.x < x + 26) break;
+                if (e.x >= x + 14 && e.x < x + 24) break;
             }
         }
         if (key == KEY_NPAGE && name[next]) { start = next; yes = false; }
@@ -221,7 +259,7 @@ static int choice_dialog(UiContext *ui, const char *title, const char **labels, 
     if (!win) return -1;
     int selected_row = 0, offset = 0, result = -1;
     for (;;) {
-        int h, w; getmaxyx(win, h, w); int rows = h - 3;
+        int h, w; getmaxyx(win, h, w); int rows = h - 4;
         if (selected_row < offset) offset = selected_row;
         if (selected_row >= offset + rows) offset = selected_row - rows + 1;
         dialog_frame(win, title);
@@ -229,7 +267,7 @@ static int choice_dialog(UiContext *ui, const char *title, const char **labels, 
             if (offset + i == selected_row) wattron(win, ui_selection());
             draw_window_text(win, i + 1, 2, w - 4, labels[offset + i]); wattroff(win, ui_selection());
         }
-        draw_window_text(win, h - 2, 2, w - 4, "Up/Down  Enter: choose  Esc: close"); wrefresh(win);
+        draw_window_text(win, h - 2, 2, w - 4, "Up/Down  Enter: choose  Esc: close"); dialog_refresh(win);
         int key = input_key(win);
         if (key == KEY_MOUSE) {
             MEVENT e; if (getmouse(&e) != OK) continue;

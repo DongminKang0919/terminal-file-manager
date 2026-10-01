@@ -147,6 +147,14 @@ static void draw_screen(UiContext *ui, bool prepare) {
     attron(COLOR_PAIR(UI_MUTED));
     draw_text(h - 1, 1, w - 2, ui->modal_depth ? "" : "Enter: Open  Backspace: Parent  F1: Help  F9: Menu");
     attroff(COLOR_PAIR(UI_MUTED));
+    if (ui->modal_depth) {
+        /* Change cell attributes only; keep wide glyphs and ACS border characters. */
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            cchar_t cell; wchar_t text[CCHARW_MAX]; attr_t attr; short pair;
+            mvwin_wch(stdscr, y, x, &cell); getcchar(&cell, text, &attr, &pair, NULL);
+            mvchgat(y, x, 1, (attr & A_ALTCHARSET) | A_DIM, has_colors() ? UI_INACTIVE : 0, NULL);
+        }
+    }
     refresh();
 }
 

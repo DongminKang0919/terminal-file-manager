@@ -46,10 +46,9 @@ static void search_draw(Search *s, size_t choice, size_t offset, bool scanning) 
     if (issue->code != RESULT_OK) snprintf(detail, sizeof detail, "%.100s: %.150s", issue->detail, issue->path);
     else snprintf(detail, sizeof detail, "%s", scanning ? "Enter/Esc: keep results  x: close" : "Enter: open  /: search  Esc: close");
     draw_window_text(s->win, h - 3, 2, w - 4, detail);
-    if (scanning) wattron(s->win, ui_selection());
-    draw_window_text(s->win, h - 2, 2, w - 4, scanning ? "[ Cancel ]" : "[ Search ]  [ Open ]");
-    if (scanning) wattroff(s->win, ui_selection());
-    wrefresh(s->win);
+    dialog_button(s->win, h - 2, 2, scanning ? "[ Cancel ]" : "[ Search ]", scanning, true);
+    if (!scanning) dialog_button(s->win, h - 2, 14, "[ Open ]", false, s->len != 0);
+    dialog_refresh(s->win);
 }
 
 static void search_update(Search *s, const SearchResult *result) {

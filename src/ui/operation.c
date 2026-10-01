@@ -23,10 +23,9 @@ static bool operation_progress(const OperationProgress *progress, void *context)
         else snprintf(text, sizeof text, "Deleted items cannot be restored");
         draw_window_text(view->win, 3, 2, w - 4, text);
         draw_window_text(view->win, 4, 2, w - 4, "Cancel stops here; changes are kept");
-        wattron(view->win, COLOR_PAIR(UI_SELECTED));
-        draw_window_text(view->win, h - 2, 2, w - 4, "[ Cancel ]  Esc / Enter");
-        wattroff(view->win, COLOR_PAIR(UI_SELECTED));
-        wrefresh(view->win); view->last_draw = now; view->drawn = true;
+        dialog_button(view->win, h - 2, 2, "[ Cancel ]", true, true);
+        draw_window_text(view->win, h - 2, 14, w - 16, "Esc / Enter");
+        dialog_refresh(view->win); view->last_draw = now; view->drawn = true;
     }
     /* Bound input work even if a terminal continuously sends unrelated events. */
     for (int i = 0; i < 64 && !view->cancelled; i++) {
