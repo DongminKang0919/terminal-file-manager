@@ -61,7 +61,7 @@ Result run_file_operation(UiContext *ui, bool copy, const char *source,
         /* Discard queued keyboard/mouse commands, including those behind Cancel.
            Resize has already been consumed, and draw() uses the new dimensions. */
         flushinp();
-        delwin(view.win); touchwin(stdscr);
+        dialog_close(ui, view.win);
     }
     return r;
 }

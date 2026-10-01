@@ -62,7 +62,7 @@ void show_help(UiContext *ui) {
     if (screen_h < 9 || screen_w < 50) { message(ui, "Terminal too small for help"); return; }
     int h = screen_h - 2, w = screen_w - 8;
     if (w > 78) w = 78;
-    WINDOW *win = newwin(h, w, (screen_h - h) / 2, (screen_w - w) / 2);
+    WINDOW *win = dialog_open(ui, "Help", h, w);
     if (!win) { message(ui, "Cannot open help window"); return; }
     keypad(win, TRUE); wbkgd(win, COLOR_PAIR(UI_BASE));
     size_t offset = 0; int key;

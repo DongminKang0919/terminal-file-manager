@@ -137,6 +137,35 @@ int main(void) {
     assert(mvinch(5,3)&A_BOLD);
     assert(PAIR_NUMBER(mvinch(5,3))==item_color(&ui.app.files.entries[0],true));
     assert(!(mvinch(0,2)&A_BOLD));
+    saved=reads; saved_opens=opens; checked=checks;
+    session=ui.preview_session; page=ui.preview_page.lines;
+    size_t saved_offset=ui.preview_offset, saved_selected=ui.selected, saved_top=ui.top;
+    forbid_list=true; ui.preview_checked=0;
+    WINDOW *modal=dialog_open(&ui,"Search",7,60); assert(modal);
+    assert(ui.modal_depth==1 && !(mvinch(5,3)&A_BOLD));
+    assert(PAIR_NUMBER(mvinch(5,3))==UI_MUTED);
+    assert((mvinch(23,1)&A_CHARTEXT)==' ');
+    WINDOW *nested=dialog_open(&ui,"Nested",7,50); assert(nested);
+    dialog_close(&ui,nested); assert(ui.modal_depth==1 && !(mvinch(5,3)&A_BOLD));
+    char term[256]="needle";
+    unget_wch('\n'); ungetch(KEY_BTAB);
+    assert(!search_prompt(&ui,modal,term,sizeof term));
+    assert(mvwinch(modal,5,14)&A_BOLD); /* Shift-Tab reaches Cancel */
+    unget_wch('\n'); unget_wch('\t'); unget_wch('\t');
+    assert(!search_prompt(&ui,modal,term,sizeof term));
+    assert(mvwinch(modal,5,14)&A_BOLD); /* Cancel focus */
+    char hint[40]; mvwinnstr(modal,4,2,hint,12); assert(!strncmp(hint,"Enter: close",12));
+    assert(!(mvwinch(modal,5,2)&A_BOLD) && !(mvwinch(modal,3,2)&A_BOLD));
+    unget_wch('\n'); unget_wch('\t');
+    assert(search_prompt(&ui,modal,term,sizeof term) && !strcmp(term,"needle"));
+    assert(mvwinch(modal,5,2)&A_BOLD); /* Search focus */
+    unget_wch('\n'); assert(search_prompt(&ui,modal,term,sizeof term));
+    assert(mvwinch(modal,3,2)&A_BOLD); /* Input focus */
+    dialog_close(&ui,modal); assert(ui.modal_depth==0 && (mvinch(5,3)&A_BOLD));
+    assert(reads==saved && opens==saved_opens && checks==checked);
+    assert(ui.preview_session==session && ui.preview_page.lines==page);
+    assert(ui.preview_offset==saved_offset && ui.selected==saved_selected && ui.top==saved_top);
+    forbid_list=false;
     short fg, bg, base_fg, base_bg;
     pair_content(UI_BASE,&base_fg,&base_bg);
     pair_content(UI_HEADER,&fg,&bg); assert(bg==base_bg);

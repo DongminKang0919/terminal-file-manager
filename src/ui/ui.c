@@ -60,9 +60,9 @@ int header_action(int x, int width) {
     return 0;
 }
 
-void draw(UiContext *ui) {
+static void draw_screen(UiContext *ui, bool prepare) {
     erase(); int h, w; getmaxyx(stdscr, h, w);
-    preview_prepare(ui, h >= 9 && w >= 50 ? h - 7 : 0);
+    if (prepare) preview_prepare(ui, h >= 9 && w >= 50 ? h - 7 : 0);
     if (h < 9 || w < 50) { mvaddstr(0, 0, "Terminal too small (minimum 50x9)"); refresh(); return; }
     attron(COLOR_PAIR(UI_HEADER)); mvhline(0, 0, ' ', w);
     int at = 1;
@@ -92,9 +92,12 @@ void draw(UiContext *ui) {
     UiLayout layout = ui_layout(w, h, ui->app.show_preview);
     int mid = layout.list_width, panel_h = layout.panel_height, rows = layout.list_rows;
     char title[320];
-    snprintf(title, sizeof title, " Files (%zu) %s%c ", ui->app.files.len,
-             ui->app.sort.key == SORT_MODIFIED ? "Time" : sort_label(ui->app.sort.key),
-             ui->app.sort.descending ? '-' : '+');
+    snprintf(title, sizeof title, " Files (%zu) | %s %s ", ui->app.files.len,
+             sort_label(ui->app.sort.key), ui->app.sort.descending ? "descending" : "ascending");
+    if ((int)strlen(title) > mid - 5)
+        snprintf(title, sizeof title, " Files (%zu) %s%c ", ui->app.files.len,
+                 ui->app.sort.key == SORT_MODIFIED ? "Time" : sort_label(ui->app.sort.key),
+                 ui->app.sort.descending ? '-' : '+');
     draw_box(0, 2, mid, panel_h, title);
     if (ui->app.show_preview) draw_box(mid, 2, w - mid, panel_h, " Preview ");
     attron(COLOR_PAIR(UI_MUTED));
@@ -117,6 +120,7 @@ void draw(UiContext *ui) {
         bool active = ui->top + (size_t)r == ui->selected;
         attr_t style = COLOR_PAIR(item_color(it, active)) | (active ? A_BOLD : A_NORMAL);
         if (active && !has_colors()) style |= A_REVERSE;
+        if (active && ui->modal_depth) style = COLOR_PAIR(UI_MUTED);
         attron(style);
         mvhline(y, 1, ' ', mid - 2);
         mvaddch(y, 1, active ? '>' : ' ');
@@ -141,7 +145,13 @@ void draw(UiContext *ui) {
     attron(COLOR_PAIR(UI_HEADER)); mvhline(h - 1, 0, ' ', w);
     attroff(COLOR_PAIR(UI_HEADER));
     attron(COLOR_PAIR(UI_MUTED));
-    draw_text(h - 1, 1, w - 2, "Enter: Open  Backspace: Parent  F1: Help  F9: Menu");
+    draw_text(h - 1, 1, w - 2, ui->modal_depth ? "" : "Enter: Open  Backspace: Parent  F1: Help  F9: Menu");
     attroff(COLOR_PAIR(UI_MUTED));
     refresh();
 }
+
+/* Modal focus changes consume prepared data only: no metadata poll or reader I/O. */
+void draw_cached(UiContext *ui) {
+    if (stdscr && ui->app.directory) draw_screen(ui, false);
+}
+void draw(UiContext *ui) { draw_screen(ui, true); }

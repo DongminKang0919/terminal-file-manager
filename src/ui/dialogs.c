@@ -20,7 +20,7 @@ WINDOW *dialog_open(UiContext *ui, const char *title, int height, int width) {
     if (height > h - 2) height = h - 2;
     if (width > w - 4) width = w - 4;
     WINDOW *win = newwin(height, width, (h - height) / 2, (w - width) / 2);
-    if (win) { keypad(win, TRUE); wbkgd(win, COLOR_PAIR(UI_BASE)); dialog_frame(win, title); }
+    if (win) { ui->modal_depth++; draw_cached(ui); keypad(win, TRUE); wbkgd(win, COLOR_PAIR(UI_BASE)); dialog_frame(win, title); }
     return win;
 }
 bool dialog_closed(WINDOW *win, const MEVENT *e) {
@@ -38,7 +38,10 @@ int mouse_key(WINDOW *win, int key) {
     return 0;
 }
 void dialog_close(UiContext *ui, WINDOW *win) {
-    (void)ui; curs_set(0); delwin(win); touchwin(stdscr); draw(ui); }
+    curs_set(0); delwin(win);
+    if (ui->modal_depth) ui->modal_depth--;
+    touchwin(stdscr); draw_cached(ui);
+}
 
 /* Wide-character editing keeps cursor movement and deletion on UTF-8 boundaries. */
 static bool input_dialog(UiContext *ui, const char *label, char *out, size_t size, bool *directory, const char *initial, WINDOW *host) {
@@ -57,6 +60,7 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
     for (;;) {
         int h, w; getmaxyx(win, h, w);
         dialog_frame(win, label);
+        int cancel_x = host ? 14 : 12;
         if (directory) {
             mvwaddstr(win, 1, 2, "Type:");
             if (focus == 3) wattron(win, ui_selection());
@@ -72,23 +76,25 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
             if (host) {
                 mvwaddstr(win, 2, 2, "Name contains:");
                 draw_window_text(win, 4, 2, w - 4, warning);
-                if (h > 8) draw_window_text(win, 5, 2, w - 4, "Search below this directory. Enter a name, then Search.");
+                if (!*warning) draw_window_text(win, 4, 2, w - 4, focus == 2 ?
+                    "Enter: close  Tab: focus  Esc: close" : "Enter: search  Tab: focus  Esc: close");
             }
         }
         if (cursor < start) start = cursor;
         int cols = 0;
         for (size_t i = start; i < cursor; i++) { cols += ui_text_token(value[i]).cells; }
         while (cols >= w - 5 && start < cursor) { cols -= ui_text_token(value[start++]).cells; }
-        wattron(win, COLOR_PAIR(UI_SELECTED)); mvwhline(win, 3, 2, ' ', w - 4);
+        attr_t field_style = host ? (focus == 0 ? ui_selection() : COLOR_PAIR(UI_BASE)) : COLOR_PAIR(UI_SELECTED);
+        wattron(win, field_style); mvwhline(win, 3, 2, ' ', w - 4);
         int used = 0;
         for (size_t i = start; i < len; i++) {
             UiTextToken token = ui_text_token(value[i]);
             if (used + token.cells > w - 5) break;
             mvwaddnwstr(win, 3, 2 + used, token.text, token.length); used += token.cells;
         }
-        wattroff(win, COLOR_PAIR(UI_SELECTED));
+        wattroff(win, field_style);
         wattron(win, focus == 1 ? ui_selection() : A_NORMAL); mvwaddstr(win, h - 2, 2, directory ? "[ Create ]" : host ? "[ Search ]" : "[ OK ]"); wattroff(win, ui_selection());
-        wattron(win, focus == 2 ? ui_selection() : A_NORMAL); mvwaddstr(win, h - 2, 12, "[ Cancel ]"); wattroff(win, ui_selection());
+        wattron(win, focus == 2 ? ui_selection() : A_NORMAL); mvwaddstr(win, h - 2, cancel_x, "[ Cancel ]"); wattroff(win, ui_selection());
         curs_set(focus == 0); wmove(win, 3, 2 + cols); wrefresh(win);
         wint_t key; int kind = input_wide(win, &key);
         if (kind == ERR) continue;
@@ -106,7 +112,7 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
                 if (e.x >= x + 19 && e.x < x + 32) { *directory = true; focus = 0; }
                 continue;
             }
-            if (e.y == y + h - 2 && e.x >= x + 12 && e.x < x + 22) break;
+            if (e.y == y + h - 2 && e.x >= x + cancel_x && e.x < x + cancel_x + 10) break;
             if (e.y == y + h - 2 && e.x >= x + 2 && e.x < x + ((directory || host) ? 12 : 8)) { key = '\n'; kind = OK; focus = 1; }
             else if (e.y == y + 3 && e.x >= x + 2 && e.x < x + w - 2) {
                 focus = 0; cursor = start; int col = 0;

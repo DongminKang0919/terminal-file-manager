@@ -23,6 +23,7 @@ class Screen:
         self.height, self.width = height, width
         self.rows = [[' '] * width for _ in range(height)]
         self.y = self.x = 0
+        self.scroll_top, self.scroll_bottom = 0, height - 1
         self.acs = False
         self.pending = ''
         self.last = ' '
@@ -100,7 +101,17 @@ class Screen:
         elif command == '@': self.rows[self.y] = (self.rows[self.y][:self.x] + [' '] * n + self.rows[self.y][self.x:])[:self.width]
         elif command == 'b':
             for _ in range(n): self.put(self.last)
-        elif command in 'mrhlt': pass  # color/style, scrolling region, modes
+        elif command == 'r':
+            self.scroll_top = (args[0] or 1) - 1
+            self.scroll_bottom = (args[1] if len(args)>1 and args[1] else self.height) - 1
+            self.y = self.x = 0
+        elif command in 'ML':
+            if self.scroll_top <= self.y <= self.scroll_bottom:
+                count = min(n,self.scroll_bottom-self.y+1)
+                region = self.rows[self.y:self.scroll_bottom+1]
+                blanks = [[' ']*self.width for _ in range(count)]
+                self.rows[self.y:self.scroll_bottom+1] = region[count:]+blanks if command=='M' else blanks+region[:-count]
+        elif command in 'mhlt': pass  # color/style, scrolling region, modes
         else: raise AssertionError(f'Unsupported screen sequence: {params}{command}')
 
     def row(self, y): return ''.join(self.rows[y])

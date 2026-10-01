@@ -21,6 +21,9 @@ for width, height in [(50,9),(80,24),(100,24),(160,32)]:
             assert '[>]  Location:' in t.screen.row(1)
             assert t.screen.rows[first][1]=='>'
             assert 'a-dir' in t.screen.row(first) and 'Dir' in t.screen.row(first)
+            assert 'Directory' in t.screen.row(4)[split:] and '| -' not in t.screen.row(4)[split:]
+            if width>=100: assert 'Mode ' in t.screen.row(4)[split:]
+            if height>=12: assert 'Modified:' in t.screen.row(5)[split:]
             if split>=48: assert t.screen.rows[first][split-21 if split>=72 else split-4]=='-'
             if split>=72:
                 assert 'Modified' in t.screen.row(4)

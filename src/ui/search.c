@@ -22,7 +22,7 @@ static void search_draw(Search *s, size_t choice, size_t offset, bool scanning) 
     char info[128];
     if (scanning) {
         const char *frames = "|/-\\";
-        snprintf(info, sizeof info, "Searching %c  %zu checked  %zu found  Esc: cancel",
+        snprintf(info, sizeof info, "Searching %c  %zu checked  %zu found",
                  frames[s->frame++ % 4], s->visited, s->len);
     }
     else {
@@ -44,9 +44,11 @@ static void search_draw(Search *s, size_t choice, size_t offset, bool scanning) 
     char detail[256];
     const Result *issue = s->outcome.code != RESULT_OK ? &s->outcome : &s->omission;
     if (issue->code != RESULT_OK) snprintf(detail, sizeof detail, "%.100s: %.150s", issue->detail, issue->path);
-    else snprintf(detail, sizeof detail, "Enter: open  /: search  Esc: close");
+    else snprintf(detail, sizeof detail, "%s", scanning ? "Enter/Esc: keep results  x: close" : "Enter: open  /: search  Esc: close");
     draw_window_text(s->win, h - 3, 2, w - 4, detail);
+    if (scanning) wattron(s->win, ui_selection());
     draw_window_text(s->win, h - 2, 2, w - 4, scanning ? "[ Cancel ]" : "[ Search ]  [ Open ]");
+    if (scanning) wattroff(s->win, ui_selection());
     wrefresh(s->win);
 }
 
@@ -72,7 +74,7 @@ static bool search_progress(const SearchResult *progress, const char *path, void
         }
     }
     if (key == KEY_RESIZE || key == KEY_F(10)) s->close_requested = s->stopped = true;
-    if (key == 27) s->stopped = true;
+    if (key == 27 || key == '\n' || key == KEY_ENTER) s->stopped = true;
     nodelay(s->win, FALSE);
     return !s->stopped;
 }
@@ -82,15 +84,25 @@ void search_items(UiContext *ui) {
     if (screen_h < 9 || screen_w < 50) { message(ui, "Terminal too small for search"); return; }
     int h = screen_h - 2, w = screen_w - 8;
     if (w > 90) w = 90;
-    WINDOW *win = newwin(h, w, (screen_h - h) / 2, (screen_w - w) / 2);
+    WINDOW *win = dialog_open(ui, "Search", 7, w < 60 ? w : 60);
     if (!win) { message(ui, "Cannot open search window"); return; }
-    keypad(win, TRUE); wbkgd(win, COLOR_PAIR(UI_BASE));
     Search s = { .win = win };
     SearchResult result = {0};
     char *destination = NULL;
     for (;;) {
-        search_draw(&s, 0, 0, false);
+        /* Resize the existing window; never stack an input popup over results. */
+        int input_w = w < 60 ? w : 60;
+        if (mvwin(win, 0, 0) == ERR || wresize(win, 7, input_w) == ERR ||
+            mvwin(win, (screen_h - 7) / 2, (screen_w - input_w) / 2) == ERR) {
+            s.outcome = result_make(RESULT_NO_MEMORY, "Cannot resize search window"); break;
+        }
+        draw_cached(ui);
         if (!search_prompt(ui, win, s.term, sizeof s.term)) break;
+        if (mvwin(win, 0, 0) == ERR || wresize(win, h, w) == ERR ||
+            mvwin(win, (screen_h - h) / 2, (screen_w - w) / 2) == ERR) {
+            s.outcome = result_make(RESULT_NO_MEMORY, "Cannot resize search window"); break;
+        }
+        draw_cached(ui);
         search_result_free(&result);
         WINDOW *host = s.win;
         char term[sizeof s.term]; memcpy(term, s.term, sizeof term);
@@ -142,6 +154,7 @@ void search_items(UiContext *ui) {
         }
     }
 search_done:;
+    if (s.close_requested) flushinp();
     search_result_free(&result); dialog_close(ui, win);
     if (destination) { open_search_result(ui, destination); free(destination); }
     else if (s.outcome.code != RESULT_OK)
@@ -150,5 +163,6 @@ search_done:;
         snprintf(ui->status, sizeof ui->status, "Search cancelled: %zu found, %zu skipped%s", s.len, s.skipped_directories + s.skipped_entries, s.limited ? " (limit)" : "");
     else if (s.incomplete)
         snprintf(ui->status, sizeof ui->status, "Search incomplete%s: %zu dirs / %zu entries skipped; %.120s: %.240s", s.limited ? " (limit)" : "", s.skipped_directories, s.skipped_entries, s.omission.detail, s.omission.path);
-    else message(ui, s.limited ? "Search closed (limit reached)" : "Search closed");
+    else if (s.limited) message(ui, "Search limit reached");
+    /* Closing a normal search leaves the prior operation status intact. */
 }

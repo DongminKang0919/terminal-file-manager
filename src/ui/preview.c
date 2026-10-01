@@ -86,15 +86,19 @@ static void preview_content(UiContext *ui, View *v, const Item *it) {
     }
     if (!it->valid) { preview_line(ui, v, "Error: cannot read metadata", UI_SPECIAL); return; }
     char size[32]; ui_size(it, size, sizeof size);
-    snprintf(text, sizeof text, "%s | %s", ui_kind(it), size);
-    if (it->has_posix_mode && v->width >= 28)
-        snprintf(text, sizeof text, "%s | %s | %04o", ui_kind(it), size, it->posix_mode);
+    const char *kind = it->kind == FILE_DIRECTORY ? "Directory" : ui_kind(it);
+    if (it->kind == FILE_DIRECTORY) snprintf(text, sizeof text, "%s", kind);
+    else snprintf(text, sizeof text, "%s | %s", kind, size);
+    size_t used = strlen(text);
+    if (it->has_posix_mode && (int)used + 12 <= v->width)
+        snprintf(text + used, sizeof text - used, " | Mode %04o", it->posix_mode);
     preview_line(ui, v, text, UI_MUTED);
     time_t modified = (time_t)it->modified;
     struct tm *tm = localtime(&modified);
     char date[64] = "unknown";
-    if (tm) strftime(date, sizeof date, "%Y-%m-%d %H:%M", tm);
-    preview_line(ui, v, date, UI_MUTED);
+    if (tm) strftime(date, sizeof date, v->width >= 26 ? "%Y-%m-%d %H:%M" : "%Y-%m-%d", tm);
+    snprintf(text, sizeof text, "%s %s", v->width >= 20 ? "Modified:" : "Mod:", date);
+    preview_line(ui, v, text, UI_MUTED);
     if ((it->kind == FILE_LINK)) {
         if (ui->preview_link) { preview_line(ui, v, "Link target:", UI_DIR); preview_line(ui, v, ui->preview_link, UI_BASE); }
         return;

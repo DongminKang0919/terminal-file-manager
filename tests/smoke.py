@@ -249,7 +249,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-test-') as directory:
         t.send('\x1bOP')
         t.click(84, 1)
         t.send('\x1bOR')
-        t.click(90, 1)
+        t.click(75, 8)
         t.send('\x1bOR')
         t.send('copy\n')
         t.click(90, 1)
@@ -459,9 +459,9 @@ with tempfile.TemporaryDirectory(prefix='tfile-history-') as directory:
     (root / 'match.txt').write_text('search me')
     t = Terminal(directory)
     try:
-        # Search uses a single frame: the same visible X closes input and results.
+        # Search uses a single frame: the visible X closes each stage of the single search window.
         t.send('\x1bOR')
-        t.click(90, 1)
+        t.click(75, 8)
         t.send('\x1bOQ')
         t.send('after-query-close\n')
         assert (root / 'after-query-close').exists()

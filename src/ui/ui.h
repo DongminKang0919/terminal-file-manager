@@ -20,6 +20,7 @@ int input_wide(WINDOW *win, wint_t *key);
 typedef FileInfo Item;
 typedef struct {
     AppState app;
+    unsigned modal_depth;
     size_t selected, top, preview_offset;
     bool preview_more;
     char *preview_path, *preview_link;
@@ -72,6 +73,7 @@ const char *ui_kind(const Item *it);
 void ui_size(const Item *it, char *out, size_t size);
 #define PREVIEW_METADATA_ROWS 3
 void draw(UiContext *ui);
+void draw_cached(UiContext *ui);
 void fit_selection(UiContext *ui, int rows);
 void change_sort(UiContext *ui, SortSettings sort);
 const char *sort_label(SortKey key);

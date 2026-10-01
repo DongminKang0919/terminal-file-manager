@@ -19,6 +19,8 @@ for width,height in [(100,24),(50,9)]:
             def right(): return [t.screen.row(y)[(width*3//5 if width<80 else width*11//20)+1:width-1] for y in range(3,height-2)]
             preview=right()
             def retained(label):
+                if width==100:
+                    label={'Size+':'Size ascending','Size-':'Size descending','Time-':'Modified descending','Kind-':'Kind descending','Name-':'Name descending'}[label]
                 assert label in t.screen.row(2),t.screen.row(2)
                 assert 'e16' in '\n'.join(t.screen.row(y)[:(width*3//5 if width<80 else width*11//20)] for y in range(4,height-3))
                 assert right()==preview,(right(),preview)
@@ -59,7 +61,7 @@ for width,height in [(100,24),(50,9)]:
                     t.send('r')
                     assert 'Refresh failed' in t.screen.row(height-2)
                     assert 'e16' in '\n'.join(t.screen.row(y)[:(width*3//5 if width<80 else width*11//20)] for y in range(4,height-3))
-                    assert ('Name-') in t.screen.row(2)
+                    assert ('Name descending' if width==100 else 'Name-') in t.screen.row(2)
                 finally: root.chmod(0o700)
             (root/'e16').unlink(); t.send('r')
             assert 'e15' in t.screen.row(3)[(width*3//5 if width<80 else width*11//20):]  # old index, clamped into the new sorted list
@@ -75,6 +77,6 @@ for width,height in [(100,24),(50,9)]:
         finally: t.close()
         # Settings are session-only.
         t=Terminal(directory,width,height)
-        try: assert ('Name+') in t.screen.row(2)
+        try: assert ('Name ascending' if width==100 else 'Name+') in t.screen.row(2)
         finally: t.close()
 print('PASS: Options keyboard/mouse/Menu, 50x9 frames, selected identity/scroll/preview, refresh success/failure/fallback, picker order and restart defaults')
