@@ -67,6 +67,7 @@ check: tests/progress_ui_test tests/tfile_progress tests/preview_test tfile chec
 	python3 tests/smoke.py
 	python3 tests/display_pty.py
 	python3 tests/sort_pty.py
+	python3 tests/layout_pty.py
 
 clean:
 	rm -f tfile tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test

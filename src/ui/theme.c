@@ -25,18 +25,22 @@ int item_color(const Item *it, bool active) {
     }
 }
 
+attr_t ui_selection(void) {
+    return A_BOLD | (has_colors() ? COLOR_PAIR(UI_SELECTED) : A_REVERSE);
+}
+
 void init_theme(void) {
     if (!has_colors()) return;
     start_color();
     if (COLORS >= 256) {
         init_pair(UI_BASE, 255, 235);
-        init_pair(UI_BORDER, 111, 235);
-        init_pair(UI_HEADER, 255, 24);
+        init_pair(UI_BORDER, 242, 235);
+        init_pair(UI_HEADER, 250, 235);
         init_pair(UI_SELECTED, 255, 25);
         init_pair(UI_DIR, 117, 235);
         init_pair(UI_MUTED, 250, 235);
-        init_pair(UI_STATUS, 255, 238);
-        init_pair(UI_PATH, 16, 153);
+        init_pair(UI_STATUS, 255, 235);
+        init_pair(UI_PATH, 250, 235);
         init_pair(UI_FILE, 255, 235);
         init_pair(UI_LINK, 222, 235);
         init_pair(UI_DIR_SELECTED, 159, 25);
@@ -50,13 +54,13 @@ void init_theme(void) {
         init_pair(UI_SPECIAL_SELECTED, 224, 25);
     } else {
         init_pair(UI_BASE, COLOR_WHITE, COLOR_BLACK);
-        init_pair(UI_BORDER, COLOR_BLUE, COLOR_BLACK);
-        init_pair(UI_HEADER, COLOR_WHITE, COLOR_BLUE);
+        init_pair(UI_BORDER, COLOR_WHITE, COLOR_BLACK);
+        init_pair(UI_HEADER, COLOR_WHITE, COLOR_BLACK);
         init_pair(UI_SELECTED, COLOR_WHITE, COLOR_BLUE);
         init_pair(UI_DIR, COLOR_CYAN, COLOR_BLACK);
         init_pair(UI_MUTED, COLOR_WHITE, COLOR_BLACK);
-        init_pair(UI_STATUS, COLOR_WHITE, COLOR_BLUE);
-        init_pair(UI_PATH, COLOR_BLACK, COLOR_CYAN);
+        init_pair(UI_STATUS, COLOR_WHITE, COLOR_BLACK);
+        init_pair(UI_PATH, COLOR_WHITE, COLOR_BLACK);
         init_pair(UI_FILE, COLOR_WHITE, COLOR_BLACK);
         init_pair(UI_LINK, COLOR_YELLOW, COLOR_BLACK);
         init_pair(UI_DIR_SELECTED, COLOR_CYAN, COLOR_BLUE);
@@ -66,8 +70,8 @@ void init_theme(void) {
         init_pair(UI_HIDDEN, COLOR_MAGENTA, COLOR_BLACK);
         init_pair(UI_SPECIAL, COLOR_RED, COLOR_BLACK);
         init_pair(UI_EXEC_SELECTED, COLOR_GREEN, COLOR_BLUE);
-        init_pair(UI_HIDDEN_SELECTED, COLOR_MAGENTA, COLOR_BLUE);
-        init_pair(UI_SPECIAL_SELECTED, COLOR_RED, COLOR_BLUE);
+        init_pair(UI_HIDDEN_SELECTED, COLOR_WHITE, COLOR_BLUE);
+        init_pair(UI_SPECIAL_SELECTED, COLOR_WHITE, COLOR_BLUE);
     }
     bkgd(COLOR_PAIR(UI_BASE));
 }

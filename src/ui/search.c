@@ -35,10 +35,10 @@ static void search_draw(Search *s, size_t choice, size_t offset, bool scanning) 
         bool active = !scanning && offset + (size_t)row == choice;
         if (active) { wattron(s->win, COLOR_PAIR(UI_SELECTED)); mvwhline(s->win, row + 3, 1, ' ', w - 2); wattroff(s->win, COLOR_PAIR(UI_SELECTED)); }
         int pair = item_color(it, active);
-        wattron(s->win, COLOR_PAIR(pair) | (active ? A_BOLD : A_NORMAL));
+        wattron(s->win, COLOR_PAIR(pair) | (active ? A_BOLD | (has_colors() ? 0 : A_REVERSE) : A_NORMAL));
         mvwaddch(s->win, row + 3, 2, type_letter(item_type(it)));
         draw_window_text(s->win, row + 3, 4, w - 6, it->name);
-        wattroff(s->win, COLOR_PAIR(pair) | (active ? A_BOLD : A_NORMAL));
+        wattroff(s->win, COLOR_PAIR(pair) | (active ? A_BOLD | (has_colors() ? 0 : A_REVERSE) : A_NORMAL));
     }
     if (!scanning && !s->len) draw_window_text(s->win, 3, 2, w - 4, "No results collected. Use Search to try again.");
     char detail[256];

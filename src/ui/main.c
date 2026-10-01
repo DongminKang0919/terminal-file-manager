@@ -6,7 +6,7 @@ int main(int argc, char **argv) {
     UiContext context = {0}; UiContext *ui = &context;
     Result initialized = app_init(&ui->app, argc == 2 ? argv[1] : NULL);
     if (initialized.code != RESULT_OK) { fprintf(stderr, "%s\n", initialized.detail); app_free(&ui->app); return 1; }
-    message(ui, "Click a file to preview. Double-click a directory to open. F1: Help");
+
     initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0); init_theme();
     input_init();
     set_escdelay(25);
@@ -16,11 +16,11 @@ int main(int argc, char **argv) {
     load_dir(ui, NULL); int key;
     for (;;) {
         draw(ui); key = input_key(stdscr);
-        int h, w; getmaxyx(stdscr, h, w); int rows = h - 7; if (rows < 1) rows = 1;
+        int h, w; getmaxyx(stdscr, h, w); UiLayout layout = ui_layout(w, h, ui->app.show_preview); int rows = layout.list_rows; if (rows < 1) rows = 1;
         if (key == KEY_MOUSE) {
             MEVENT event;
             if (getmouse(&event) != OK) continue;
-            int list_width = ui->app.show_preview ? w / 2 : w;
+            int list_width = layout.list_width;
             if (h < 9 || w < 50) continue;
             if (event.bstate & (BUTTON4_PRESSED | BUTTON5_PRESSED)) {
                 last_index = SIZE_MAX;
@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
                     preview_scroll(ui, (event.bstate & BUTTON5_PRESSED) != 0);
                     continue;
                 }
-                if (event.x <= 0 || event.x >= list_width - 1 || event.y < 4 || event.y >= h - 3) continue;
+                if (event.x <= 0 || event.x >= list_width - 1 || event.y < layout.list_y || event.y >= h - 3) continue;
                 size_t max_top = ui->app.files.len > (size_t)rows ? ui->app.files.len - (size_t)rows : 0;
                 if (event.bstate & BUTTON4_PRESSED) {
                     ui->top = ui->top > (size_t)ui->app.wheel_step ? ui->top - ui->app.wheel_step : 0;
@@ -47,8 +47,8 @@ int main(int argc, char **argv) {
                 else if (event.y == 1 && event.x >= 5 && event.x < 8) key = UI_FORWARD;
                 else if (event.y == 3 && event.x >= 2 && event.x < 10) key = KEY_BACKSPACE;
                 else if (event.y == 3 && event.x >= 12 && event.x < 18) key = KEY_ENTER;
-                else if (event.y >= 4 && event.y < h - 3 && event.x > 0 && event.x < list_width - 1 && ui->top + (size_t)(event.y - 4) < ui->app.files.len) {
-                    ui->selected = ui->top + (size_t)(event.y - 4);
+                else if (event.y >= layout.list_y && event.y < h - 3 && event.x > 0 && event.x < list_width - 1 && ui->top + (size_t)(event.y - layout.list_y) < ui->app.files.len) {
+                    ui->selected = ui->top + (size_t)(event.y - layout.list_y);
                     uint64_t now = core_monotonic_ms();
                     uint64_t ms = now - last_click;
                     bool twice = ui->selected == last_index && ms < 350;

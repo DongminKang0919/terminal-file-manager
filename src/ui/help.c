@@ -52,7 +52,7 @@ void show_help(UiContext *ui) {
         "  F9 or m              Menu (all commands)",
         "  F7                   Options (session settings)",
         "  [ x ] or Esc         Close a window",
-        "  Directory / File / Link labels identify items in the main list.",
+        "  Dir / File / Link labels identify items in the main list.",
         "  Mouse: click to select, double-click to open, wheel to scroll",
         "  Mouse: click the top bar to run a command",
         "  q or F10             Quit tfile",

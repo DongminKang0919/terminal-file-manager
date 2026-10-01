@@ -12,7 +12,7 @@ static void reset_selection(UiContext *ui, const char *highlight) {
 }
 void change_sort(UiContext *ui, SortSettings sort) {
     app_set_sort(&ui->app, sort, &ui->selected);
-    fit_selection(ui, stdscr && LINES > 7 ? LINES - 7 : 1);
+    fit_selection(ui, stdscr && LINES >= 9 ? ui_layout(COLS, LINES, ui->app.show_preview).list_rows : 1);
 }
 const char *sort_label(SortKey key) {
     static const char *const labels[] = {"Name", "Size", "Modified", "Kind"};
@@ -32,7 +32,7 @@ Result load_dir(UiContext *ui, const char *highlight) {
         ui->selected = ui->app.files.len ? (previous < ui->app.files.len ? previous : ui->app.files.len - 1) : 0;
         if (name) for (size_t i = 0; i < ui->app.files.len; i++)
             if (!strcmp(ui->app.files.entries[i].name, name)) { ui->selected = i; break; }
-        fit_selection(ui, stdscr && LINES > 7 ? LINES - 7 : 1);
+        fit_selection(ui, stdscr && LINES >= 9 ? ui_layout(COLS, LINES, ui->app.show_preview).list_rows : 1);
     } else show_failure(ui, "Refresh failed", r);
     free(name); return r;
 }

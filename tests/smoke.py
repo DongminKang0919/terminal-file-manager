@@ -254,8 +254,8 @@ with tempfile.TemporaryDirectory(prefix='tfile-test-') as directory:
         t.send('copy\n')
         t.click(90, 1)
         # Double-click directory and click Up to return.
-        t.click(5, 4)
-        t.click(5, 4)
+        t.click(5, 5)
+        t.click(5, 5)
         t.send('\x1bOQ')
         t.send('inside\n')
         assert (root / 'folder' / 'inside').exists()
@@ -280,7 +280,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-scroll-') as directory:
     try:
         # Wheel over preview must not move the list; wheel over list scrolls 1 row.
         t.send('\x1b[<65;80;5M')
-        t.send('\x1b[<65;5;5M')
+        t.send('\x1b[<65;5;6M')
         t.send('\x1b[15~')
         t.rename_transfer('copied.txt')
         assert (root / 'copied.txt').read_text() == '1'
@@ -425,7 +425,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-preview-') as directory:
         t.send('inside\n')
         assert (root / 'subdir' / 'inside').exists()
         t.click(4, 3)
-        assert b'OF_LONG_PREVIEW' in t.click(15, 5)
+        assert b'OF_LONG_PREVIEW' in t.click(15, 6)
         output = b''
         output += t.send('\x1b[<65;80;10M' * 110)
         assert b'END_OF_LONG_PREVIEW' in output
@@ -433,11 +433,11 @@ with tempfile.TemporaryDirectory(prefix='tfile-preview-') as directory:
         t.send('\x1b[15~')
         t.rename_transfer('long-copy.txt')
         assert (root / 'long-copy.txt').read_text() == (root / 'a-long.txt').read_text()
-        t.click(15, 5)  # reselect original long file
+        t.click(15, 6)  # reselect original long file
         for _ in range(8):
             t.send('\x1b[<65;80;10M')
-        assert b'SHORT_PREVIEW_CONTENT' in t.click(15, 6)
-        assert b'OF_LONG_PREVIEW' in t.click(15, 5)
+        assert b'SHORT_PREVIEW_CONTENT' in t.click(15, 7)
+        assert b'OF_LONG_PREVIEW' in t.click(15, 6)
         t.send('\x1b[<65;80;10M' * 20)
         output = t.send('\x1b[<64;80;10M' * 20)
         assert b'OF_LONG_PREVIEW' in output
@@ -478,8 +478,8 @@ with tempfile.TemporaryDirectory(prefix='tfile-history-') as directory:
         t.send('after-scan-close\n')
         assert (root / 'after-scan-close').exists()
         # SGR buttons 8/9 are back/forward; releases must not trigger twice.
-        t.click(15, 4)
-        t.click(15, 4)
+        t.click(15, 5)
+        t.click(15, 5)
         t.send('\x1b[<128;20;8M\x1b[<128;20;8m')
         t.send('\x1bOQ')
         t.send('back-at-root\n')
@@ -489,8 +489,8 @@ with tempfile.TemporaryDirectory(prefix='tfile-history-') as directory:
         t.send('forward-in-a\n')
         assert (root / 'a' / 'forward-in-a').exists()
         t.send('\x1b[1;3D')  # Alt+Left fallback
-        t.click(15, 5)
-        t.click(15, 5)  # New branch: b replaces the old forward history.
+        t.click(15, 6)
+        t.click(15, 6)  # New branch: b replaces the old forward history.
         t.send('\x1b[<129;20;8M\x1b[<129;20;8m')
         t.send('\x1bOQ')
         t.send('branch-in-b\n')

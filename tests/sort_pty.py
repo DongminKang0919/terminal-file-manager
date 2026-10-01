@@ -16,11 +16,11 @@ for width,height in [(100,24),(50,9)]:
         try:
             t.send('\x1bOH'+DOWN*16)
             for _ in range(4): t.send(f'\x1b[<65;{width*3//4};5M')
-            def right(): return [t.screen.row(y)[width//2+1:width-1] for y in range(3,height-2)]
+            def right(): return [t.screen.row(y)[(width*3//5 if width<80 else width*11//20)+1:width-1] for y in range(3,height-2)]
             preview=right()
             def retained(label):
                 assert label in t.screen.row(2),t.screen.row(2)
-                assert 'e16' in '\n'.join(t.screen.row(y)[:width//2] for y in range(4,height-3))
+                assert 'e16' in '\n'.join(t.screen.row(y)[:(width*3//5 if width<80 else width*11//20)] for y in range(4,height-3))
                 assert right()==preview,(right(),preview)
                 assert 'Location:' in t.screen.row(1)
             def options(menu=False):
@@ -36,41 +36,45 @@ for width,height in [(100,24),(50,9)]:
                 else: t.send(DOWN*index+'\n')
                 t.send('\x1b')
             options(menu=True); choose(3)
-            retained('Size ascending' if width==100 else 'Size+')
+            retained('Size+')
             options(); choose(4,mouse=True)
-            retained('Size descending' if width==100 else 'Size-')
+            retained('Size-')
             options(); choose(3,mouse=True)
-            retained('Modified descending' if width==100 else 'Time-')
+            retained('Time-')
             options(); choose(3)
-            retained('Kind descending' if width==100 else 'Kind-')
+            retained('Kind-')
             options(); choose(3)
-            retained('Name descending' if width==100 else 'Name-')
+            retained('Name-')
             # Confirm the original target, then use the safe default Cancel.
             t.send('\x1b[19~'); assert 'e16' in '\n'.join(t.screen.row(y) for y in range(height))
-            t.send('\n'); retained('Name descending' if width==100 else 'Name-')
+            t.send('\n'); retained('Name-')
             (root/'zz-new').write_text('new')
             t.send('r')
             assert 'Refreshed' in t.screen.row(height-2)
-            assert 'e16' in t.screen.row(3)[width//2:]  # preview position reset on explicit refresh
-            assert 'e16' in '\n'.join(t.screen.row(y)[:width//2] for y in range(4,height-3))
+            assert 'e16' in t.screen.row(3)[(width*3//5 if width<80 else width*11//20):]  # preview position reset on explicit refresh
+            assert 'e16' in '\n'.join(t.screen.row(y)[:(width*3//5 if width<80 else width*11//20)] for y in range(4,height-3))
             if os.geteuid()!=0:
                 root.chmod(0)
                 try:
                     t.send('r')
                     assert 'Refresh failed' in t.screen.row(height-2)
-                    assert 'e16' in '\n'.join(t.screen.row(y)[:width//2] for y in range(4,height-3))
-                    assert ('Name descending' if width==100 else 'Name-') in t.screen.row(2)
+                    assert 'e16' in '\n'.join(t.screen.row(y)[:(width*3//5 if width<80 else width*11//20)] for y in range(4,height-3))
+                    assert ('Name-') in t.screen.row(2)
                 finally: root.chmod(0o700)
             (root/'e16').unlink(); t.send('r')
-            assert 'e15' in t.screen.row(3)[width//2:]  # old index, clamped into the new sorted list
+            assert 'e15' in t.screen.row(3)[(width*3//5 if width<80 else width*11//20):]  # old index, clamped into the new sorted list
             # Main descending order must not leak into the source picker.
             t.send('\x1b[15~\n')
-            picker='\n'.join(t.screen.row(y) for y in range(height))
+            pw, ph = min(86,width-4), height-2
+            px, py = (width-pw)//2, 1
+            picker='\n'.join(''.join(t.screen.rows[y][px+1:px+pw-1]) for y in range(py+3,py+ph-3))
             assert 'e00' in picker and 'e31' not in picker,picker
+            for i in range(ph-6):
+                assert f'e{i:02}' in ''.join(t.screen.rows[py+3+i][px+1:px+pw-1])
             t.send('\x1b\x1b')
         finally: t.close()
         # Settings are session-only.
         t=Terminal(directory,width,height)
-        try: assert ('Name ascending' if width==100 else 'Name+') in t.screen.row(2)
+        try: assert ('Name+') in t.screen.row(2)
         finally: t.close()
 print('PASS: Options keyboard/mouse/Menu, 50x9 frames, selected identity/scroll/preview, refresh success/failure/fallback, picker order and restart defaults')

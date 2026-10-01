@@ -24,23 +24,23 @@ static bool pick_path(UiContext *ui, bool folders_only, const char *initial, cha
         if (choice < offset) offset = choice;
         if (choice >= offset + (size_t)rows) offset = choice - rows + 1;
         dialog_frame(win, folders_only ? "Choose destination directory" : "Choose source file or directory");
-        wattron(win, COLOR_PAIR(UI_PATH) | A_BOLD);
+        wattron(win, COLOR_PAIR(UI_PATH));
         mvwhline(win, 1, 1, ' ', w - 2); draw_window_text(win, 1, 2, w - 4, folder);
-        wattroff(win, COLOR_PAIR(UI_PATH) | A_BOLD);
+        wattroff(win, COLOR_PAIR(UI_PATH));
         draw_window_text(win, 2, 2, w - 4, "[Parent]  [Enter path...]");
         for (int i = 0; i < rows && offset + (size_t)i < picker_count; i++) {
             FileInfo *it = &entries[offset + i]; bool active = offset + i == choice;
-            wattron(win, COLOR_PAIR(active ? UI_SELECTED : it->directory_target ? UI_DIR : UI_FILE));
+            wattron(win, (active ? ui_selection() : COLOR_PAIR(it->directory_target ? UI_DIR : UI_FILE)));
             mvwhline(win, i + 3, 1, ' ', w - 2);
             draw_window_text(win, i + 3, 2, 11, it->directory_target ? "Directory  " : "File       ");
             draw_window_text(win, i + 3, 13, w - 15, it->name);
-            wattroff(win, COLOR_PAIR(active ? UI_SELECTED : it->directory_target ? UI_DIR : UI_FILE));
+            wattroff(win, (active ? ui_selection() : COLOR_PAIR(it->directory_target ? UI_DIR : UI_FILE)));
         }
         if (!picker_count) draw_window_text(win, 3, 2, w - 4, folders_only ? "No subdirectories. You can use this directory." : "This directory is empty.");
         draw_window_text(win, h - 3, 2, w - 4, *warning ? warning : "Double-click/Enter: open   Space: use   p: path");
-        wattron(win, COLOR_PAIR(UI_HEADER) | A_BOLD);
+        wattron(win, COLOR_PAIR(UI_HEADER));
         draw_window_text(win, h - 2, 2, w - 4, folders_only ? "[ Use directory ]    [ Open ]  [ Cancel ]" : "[ Use selected ]     [ Open ]  [ Cancel ]");
-        wattroff(win, COLOR_PAIR(UI_HEADER) | A_BOLD); wrefresh(win);
+        wattroff(win, COLOR_PAIR(UI_HEADER)); wrefresh(win);
         int key = input_key(win);
         bool use = false, open = false, up = false, path = false;
         if (key == KEY_MOUSE) {
@@ -140,9 +140,9 @@ void transfer_entry(UiContext *ui, bool move_it) {
         free(source_name);
         dialog_frame(win, move_it ? "Move / Rename" : "Copy");
         for (int i = 0; i < rows && offset + i < 6; i++) {
-            wattron(win, COLOR_PAIR(offset + i == focus ? UI_SELECTED : UI_BASE));
+            wattron(win, (offset + i == focus ? ui_selection() : COLOR_PAIR(UI_BASE)));
             mvwhline(win, i + 1, 1, ' ', w - 2); draw_window_text(win, i + 1, 2, w - 4, labels[offset + i]);
-            wattroff(win, COLOR_PAIR(offset + i == focus ? UI_SELECTED : UI_BASE));
+            wattroff(win, (offset + i == focus ? ui_selection() : COLOR_PAIR(UI_BASE)));
         }
         if (rows > 6) draw_window_text(win, 7, 2, w - 4, move_it ? "Moves the original. Same directory + new name = rename." : "Creates a separate copy. The original stays where it is.");
         if (rows > 7) {

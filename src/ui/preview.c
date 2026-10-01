@@ -29,7 +29,7 @@ void preview_prepare(UiContext *ui, int rows) {
     }
     if (rows < 1 || it->kind != FILE_REGULAR || !it->valid) return;
     if (rows > PREVIEW_PAGE_MAX - 1) rows = PREVIEW_PAGE_MAX - 1;
-    size_t content = it->has_posix_mode ? 8 : 7;
+    size_t content = PREVIEW_METADATA_ROWS;
     size_t start = ui->preview_offset > content ? ui->preview_offset - content : 0;
     size_t limit = ui->preview_offset + (size_t)rows + 1 > content + start ?
         ui->preview_offset + (size_t)rows + 1 - content - start : 0;
@@ -76,24 +76,25 @@ static void preview_line(UiContext *ui, View *view, const char *text, int color)
 }
 static void preview_content(UiContext *ui, View *v, const Item *it) {
     char text[UI_INPUT_CAP + 80];
+    attron(A_BOLD);
+    preview_line(ui, v, it->name, UI_BASE);
+    attroff(A_BOLD);
     if (ui->preview_result.code != RESULT_OK) {
+        preview_line(ui, v, "Error: preview unavailable", UI_SPECIAL);
         preview_line(ui, v, ui->preview_result.detail, UI_SPECIAL);
-        preview_line(ui, v, "Refresh or select another file to retry", UI_SPECIAL);
-        preview_line(ui, v, it->path, UI_MUTED); return;
+        preview_line(ui, v, "Refresh to retry", UI_MUTED); return;
     }
-    preview_line(ui, v, it->name, item_color(it, false));
-    preview_line(ui, v, it->path, UI_MUTED);
-    if (!it->valid) { preview_line(ui, v, "Cannot read metadata", UI_SPECIAL); return; }
-    snprintf(text, sizeof text, "Type: %s", (it->kind == FILE_DIRECTORY) ? "Directory" :
-             (it->kind == FILE_LINK) ? "Symbolic link" : (it->kind == FILE_REGULAR) ? "File" : "Special file");
-    preview_line(ui, v, text, UI_BASE);
-    snprintf(text, sizeof text, "Size: %lld bytes", (long long)it->size); preview_line(ui, v, text, UI_BASE);
-    if (it->has_posix_mode) { snprintf(text, sizeof text, "Mode: %04o", it->posix_mode); preview_line(ui, v, text, UI_BASE); }
+    if (!it->valid) { preview_line(ui, v, "Error: cannot read metadata", UI_SPECIAL); return; }
+    char size[32]; ui_size(it, size, sizeof size);
+    snprintf(text, sizeof text, "%s | %s", ui_kind(it), size);
+    if (it->has_posix_mode && v->width >= 28)
+        snprintf(text, sizeof text, "%s | %s | %04o", ui_kind(it), size, it->posix_mode);
+    preview_line(ui, v, text, UI_MUTED);
     time_t modified = (time_t)it->modified;
     struct tm *tm = localtime(&modified);
     char date[64] = "unknown";
     if (tm) strftime(date, sizeof date, "%Y-%m-%d %H:%M", tm);
-    snprintf(text, sizeof text, "Modified: %s", date); preview_line(ui, v, text, UI_BASE);
+    preview_line(ui, v, date, UI_MUTED);
     if ((it->kind == FILE_LINK)) {
         if (ui->preview_link) { preview_line(ui, v, "Link target:", UI_DIR); preview_line(ui, v, ui->preview_link, UI_BASE); }
         return;
@@ -102,7 +103,6 @@ static void preview_content(UiContext *ui, View *v, const Item *it) {
     if (!(it->kind == FILE_REGULAR)) return;
     const PreviewText *page = &ui->preview_page;
     if (page->binary) { preview_line(ui, v, "Binary file - no text preview", UI_MUTED); return; }
-    preview_line(ui, v, "", UI_BASE); preview_line(ui, v, "Contents", UI_DIR);
     v->line += page->skipped;
     for (size_t i = 0; i < page->len; i++) preview_line(ui, v, page->lines[i], UI_BASE);
     if (page->more) v->line++;
@@ -123,8 +123,9 @@ void preview(UiContext *ui, int x, int y, int w, int h) {
             v.line = 0; preview_content(ui, &v, it);
         }
     }
+    if (!ui->preview_more && !ui->preview_offset) return;
     char hint[96];
-    snprintf(hint, sizeof hint, "Wheel: scroll | Row %zu%s", ui->preview_offset + 1, ui->preview_more ? "" : " | End");
-    attron(COLOR_PAIR(UI_HEADER)); mvhline(y + h - 2, x + 1, ' ', w - 2);
-    draw_text(y + h - 2, x + 2, w - 4, hint); attroff(COLOR_PAIR(UI_HEADER));
+    snprintf(hint, sizeof hint, "Row %zu%s", ui->preview_offset + 1, ui->preview_more ? "" : " | End");
+    attron(COLOR_PAIR(UI_MUTED)); mvhline(y + h - 2, x + 1, ' ', w - 2);
+    draw_text(y + h - 2, x + 2, w - 4, hint); attroff(COLOR_PAIR(UI_MUTED));
 }

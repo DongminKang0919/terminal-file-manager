@@ -132,7 +132,25 @@ int main(void) {
     for(int i=0;i<100;i++) { preview_reset(&ui); preview_prepare(&ui,17); assert(live==1); }
     ui.app.show_preview=false; preview_prepare(&ui,17); assert(live==0);
     ui.app.show_preview=true; preview_prepare(&ui,2); preview_prepare(&ui,30); assert(live==1);
+    init_theme(); resizeterm(24,100); ui.selected=0; ui.top=0; draw(&ui);
+    assert((mvinch(5,1)&A_CHARTEXT)=='>');
+    assert(mvinch(5,3)&A_BOLD);
+    assert(PAIR_NUMBER(mvinch(5,3))==item_color(&ui.app.files.entries[0],true));
+    assert(!(mvinch(0,2)&A_BOLD));
+    short fg, bg, base_fg, base_bg;
+    pair_content(UI_BASE,&base_fg,&base_bg);
+    pair_content(UI_HEADER,&fg,&bg); assert(bg==base_bg);
+    pair_content(UI_PATH,&fg,&bg); assert(bg==base_bg);
+    pair_content(UI_SELECTED,&fg,&bg); assert(bg!=base_bg && fg!=bg);
     preview_reset(&ui); app_free(&ui.app); assert(live==0);
+    endwin(); delscreen(screen); fclose(out); fclose(in);
+    out=tmpfile(); in=tmpfile(); assert(out && in);
+    screen=newterm("vt100",out,in); assert(screen); init_theme();
+    assert(!has_colors() && (ui_selection()&A_REVERSE));
+    assert(app_init(&ui.app,dir).code==RESULT_OK); ui.selected=0; ui.top=0;
+    resizeterm(24,100); draw(&ui);
+    assert((mvinch(5,1)&A_CHARTEXT)=='>'); assert(mvinch(5,3)&A_REVERSE);
+    preview_reset(&ui); app_free(&ui.app);
     endwin(); delscreen(screen); fclose(out); fclose(in);
     for(size_t i=0;i<40;i++) { assert(!unlink(extras[i])); free(extras[i]); }
     assert(!unlink(path)); assert(!rmdir(dir));

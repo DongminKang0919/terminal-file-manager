@@ -59,9 +59,9 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
         dialog_frame(win, label);
         if (directory) {
             mvwaddstr(win, 1, 2, "Type:");
-            if (focus == 3) wattron(win, A_REVERSE);
+            if (focus == 3) wattron(win, ui_selection());
             mvwprintw(win, 1, 8, "[%c] File   [%c] Directory", *directory ? ' ' : 'x', *directory ? 'x' : ' ');
-            wattroff(win, A_REVERSE);
+            wattroff(win, ui_selection());
             mvwaddstr(win, 2, 2, "Name:");
             wattron(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
             draw_window_text(win, 4, 2, w - 4, warning);
@@ -87,8 +87,8 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
             mvwaddnwstr(win, 3, 2 + used, token.text, token.length); used += token.cells;
         }
         wattroff(win, COLOR_PAIR(UI_SELECTED));
-        wattron(win, focus == 1 ? A_REVERSE : A_NORMAL); mvwaddstr(win, h - 2, 2, directory ? "[ Create ]" : host ? "[ Search ]" : "[ OK ]"); wattroff(win, A_REVERSE);
-        wattron(win, focus == 2 ? A_REVERSE : A_NORMAL); mvwaddstr(win, h - 2, 12, "[ Cancel ]"); wattroff(win, A_REVERSE);
+        wattron(win, focus == 1 ? ui_selection() : A_NORMAL); mvwaddstr(win, h - 2, 2, directory ? "[ Create ]" : host ? "[ Search ]" : "[ OK ]"); wattroff(win, ui_selection());
+        wattron(win, focus == 2 ? ui_selection() : A_NORMAL); mvwaddstr(win, h - 2, 12, "[ Cancel ]"); wattroff(win, ui_selection());
         curs_set(focus == 0); wmove(win, 3, 2 + cols); wrefresh(win);
         wint_t key; int kind = input_wide(win, &key);
         if (kind == ERR) continue;
@@ -180,8 +180,8 @@ bool confirm(UiContext *ui, const char *name, bool directory) {
             draw_window_text(win, h - 3, 7, w - 14, hint);
         }
         draw_window_text(win, 3, 2, w - 4, "This cannot be undone.");
-        wattron(win, yes ? A_REVERSE : A_NORMAL); mvwaddstr(win, h - 2, 2, "[ Delete ]"); wattroff(win, A_REVERSE);
-        wattron(win, !yes ? A_REVERSE : A_NORMAL); mvwaddstr(win, h - 2, 16, "[ Cancel ]"); wattroff(win, A_REVERSE); wrefresh(win);
+        wattron(win, yes ? ui_selection() : A_NORMAL); mvwaddstr(win, h - 2, 2, "[ Delete ]"); wattroff(win, ui_selection());
+        wattron(win, !yes ? ui_selection() : A_NORMAL); mvwaddstr(win, h - 2, 16, "[ Cancel ]"); wattroff(win, ui_selection()); wrefresh(win);
         int key = input_key(win);
         if (key == KEY_MOUSE) {
             MEVENT e; if (getmouse(&e) != OK) continue;
@@ -220,8 +220,8 @@ static int choice_dialog(UiContext *ui, const char *title, const char **labels, 
         if (selected_row >= offset + rows) offset = selected_row - rows + 1;
         dialog_frame(win, title);
         for (int i = 0; i < rows && offset + i < total; i++) {
-            if (offset + i == selected_row) wattron(win, A_REVERSE);
-            draw_window_text(win, i + 1, 2, w - 4, labels[offset + i]); wattroff(win, A_REVERSE);
+            if (offset + i == selected_row) wattron(win, ui_selection());
+            draw_window_text(win, i + 1, 2, w - 4, labels[offset + i]); wattroff(win, ui_selection());
         }
         draw_window_text(win, h - 2, 2, w - 4, "Up/Down  Enter: choose  Esc: close"); wrefresh(win);
         int key = input_key(win);
