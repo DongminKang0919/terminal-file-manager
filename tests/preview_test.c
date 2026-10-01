@@ -135,8 +135,9 @@ int main(void) {
     init_theme(); resizeterm(24,100); ui.selected=0; ui.top=0; draw(&ui);
     assert((mvinch(5,1)&A_CHARTEXT)=='>');
     assert(mvinch(5,3)&A_BOLD);
-    assert(PAIR_NUMBER(mvinch(5,3))==item_color(&ui.app.files.entries[0],true));
-    assert(!(mvinch(0,2)&A_BOLD));
+    assert(PAIR_NUMBER(mvinch(5,3))==UI_SELECTED);
+    assert(mvinch(0,2)&A_BOLD);
+    assert(!(mvinch(0,5)&A_BOLD));
     saved=reads; saved_opens=opens; checked=checks;
     session=ui.preview_session; page=ui.preview_page.lines;
     size_t saved_offset=ui.preview_offset, saved_selected=ui.selected, saved_top=ui.top;
@@ -172,7 +173,7 @@ int main(void) {
     forbid_list=false;
     short fg, bg, base_fg, base_bg;
     pair_content(UI_BASE,&base_fg,&base_bg);
-    pair_content(UI_HEADER,&fg,&bg); assert(bg==base_bg);
+    pair_content(UI_HEADER,&fg,&bg); assert(bg!=base_bg && fg!=bg);
     pair_content(UI_PATH,&fg,&bg); assert(bg==base_bg);
     pair_content(UI_SELECTED,&fg,&bg); assert(bg!=base_bg && fg!=bg);
     preview_reset(&ui); app_free(&ui.app); assert(live==0);

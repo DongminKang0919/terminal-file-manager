@@ -36,7 +36,7 @@ enum { UI_BASE = 1, UI_BORDER, UI_HEADER, UI_SELECTED, UI_DIR, UI_MUTED, UI_STAT
        UI_FILE, UI_LINK, UI_DIR_SELECTED, UI_FILE_SELECTED, UI_LINK_SELECTED,
        UI_EXEC, UI_HIDDEN, UI_SPECIAL, UI_EXEC_SELECTED, UI_HIDDEN_SELECTED, UI_SPECIAL_SELECTED,
        UI_INACTIVE, UI_POP_BODY, UI_POP_MUTED, UI_POP_BORDER, UI_POP_TITLE,
-       UI_POP_FOOTER, UI_POP_WARNING, UI_POP_FOOT_WARNING, UI_POP_DISABLED };
+       UI_POP_FOOTER, UI_POP_WARNING, UI_POP_FOOT_WARNING, UI_POP_DISABLED, UI_COLUMNS, UI_DISABLED };
 typedef enum { TYPE_DIR, TYPE_FILE, TYPE_EXEC, TYPE_HIDDEN, TYPE_LINK, TYPE_SPECIAL } FileType;
 void message(UiContext *ui, const char *text);
 Result load_dir(UiContext *ui, const char *highlight);
@@ -85,6 +85,7 @@ FileType item_type(const Item *it);
 char type_letter(FileType type);
 int item_color(const Item *it, bool active);
 attr_t ui_selection(void);
+attr_t ui_bar(void);
 void init_theme(void);
 void show_help(UiContext *ui);
 void preview_prepare(UiContext *ui, int rows);

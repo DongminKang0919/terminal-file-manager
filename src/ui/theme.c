@@ -29,18 +29,24 @@ attr_t ui_selection(void) {
     return A_BOLD | (has_colors() ? COLOR_PAIR(UI_SELECTED) : A_REVERSE);
 }
 
+attr_t ui_bar(void) {
+    return has_colors() ? COLOR_PAIR(UI_HEADER) : A_REVERSE;
+}
+
 void init_theme(void) {
     if (!has_colors()) return;
     start_color();
     if (COLORS >= 256) {
         init_pair(UI_BASE, 255, 235);
         init_pair(UI_BORDER, 242, 235);
-        init_pair(UI_HEADER, 250, 235);
+        init_pair(UI_HEADER, 255, 237);
+        init_pair(UI_COLUMNS, 250, 236);
+        init_pair(UI_DISABLED, 242, 235);
         init_pair(UI_SELECTED, 255, 25);
         init_pair(UI_DIR, 117, 235);
         init_pair(UI_MUTED, 250, 235);
         init_pair(UI_STATUS, 255, 235);
-        init_pair(UI_PATH, 250, 235);
+        init_pair(UI_PATH, 255, 235);
         init_pair(UI_FILE, 255, 235);
         init_pair(UI_LINK, 222, 235);
         init_pair(UI_DIR_SELECTED, 159, 25);
@@ -55,7 +61,9 @@ void init_theme(void) {
     } else {
         init_pair(UI_BASE, COLOR_WHITE, COLOR_BLACK);
         init_pair(UI_BORDER, COLOR_WHITE, COLOR_BLACK);
-        init_pair(UI_HEADER, COLOR_WHITE, COLOR_BLACK);
+        init_pair(UI_HEADER, COLOR_BLACK, COLOR_WHITE);
+        init_pair(UI_COLUMNS, COLOR_WHITE, COLOR_BLACK);
+        init_pair(UI_DISABLED, COLOR_WHITE, COLOR_BLACK);
         init_pair(UI_SELECTED, COLOR_WHITE, COLOR_BLUE);
         init_pair(UI_DIR, COLOR_CYAN, COLOR_BLACK);
         init_pair(UI_MUTED, COLOR_WHITE, COLOR_BLACK);

@@ -24,6 +24,47 @@ int main(void) {
                            {.name="link",.path="/b",.valid=true,.kind=FILE_LINK} };
             UiContext ui={0}; ui.app.directory="/"; ui.app.files=(FileList){items,2};
             draw_cached(&ui);
+            UiLayout layout=ui_layout(w,h,false);
+            assert(cell(stdscr,0,2).attr&A_BOLD);
+            assert(!(cell(stdscr,0,1).attr&A_DIM));
+            assert(cell(stdscr,2,4).attr&A_BOLD);
+            assert(!(cell(stdscr,2,10).attr&A_BOLD));
+            assert(cell(stdscr,1,1).attr&A_DIM);
+            assert(cell(stdscr,1,5).attr&A_DIM);
+            assert(cell(stdscr,h-1,1).attr&A_BOLD);
+            assert(!(cell(stdscr,h-1,6).attr&A_BOLD));
+            assert(cell(stdscr,layout.list_y,1).text[0]==L'>');
+            assert(cell(stdscr,layout.list_y,3).attr&A_BOLD);
+            if(has_colors()) {
+                assert(cell(stdscr,0,w-1).pair==UI_HEADER);
+                assert(cell(stdscr,h-1,w-1).pair==UI_HEADER);
+                assert(cell(stdscr,1,10).pair==UI_MUTED);
+                assert(cell(stdscr,1,20).pair==UI_PATH);
+                assert(cell(stdscr,layout.list_y,3).pair==UI_SELECTED);
+                assert(cell(stdscr,layout.list_y,w-3).pair==UI_SELECTED);
+                assert(cell(stdscr,layout.list_y+1,3).pair==UI_LINK);
+                assert(cell(stdscr,layout.list_y+1,(w>=72?w-18:w-12)).pair==UI_MUTED);
+                if(layout.columns) assert(cell(stdscr,4,3).pair==UI_COLUMNS);
+                short fg,bg,bfg,bbg;
+                pair_content(UI_HEADER,&fg,&bg); pair_content(UI_BASE,&bfg,&bbg);
+                assert(bg!=bbg && fg!=bg);
+            } else {
+                assert(cell(stdscr,0,1).attr&A_REVERSE);
+                assert(cell(stdscr,h-1,1).attr&A_REVERSE);
+                assert(cell(stdscr,layout.list_y,1).attr&A_REVERSE);
+                if(layout.columns) assert(cell(stdscr,4,3).attr&A_UNDERLINE);
+            }
+            /* Every rendered button cell, and only those cells, is clickable. */
+            int key=0;
+            const int fkeys[]={1,2,3,5,6,7,8,9,10};
+            size_t action=0;
+            for(int x=0;x<w;x++) {
+                wchar_t ch=cell(stdscr,0,x).text[0];
+                if(ch==L'[') { assert(action<9); key=KEY_F(fkeys[action++]); }
+                assert(header_action(x,w)==key);
+                if(ch==L']') key=0;
+            }
+            assert(action==9);
             Cell *original=calloc((size_t)(h*w),sizeof *original); assert(original);
             for (int y=0;y<h;y++) for (int x=0;x<w;x++) original[y*w+x]=cell(stdscr,y,x);
             int pw=w<82?w-4:78, ph=h-2;
