@@ -48,3 +48,4 @@ __pycache__/
 /tests/popup_style_test
 
 /tests/keyboard_ui_test
+/tests/history_ui_test

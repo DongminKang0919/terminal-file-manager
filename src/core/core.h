@@ -4,13 +4,15 @@
 
 typedef enum { SORT_NAME, SORT_SIZE, SORT_MODIFIED, SORT_KIND } SortKey;
 typedef struct { SortKey key; bool descending; } SortSettings;
+/* Owned history data; positions are logical list ordinals, never terminal coordinates. */
+typedef struct { char *directory, *selected_name; size_t selected, top; } HistoryEntry;
 typedef struct {
     SortSettings sort;
     char *directory;
     FileList files;
     bool show_hidden, show_preview;
     int wheel_step;
-    char **history;
+    HistoryEntry *history;
     size_t history_len, history_at;
 } AppState;
 /* Main-list sorting only; core_list/search keep their legacy ordering.
@@ -23,6 +25,7 @@ void app_free(AppState *app);
 Result app_navigate(AppState *app, const char *directory);
 Result app_refresh(AppState *app);
 Result app_history(AppState *app, bool forward);
+Result app_remember_selection(AppState *app, size_t selected, size_t top);
 /* Commit navigation/filter/history only if the searched item can be opened and
    selected. selected changes only on success; revealed reports a filter change. */
 Result app_open_search_result(AppState *app, const char *path, size_t *selected, bool *revealed);

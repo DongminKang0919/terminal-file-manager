@@ -52,6 +52,19 @@ Result core_resolve_directory(const char *base, const char *input, char **out) {
     if (r.code == RESULT_OK) *out = resolved; else free(resolved);
     return r;
 }
+static void history_free(HistoryEntry *entry) {
+    free(entry->directory); free(entry->selected_name);
+}
+Result app_remember_selection(AppState *app, size_t selected, size_t top) {
+    if (!app->history_len) return result_make(RESULT_OK, NULL);
+    const char *name = selected < app->files.len ? app->files.entries[selected].name : NULL;
+    char *copy = name ? text_copy(name) : NULL;
+    if (name && !copy) return result_make(RESULT_NO_MEMORY, "Out of memory");
+    HistoryEntry *entry = &app->history[app->history_at];
+    free(entry->selected_name); entry->selected_name = copy;
+    entry->selected = selected; entry->top = top;
+    return result_make(RESULT_OK, NULL);
+}
 static Result navigate_to(AppState *app, const char *directory, bool record, bool hidden, const char *required_name, size_t *selected) {
     char *resolved = NULL;
     Result r = core_resolve_directory(app->directory, directory, &resolved);
@@ -72,12 +85,12 @@ static Result navigate_to(AppState *app, const char *directory, bool record, boo
     if (record && (!app->directory || strcmp(app->directory, resolved))) {
         char *entry = text_copy(resolved);
         size_t length = app->history_len ? app->history_at + 1 : 0;
-        char **history = entry ? realloc(app->history, (length + 1 > app->history_len ? length + 1 : app->history_len) * sizeof *history) : NULL;
+        HistoryEntry *history = entry ? realloc(app->history, (length + 1 > app->history_len ? length + 1 : app->history_len) * sizeof *history) : NULL;
         if (!history) { free(entry); free(resolved); file_list_free(&list); return result_make(RESULT_NO_MEMORY, "Out of memory"); }
         app->history = history;
-        for (size_t i = length; i < app->history_len; i++) free(history[i]);
-        if (length == 128) { free(history[0]); memmove(history, history + 1, (--length) * sizeof *history); }
-        history[length] = entry; app->history_at = length; app->history_len = length + 1;
+        for (size_t i = length; i < app->history_len; i++) history_free(&history[i]);
+        if (length == 128) { history_free(&history[0]); memmove(history, history + 1, (--length) * sizeof *history); }
+        history[length] = (HistoryEntry){.directory = entry}; app->history_at = length; app->history_len = length + 1;
     }
     free(app->directory); file_list_free(&app->files);
     app->directory = resolved; app->files = list; app->show_hidden = hidden;
@@ -91,7 +104,7 @@ Result app_init(AppState *app, const char *directory) {
 }
 void app_free(AppState *app) {
     free(app->directory); file_list_free(&app->files);
-    for (size_t i = 0; i < app->history_len; i++) free(app->history[i]);
+    for (size_t i = 0; i < app->history_len; i++) history_free(&app->history[i]);
     free(app->history); *app = (AppState){0};
 }
 Result app_refresh(AppState *app) { return navigate_to(app, app->directory, false, app->show_hidden, NULL, NULL); }
@@ -106,7 +119,7 @@ Result app_history(AppState *app, bool forward) {
     if (!app->history_len || (forward ? app->history_at + 1 >= app->history_len : app->history_at == 0))
         return result_make(RESULT_NOT_FOUND, forward ? "No forward history" : "No back history");
     size_t next = forward ? app->history_at + 1 : app->history_at - 1;
-    Result r = navigate_to(app, app->history[next], false, app->show_hidden, NULL, NULL);
+    Result r = navigate_to(app, app->history[next].directory, false, app->show_hidden, NULL, NULL);
     if (r.code == RESULT_OK) app->history_at = next;
     return r;
 }

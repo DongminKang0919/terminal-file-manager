@@ -40,14 +40,16 @@ Result load_dir(UiContext *ui, const char *highlight) {
 bool navigate(UiContext *ui, const char *path, const char *highlight) {
     char *name = highlight ? text_copy(highlight) : NULL;
     if (highlight && !name) { message(ui, "Open directory: Out of memory"); return false; }
-    Result r = app_navigate(&ui->app, path);
+    Result r = app_remember_selection(&ui->app, ui->selected, ui->top);
+    if (r.code == RESULT_OK) r = app_navigate(&ui->app, path);
     if (r.code == RESULT_OK) reset_selection(ui, name); else show_failure(ui, "Open directory", r);
     free(name);
     return r.code == RESULT_OK;
 }
 bool open_search_result(UiContext *ui, const char *path) {
     size_t selected; bool revealed;
-    Result r = app_open_search_result(&ui->app, path, &selected, &revealed);
+    Result r = app_remember_selection(&ui->app, ui->selected, ui->top);
+    if (r.code == RESULT_OK) r = app_open_search_result(&ui->app, path, &selected, &revealed);
     if (r.code != RESULT_OK) { show_failure(ui, "Cannot open search result", r); return false; }
     ui->selected = selected; ui->top = 0; preview_reset(ui);
     message(ui, revealed ? "Opened search result; hidden files shown" : "Opened search result");
@@ -59,9 +61,22 @@ static void refresh_after_operation(UiContext *ui, const char *highlight, const 
     else snprintf(ui->status, sizeof ui->status, "%.370s; list refresh failed: %.100s", success, r.detail);
 }
 void history_dir(UiContext *ui, bool forward) {
-    Result r = app_history(&ui->app, forward);
-    if (r.code == RESULT_OK) { reset_selection(ui, NULL); message(ui, forward ? "Forward" : "Back"); }
-    else show_failure(ui, forward ? "Forward" : "Back", r);
+    Result r = app_remember_selection(&ui->app, ui->selected, ui->top);
+    if (r.code == RESULT_OK) r = app_history(&ui->app, forward);
+    if (r.code == RESULT_OK) {
+        const HistoryEntry *entry = &ui->app.history[ui->app.history_at];
+        reset_selection(ui, NULL);
+        size_t count = ui->app.files.len;
+        ui->selected = count ? (entry->selected < count ? entry->selected : count - 1) : 0;
+        if (entry->selected_name) for (size_t i = 0; i < count; i++) {
+            if (!strcmp(ui->app.files.entries[i].name, entry->selected_name)) { ui->selected = i; break; }
+        }
+        int rows = stdscr && LINES >= 9 ? ui_layout(COLS, LINES, ui->app.show_preview).list_rows : 1;
+        size_t max_top = count > (size_t)rows ? count - (size_t)rows : 0;
+        ui->top = entry->top < max_top ? entry->top : max_top;
+        fit_selection(ui, rows);
+        message(ui, forward ? "Forward" : "Back");
+    } else show_failure(ui, forward ? "Forward" : "Back", r);
 }
 void parent_dir(UiContext *ui) {
     char *parent = core_path_parent(ui->app.directory), *name = core_path_name(ui->app.directory);

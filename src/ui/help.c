@@ -11,7 +11,7 @@ static const HelpEntry entries[] = {
     {"PgUp/PgDn", "Move one list page. Home/End selects first/last."},
     {"Enter / Right", "In Files, open a directory or show and focus the file preview; double-click or Open also works."},
     {"Backspace / Left", "In Files, go to the parent directory; Parent also works."},
-    {"Alt+Left/Right", "Back/forward history; [ / ], Location buttons and mouse side buttons also work if supported."},
+    {"Alt+Left/Right", "Back/forward restores the visited selection and list scroll. [ / ], Location buttons and mouse side buttons also work if supported."},
     {"Tab / Shift+Tab", "Switch Files/Preview when preview is shown. Click inside a panel to focus it; * marks the active title."},
     {"r", "Refresh the current directory and preview."},
     {"q / F10", "Quit from the main screen."},
