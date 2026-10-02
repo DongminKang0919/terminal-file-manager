@@ -45,9 +45,9 @@ class Terminal:
         return self.send(f'\x1b[<0;{x + 1};{y + 1}M\x1b[<0;{x + 1};{y + 1}m')
 
     def rename_transfer(self, name):
-        self.send('\t\t\n')  # Name field in transfer form
+        self.send('\t')  # Destination -> inline target name.
         self.send('\x1bOH' + '\x1b[3~' * 100 + name + '\n')
-        return self.send('\t\t\n')  # Copy/Move now
+        return self.send('\n')  # Explicit Copy/Move now button.
 
     def close(self):
         self.send('\x1b')
@@ -299,7 +299,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-path-') as directory:
     try:
         for destination in ('folder/../folder', 'alias'):
             t.send('\x1b[15~')
-            t.send('\t\n')  # Destination picker
+            t.send('\t\t\n')  # Browse destination
             t.send('p')
             t.send('\x1bOH' + '\x1b[3~' * 200 + str(root / destination) + '\n')
             t.send(' ')  # Use this folder
@@ -368,44 +368,44 @@ with tempfile.TemporaryDirectory(prefix='tfile-transfer-') as directory:
     try:
         # Entire copy workflow uses mouse selection, retaining the original name.
         t.send('\x1b[15~')
-        t.click(15, 6)  # Choose source
+        t.click(33, 11)  # Choose source
         t.click(20, 5)  # a-source after target folder
         t.click(12, 21)  # Use selected
-        t.click(15, 7)  # Browse destination
+        t.click(10, 11)  # Browse destination
         t.click(20, 4)
         t.click(20, 4)  # Enter target folder
         t.click(12, 21)  # Use this folder
-        t.click(15, 10)  # Copy now
+        t.click(10, 16)  # Copy now
         assert (root / 'target' / 'a-source.txt').read_text() == 'original content'
         assert (root / 'a-source.txt').exists()
         # Change source to another item, then move it with the original name.
         t.send('\x1b[17~')
-        t.click(15, 6)
+        t.click(33, 11)
         t.click(20, 6)  # b-other
         t.click(12, 21)
-        t.click(15, 7)
+        t.click(10, 11)
         t.click(20, 4)
         t.click(20, 4)
         t.click(12, 21)
-        t.click(15, 10)
+        t.click(10, 16)
         assert not (root / 'b-other.txt').exists()
         assert (root / 'target' / 'b-other.txt').read_text() == 'other content'
         # Duplicate copy remains open and preserves existing contents.
         t.send('\x1bOF')  # a-source
         t.send('\x1b[15~')
-        assert b'already exists' in t.click(15, 10)
-        t.click(15, 8)  # Rename
+        assert b'already exists' in t.click(10, 16)
+        t.click(15, 10)  # Rename
         t.send('\x1bOH' + '\x1b[3~' * 100 + 'renamed-copy.txt\n')
-        t.click(15, 10)
+        t.click(10, 16)
         assert (root / 'renamed-copy.txt').read_text() == 'original content'
         assert (root / 'a-source.txt').read_text() == 'original content'
         # Cancelling nested picker returns to form; closing form does nothing.
         t.send('\x1b[15~')
-        t.click(15, 7)
+        t.click(10, 11)
         t.send('\x1b')
         t.send('\x1b')
         t.send('\x1b[15~')
-        t.click(15, 7)
+        t.click(10, 11)
         fcntl.ioctl(t.master, termios.TIOCSWINSZ, struct.pack('HHHH', 12, 60, 0, 0))
         t.proc.send_signal(signal.SIGWINCH)
         t.read()

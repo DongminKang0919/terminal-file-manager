@@ -118,14 +118,14 @@ for w,h in [(50,9),(80,24),(160,32)]:
         root=Path(directory); (root/'source').write_text('content')
         t=Terminal(directory,w,h)
         try:
-            t.send('\x1b[17~\t\t\n') # move -> name
+            t.send('\x1b[20~'+DOWN*11+'\n') # direct rename uses the generic name input
             ph=min(9,h-2); py=(h-ph)//2
             t.send(HOME+'\x1b[3~'*100+'\n')
             assert 'Enter a value to continue.' in t.screen.row(py+4)
             assert '[ OK ]' in t.screen.row(py+ph-2)
-            t.send('한글-renamed\n\t\t\n')
+            t.send('한글-renamed\n')
             assert (root/'한글-renamed').read_text()=='content' and not (root/'source').exists()
-            t.send('\x1b[15~\t\np') # copy -> destination -> Enter path
+            t.send('\x1b[15~\t\t\np') # copy -> destination -> Enter path
             t.send(HOME+'\x1b[3~'*200+'\n')
             assert 'Enter a value to continue.' in t.screen.row(py+4)
             t.send(directory+'\n ')

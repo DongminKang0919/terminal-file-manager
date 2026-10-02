@@ -41,10 +41,9 @@ for copy, action, width, height in [(True,'esc',100,24),(True,'mouse',50,9),(Tru
         try:
             pump_until(lambda:b'F1' in output)
             if copy:
-                send(b'\x1b[15~'); pump_until(lambda:b'Choose source' in output)
-                send(b'\t\t\n'); pump_until(lambda:b'New name' in output)
-                send(b'\x1bOHcopy-\n'); pump_until(lambda:b'copy-source' in output)
-                send(b'\t\t\n')
+                send(b'\x1b[15~'); pump_until(lambda:b'Copy' in output)
+                send(b'\t\x1bOHcopy-\n'); pump_until(lambda:b'copy-source' in output)
+                send(b'\n')
             else: send(b'\x1b[19~\t\n')
             pump_until(lambda:b'G\n' in events and b'Completed items:' in output)
             assert b'Completed items:' in output and b'Cancel stops here' in output

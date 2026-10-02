@@ -66,7 +66,7 @@ for width,height in [(100,24),(50,9)]:
             (root/'e16').unlink(); t.send('r')
             assert 'e15' in t.screen.row(3)[(width*3//5 if width<80 else width*11//20):]  # old index, clamped into the new sorted list
             # Main descending order must not leak into the source picker.
-            t.send('\x1b[15~\n')
+            t.send('\x1b[15~'+'\t'*4+'\n')
             pw, ph = min(86,width-4), height-2
             px, py = (width-pw)//2, 1
             picker='\n'.join(''.join(t.screen.rows[y][px+1:px+pw-1]) for y in range(py+3,py+ph-3))

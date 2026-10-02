@@ -193,9 +193,8 @@ def select_name(t, root, name):
 
 def prefix_transfer(t, move, prefix):
     t.send('\x1b[17~' if move else '\x1b[15~')
-    t.send('\t\t\n')
-    t.send('\x1bOH' + prefix + '\n')
-    t.send('\t\t\n')
+    t.send('\t\x1bOH' + prefix + '\n')
+    t.send('\n')
 
 if __name__ == '__main__':
     names = [b'n0\nline', b'n1\tname', b'n2\x01\x1b[99;99H', b'n3\xff\xc0',
@@ -236,12 +235,12 @@ if __name__ == '__main__':
                 assert not os.path.exists(root + b'/' + moved)
                 if twins[i] != name: assert open(root + b'/' + twins[i], 'rb').read() == b'ordinary twin'
             # Inspect selector and search rows; no raw control bytes may move the cursor.
-            t.send('\x1b[15~\n')  # Copy -> Choose source picker
+            t.send('\x1b[15~' + '\t'*4 + '\n')  # Copy -> Source picker
             t.frame(7, 1, 86, 22)
             assert 'copy-n0\\nline' in '\n'.join(t.screen.row(y) for y in range(5, 18))
             select_name(t, root, b'copy-n0\nline')
             t.send(' ')  # Choose the raw newline item, not its literal-escape twin.
-            t.send('\t\t\n\x1bOHpicked-\n\t\t\n')
+            t.send('\x1b[Z'*3 + '\x1bOHpicked-\n\n')
             assert open(root + b'/picked-copy-n0\nline', 'rb').read() == b'original-0'
             t.send('\x1bORcopy-n0\n')
             t.frame(5, 1, 90, 22)
@@ -267,7 +266,7 @@ if __name__ == '__main__':
                     t.frame(4, 1, 42, 7)
                     assert '...' in t.screen.row(4) and '[ Open ]' in t.screen.row(6)
                     t.send('\x1b')
-                    t.send('\x1b[15~\n')
+                    t.send('\x1b[15~'+'\t'*4+'\n')
                     t.frame(2, 1, 46, 7)
                     assert '...' in t.screen.row(4) and '[ Cancel ]' in t.screen.row(6)
                     t.send('\x1b\x1b')
