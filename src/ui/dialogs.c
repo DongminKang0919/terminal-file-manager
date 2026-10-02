@@ -82,7 +82,7 @@ void dialog_close(UiContext *ui, WINDOW *win) {
 }
 
 /* Wide-character editing keeps cursor movement and deletion on UTF-8 boundaries. */
-static bool input_dialog(UiContext *ui, const char *label, char *out, size_t size, bool *directory, const char *initial, WINDOW *host) {
+static bool input_dialog(UiContext *ui, const char *label, char *out, size_t size, bool *directory, const char *initial, WINDOW *host, const char *rename_source) {
     WINDOW *win = host ? host : dialog_open(ui, label, 9, 76);
     if (!win) return false;
     UiField field;
@@ -152,7 +152,8 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
             if (focus == 3) { focus = 0; continue; }
             if (!field.len) { snprintf(warning, sizeof warning, "Enter a value to continue."); focus = 0; continue; }
             if (ui_text_encode(field.value, field.len, out, size)) {
-                if (!directory || create_named_entry(ui, *directory, out, warning, sizeof warning)) { accepted = true; break; }
+                if (rename_source ? rename_named_entry(ui, rename_source, out, warning, sizeof warning) :
+                    !directory || create_named_entry(ui, *directory, out, warning, sizeof warning)) { accepted = true; break; }
                 focus = 0;
             } else { snprintf(warning, sizeof warning, "Input is too long."); focus = 0; }
             continue;
@@ -164,16 +165,27 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
     return accepted;
 }
 bool prompt(UiContext *ui, const char *label, char *out, size_t size) {
-    return input_dialog(ui, label, out, size, NULL, NULL, NULL);
+    return input_dialog(ui, label, out, size, NULL, NULL, NULL, NULL);
 }
 bool new_entry_dialog(UiContext *ui, bool directory, char *name, size_t size) {
-    return input_dialog(ui, "New - File or Directory", name, size, &directory, NULL, NULL);
+    return input_dialog(ui, "New - File or Directory", name, size, &directory, NULL, NULL, NULL);
 }
 bool prompt_value(UiContext *ui, const char *label, char *out, size_t size, const char *initial) {
-    return input_dialog(ui, label, out, size, NULL, initial, NULL);
+    return input_dialog(ui, label, out, size, NULL, initial, NULL, NULL);
 }
 bool search_prompt(UiContext *ui, WINDOW *win, char *out, size_t size) {
-    return input_dialog(ui, "Search", out, size, NULL, out, win);
+    return input_dialog(ui, "Search", out, size, NULL, out, win, NULL);
+}
+void rename_entry(UiContext *ui) {
+    if (ui->selected >= ui->app.files.len) return;
+    char *source = text_copy(ui->app.files.entries[ui->selected].path);
+    char *name = text_copy(ui->app.files.entries[ui->selected].name);
+    if (!source || !name) message(ui, "Rename: Out of memory");
+    else {
+        char out[UI_INPUT_CAP];
+        input_dialog(ui, "Rename selected item", out, sizeof out, NULL, name, NULL, source);
+    }
+    free(source); free(name);
 }
 bool confirm(UiContext *ui, const char *name, bool directory) {
     WINDOW *win = dialog_open(ui, "Confirm deletion", 8, 78);
@@ -267,12 +279,12 @@ static int choice_dialog(WINDOW *win, const char *title, const char **labels, in
     return result;
 }
 int show_menu(UiContext *ui) {
-    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list"};
-    const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r', UI_QUICK_FIND};
+    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list", "Rename selected item"};
+    const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r', UI_QUICK_FIND, UI_RENAME};
     WINDOW *win = dialog_open(ui, "Menu", 14, 52);
     if (!win) return 0;
     int selected = 0, offset = 0;
-    int i = choice_dialog(win, "Menu", labels, 11, &selected, &offset, NULL);
+    int i = choice_dialog(win, "Menu", labels, 12, &selected, &offset, NULL);
     dialog_close(ui, win); return i < 0 ? 0 : keys[i];
 }
 void show_options(UiContext *ui) {

@@ -19,6 +19,7 @@ static const HelpEntry entries[] = {
     {"F2 / F4", "Create a file or directory / start with Directory selected."},
     {"Tab / Shift+Tab", "Change form focus. Left/Right or Space changes the selected file/directory type."},
     {"Input errors", "Empty or oversized input shows a warning and keeps the value and edit cursor. Correct it and retry."},
+    {"F9 > Rename", "Rename the selected item directly. Unchanged names do no work; collisions keep input open. The renamed item stays selected."},
     {"F5 / F6", "Copy / move or rename. Choose source, destination and name, then Copy now / Move now."},
     {"Picker", "Arrows browse; Enter opens. Space chooses a source or the current destination directory; p enters a path."},
     {"", "Existing destinations are never overwritten. Duplicate names keep the form open. Moves require the same filesystem."},

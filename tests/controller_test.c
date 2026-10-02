@@ -66,6 +66,20 @@ int main(int argc, char **argv) {
     assert(!strstr(ui.status, "Deleted"));
     assert(!open_search_result(&ui, moved)); assert(strstr(ui.status, "Cannot open search result"));
     assert(!strstr(ui.status, "Opened search result") && ui.app.files.entries == files);
+    fail_refresh=false; ok(load_dir(&ui,NULL));
+    assert(create_named_entry(&ui,false,"raw\xff\n",warning,sizeof warning));
+    char *raw=core_path_join(root,"raw\xff\n");
+    files=ui.app.files.entries; size_t old_selected=ui.selected;
+    assert(rename_named_entry(&ui,raw,"raw\xff\n",warning,sizeof warning));
+    assert(ui.app.files.entries==files && ui.selected==old_selected); /* no refresh */
+    assert(!rename_named_entry(&ui,raw,"copy.txt",warning,sizeof warning));
+    assert(strstr(warning,"exists") && ui.app.files.entries==files);
+    assert(rename_named_entry(&ui,raw,"renamed\xff\n",warning,sizeof warning));
+    assert(!strcmp(ui.app.files.entries[ui.selected].name,"renamed\xff\n"));
+    free(raw); raw=core_path_join(root,"renamed\xff\n");
+    files=ui.app.files.entries; len=ui.app.files.len; fail_refresh=true;
+    assert(rename_named_entry(&ui,raw,"after-refresh-failure",warning,sizeof warning));
+    preserved(&ui,files,len,"Renamed"); free(raw);
     free(moved); free(created); preview_reset(&ui); app_free(&ui.app);
     puts("PASS: refresh errors preserve UI state; create/copy/move/delete success remains distinct from refresh failure");
 }

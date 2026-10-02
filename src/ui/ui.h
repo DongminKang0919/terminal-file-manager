@@ -18,8 +18,11 @@ void input_init(void);
 int input_key(WINDOW *win);
 int input_wide(WINDOW *win, wint_t *key);
 typedef struct { wchar_t value[UI_INPUT_CAP]; size_t len, cursor, start; } UiField;
+/* Initial bytes are decoded losslessly; false means the editor capacity was exceeded. */
 bool field_init(UiField *field, const char *initial);
+/* kind distinguishes ncurses keys from Unicode codepoints; true means handled. */
 bool field_edit(UiField *field, int kind, wint_t key);
+/* Returns the cursor column relative to x; caller places the cursor after other drawing. */
 int field_draw(WINDOW *win, int y, int x, int width, UiField *field, bool focused);
 void field_click(UiField *field, int column);
 typedef FileInfo Item;
@@ -58,6 +61,9 @@ int join(char *out, size_t size, const char *directory, const char *name);
 bool create_named_entry(UiContext *ui, bool directory, const char *name, char *warning, size_t size);
 void create_entry(UiContext *ui, bool directory);
 void delete_entry(UiContext *ui);
+void rename_entry(UiContext *ui);
+/* True closes the form, including unchanged names and success with refresh failure. */
+bool rename_named_entry(UiContext *ui, const char *source, const char *name, char *warning, size_t size);
 Result run_file_operation(UiContext *ui, bool copy, const char *source,
                           const char *directory, const char *name, char **destination);
 bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *directory, const char *name, char *warning, size_t size);

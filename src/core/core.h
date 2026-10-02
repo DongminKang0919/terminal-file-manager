@@ -25,6 +25,7 @@ void app_free(AppState *app);
 Result app_navigate(AppState *app, const char *directory);
 Result app_refresh(AppState *app);
 Result app_history(AppState *app, bool forward);
+/* No filesystem I/O. Allocation failure leaves the previous saved state intact. */
 Result app_remember_selection(AppState *app, size_t selected, size_t top);
 /* Commit navigation/filter/history only if the searched item can be opened and
    selected. selected changes only on success; revealed reports a filter change. */

@@ -114,6 +114,17 @@ bool create_named_entry(UiContext *ui, bool directory, const char *name, char *w
     if (r.code != RESULT_OK) { operation_warning(r, warning, size); return false; }
     refresh_after_operation(ui, name, directory ? "Directory created" : "File created"); return true;
 }
+bool rename_named_entry(UiContext *ui, const char *source, const char *name, char *warning, size_t size) {
+    char *original = core_path_name(source);
+    if (!original) { snprintf(warning, size, "Out of memory"); return false; }
+    bool unchanged = !strcmp(original, name); free(original);
+    if (unchanged) return true;
+    char *destination = NULL;
+    Result r = core_transfer(true, source, ui->app.directory, name, &destination);
+    free(destination);
+    if (r.code != RESULT_OK) { operation_warning(r, warning, size); return false; }
+    refresh_after_operation(ui, name, "Renamed"); return true;
+}
 void create_entry(UiContext *ui, bool directory) {
     (void)ui; char name[UI_INPUT_CAP]; new_entry_dialog(ui, directory, name, sizeof name); }
 void delete_entry(UiContext *ui) {
