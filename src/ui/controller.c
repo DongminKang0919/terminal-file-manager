@@ -6,6 +6,7 @@ static void show_failure(UiContext *ui, const char *action, Result r) {
     snprintf(ui->status, sizeof ui->status, "%s: %.450s", action, r.detail);
 }
 static void reset_selection(UiContext *ui, const char *highlight) {
+    ui->focus = UI_FOCUS_FILES;
     ui->selected = ui->top = 0; preview_reset(ui);
     if (highlight) for (size_t i = 0; i < ui->app.files.len; i++)
         if (!strcmp(ui->app.files.entries[i].name, highlight)) { ui->selected = i; break; }
@@ -71,7 +72,7 @@ void enter_item(UiContext *ui) {
     if (ui->selected >= ui->app.files.len) return;
     FileInfo *it = &ui->app.files.entries[ui->selected];
     if (it->directory_target) navigate(ui, it->path, NULL);
-    else { preview_reset(ui); message(ui, "Preview on the right - scroll there with the mouse wheel"); }
+    else { ui->app.show_preview = true; ui->focus = UI_FOCUS_PREVIEW; }
 }
 /* Fixed-size buffers belong only to the terminal forms, never to core paths. */
 int join(char *out, size_t size, const char *directory, const char *name) {
@@ -142,4 +143,35 @@ bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *
                            (unsigned long long)r.completed_items, (unsigned long long)r.copied_bytes, destination);
     refresh_after_operation(ui, name, success);
     free(destination); return true;
+}
+
+/* Panel-only keys never perform list navigation while preview has focus. */
+bool panel_key(UiContext *ui, int key, int height) {
+    if (!ui->app.show_preview) ui->focus = UI_FOCUS_FILES;
+    if (key == '\t' || key == KEY_BTAB) {
+        if (ui->app.show_preview) ui->focus = ui->focus == UI_FOCUS_FILES ? UI_FOCUS_PREVIEW : UI_FOCUS_FILES;
+        return true;
+    }
+    if (ui->focus != UI_FOCUS_PREVIEW) return false;
+    size_t page = height > 7 ? (size_t)(height - 7) : 1;
+    if (page > PREVIEW_PAGE_MAX - 1) page = PREVIEW_PAGE_MAX - 1;
+    switch (key) {
+        case 27: ui->focus = UI_FOCUS_FILES; return true;
+        case KEY_UP: case 'k':
+            if (ui->preview_offset) ui->preview_offset--;
+            return true;
+        case KEY_DOWN: case 'j':
+            if (ui->preview_more) ui->preview_offset++;
+            return true;
+        case KEY_PPAGE:
+            ui->preview_offset = ui->preview_offset > page ? ui->preview_offset - page : 0;
+            return true;
+        case KEY_NPAGE:
+            if (ui->preview_more) ui->preview_offset += page;
+            return true;
+        case KEY_HOME: ui->preview_offset = 0; return true;
+        case KEY_END: case KEY_LEFT: case KEY_RIGHT: case KEY_BACKSPACE:
+        case 127: case 8: case '\n': case KEY_ENTER: return true;
+        default: return false;
+    }
 }

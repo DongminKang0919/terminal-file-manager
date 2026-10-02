@@ -354,7 +354,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-new-') as directory:
         t.send('\n')
         assert (root / 'keyboard').is_dir()
         t.send('\x1bOQ')
-        assert b'Enter a name' in t.send('\n')
+        assert b'Enter a value to continue.' in t.send('\n')
         t.send('\x1b')
     finally:
         t.close()

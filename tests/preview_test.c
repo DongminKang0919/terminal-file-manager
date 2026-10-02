@@ -170,6 +170,49 @@ int main(void) {
     assert(reads==saved && opens==saved_opens && checks==checked);
     assert(ui.preview_session==session && ui.preview_page.lines==page);
     assert(ui.preview_offset==saved_offset && ui.selected==saved_selected && ui.top==saved_top);
+    /* Focus-only changes, Enter on this same file, and modal restore do not
+       recreate the session or read the body. Normal metadata checks may run. */
+    for (int i=0;i<20;i++) {
+        enter_item(&ui); assert(ui.focus==UI_FOCUS_PREVIEW);
+        draw(&ui);
+        assert(mvinch(2,55)&A_BOLD); /* active preview border */
+        assert(!(mvinch(2,0)&A_BOLD));
+        assert((mvinch(2,57)&A_CHARTEXT)=='*');
+        assert(panel_key(&ui,KEY_END,24));
+        assert(ui.preview_offset==saved_offset);
+        assert(panel_key(&ui,'\t',24) && ui.focus==UI_FOCUS_FILES);
+        draw_cached(&ui);
+        assert(panel_key(&ui,KEY_BTAB,24) && ui.focus==UI_FOCUS_PREVIEW);
+        WINDOW *popup=dialog_open(&ui,"Focus",7,50); assert(popup);
+        dialog_close(&ui,popup); assert(ui.focus==UI_FOCUS_PREVIEW);
+        assert(panel_key(&ui,27,24) && ui.focus==UI_FOCUS_FILES);
+        assert(ui.preview_session==session && ui.preview_page.lines==page);
+        assert(ui.preview_offset==saved_offset && ui.selected==saved_selected && ui.top==saved_top);
+        assert(reads==saved && opens==saved_opens);
+    }
+    enter_item(&ui); assert(panel_key(&ui,KEY_DOWN,24)); draw(&ui);
+    assert(ui.preview_offset==saved_offset+1);
+    assert(panel_key(&ui,KEY_NPAGE,24)); draw(&ui);
+    assert(ui.preview_offset==saved_offset+18);
+    assert(ui.selected==saved_selected && ui.top==saved_top);
+    saved=reads; assert(panel_key(&ui,KEY_HOME,24)); draw(&ui);
+    assert(!ui.preview_offset && reads==saved); /* return within cache */
+    saved=reads; saved_opens=opens; session=ui.preview_session; page=ui.preview_page.lines;
+    ungetch(27); ungetch('\n'); ungetch('\n');
+    ungetch(KEY_DOWN); ungetch(KEY_DOWN); ungetch(KEY_DOWN);
+    show_options(&ui);
+    assert(ui.focus==UI_FOCUS_PREVIEW && ui.preview_session==session && ui.preview_page.lines==page);
+    assert(reads==saved && opens==saved_opens);
+    Item *entries=ui.app.files.entries; bool hidden=ui.app.show_hidden;
+    size_t option_selected=ui.selected, option_top=ui.top;
+    fail_refresh=true; ungetch(27); ungetch('\n'); show_options(&ui); fail_refresh=false;
+    assert(ui.app.show_hidden==hidden && ui.app.files.entries==entries);
+    assert(ui.selected==option_selected && ui.top==option_top && strstr(ui.status,"Refresh failed"));
+    assert(ui.preview_session==session && ui.preview_page.lines==page && reads==saved && opens==saved_opens);
+    ui.app.show_preview=false; draw(&ui);
+    assert(ui.focus==UI_FOCUS_FILES && !ui.preview_session && !live);
+    enter_item(&ui); assert(ui.app.show_preview && ui.focus==UI_FOCUS_PREVIEW);
+    draw(&ui); assert(live==1);
     forbid_list=false;
     short fg, bg, base_fg, base_bg;
     pair_content(UI_BASE,&base_fg,&base_bg);

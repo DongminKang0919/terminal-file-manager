@@ -51,6 +51,9 @@ tests/text_window_test: tests/text_window_test.c src/ui/text.c src/ui/text_windo
 tests/preview_test: tests/preview_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/preview_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_reader_open,--wrap=platform_reader_line,--wrap=platform_reader_close,--wrap=platform_reader_changed,--wrap=platform_directory_open,--wrap=platform_info,--wrap=app_refresh
 
+tests/keyboard_ui_test: tests/keyboard_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/keyboard_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=input_wide,--wrap=input_key,--wrap=app_refresh,--wrap=newwin,--wrap=delwin
+
 tests/popup_style_test: tests/popup_style_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/popup_style_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS)
 
@@ -63,7 +66,8 @@ tests/tfile_progress: tests/progress_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) 
 tests/progress_ui_test: tests/progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=core_monotonic_ms,--wrap=input_wide,--wrap=wrefresh
 
-check: tests/popup_style_test tests/tfile_search tests/progress_ui_test tests/tfile_progress tests/preview_test tfile check-core tests/controller_test tests/text_test tests/text_window_test
+check: tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/progress_ui_test tests/tfile_progress tests/preview_test tfile check-core tests/controller_test tests/text_test tests/text_window_test
+	./tests/keyboard_ui_test
 	./tests/popup_style_test
 	./tests/progress_ui_test
 	./tests/preview_test
@@ -76,10 +80,11 @@ check: tests/popup_style_test tests/tfile_search tests/progress_ui_test tests/tf
 	python3 tests/sort_pty.py
 	python3 tests/layout_pty.py
 	python3 tests/navigation_pty.py
+	python3 tests/keyboard_pty.py
 	python3 tests/search_ui_pty.py
 	python3 tests/help_pty.py
 
 clean:
-	rm -f tfile tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
+	rm -f tfile tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
 
 .PHONY: all clean check check-core

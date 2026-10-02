@@ -55,7 +55,7 @@ for width, height in [(50,9),(80,24),(100,24),(160,32)]:
     with tempfile.TemporaryDirectory() as directory:
         t=Terminal(directory,width,height)
         try:
-            assert 'Empty directory' in t.screen.row(first)
+            assert 'No visible items' in t.screen.row(first)
             assert 'Row' not in '\n'.join(t.screen.row(y) for y in range(height))
         finally: t.close()
 print('PASS: main panel cells at 50x9/80x24/100x24/160x32, selection, columns, empty list, short/EOF/binary/link/error previews')

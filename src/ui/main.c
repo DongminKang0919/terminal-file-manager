@@ -42,6 +42,10 @@ int main(int argc, char **argv) {
                 key = 0;
             }
             else if (mouse_click(&event)) {
+                if (event.y > 2 && event.y < h - 3) {
+                    if (event.x > 0 && event.x < list_width - 1) ui->focus = UI_FOCUS_FILES;
+                    else if (ui->app.show_preview && event.x > list_width && event.x < w - 1) ui->focus = UI_FOCUS_PREVIEW;
+                }
                 if (event.y == 0) key = header_action(event.x, w);
                 else if (event.y == 1 && event.x >= 1 && event.x < 4) key = UI_BACK;
                 else if (event.y == 1 && event.x >= 5 && event.x < 8) key = UI_FORWARD;
@@ -58,10 +62,14 @@ int main(int argc, char **argv) {
             } else key = 0;
         }
         if (key != KEY_MOUSE && key != 0 && key != '\n') last_index = SIZE_MAX;
-        if (key == KEY_F(9) || key == 'm') key = show_menu(ui);
+        if (key == KEY_F(9) || key == 'm') {
+            key = show_menu(ui);
+            if (key == KEY_BACKSPACE) ui->focus = UI_FOCUS_FILES;
+        }
         if (key == '[') key = UI_BACK;
         if (key == ']') key = UI_FORWARD;
         if (key == 'q' || key == KEY_F(10)) break;
+        if (panel_key(ui, key, h)) continue;
         switch (key) {
             case UI_BACK: history_dir(ui, false); break;
             case UI_FORWARD: history_dir(ui, true); break;

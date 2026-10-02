@@ -46,3 +46,5 @@ __pycache__/
 /tests/tfile_search
 
 /tests/popup_style_test
+
+/tests/keyboard_ui_test

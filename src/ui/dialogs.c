@@ -105,18 +105,19 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
             mvwprintw(win, 1, 8, "[%c] File   [%c] Directory", *directory ? ' ' : 'x', *directory ? 'x' : ' ');
             wattroff(win, ui_selection());
             mvwaddstr(win, 2, 2, "Name:");
-            wattron(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
-            draw_window_text(win, 4, 2, w - 4, warning);
-            wattroff(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
             if (h > 7) draw_window_text(win, h - 3, 2, w - 4, "Tab: next field   Type: Left/Right   Esc: cancel");
         } else {
             draw_window_text(win, 1, 2, w - 4, ui->app.directory);
             if (host) {
                 mvwaddstr(win, 2, 2, "Name contains:");
-                draw_window_text(win, 4, 2, w - 4, warning);
                 if (!*warning) draw_window_text(win, 4, 2, w - 4, focus == 2 ?
                     "Enter: close  Tab: focus  Esc: close" : "Enter: search  Tab: focus  Esc: close");
             }
+        }
+        if (*warning) {
+            wattron(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
+            draw_window_text(win, 4, 2, w - 4, warning);
+            wattroff(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
         }
         if (cursor < start) start = cursor;
         int cols = 0;
@@ -163,11 +164,11 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
         if ((kind == OK && (key == '\n' || key == '\r')) || (kind == KEY_CODE_YES && key == KEY_ENTER)) {
             if (focus == 2) break;
             if (focus == 3) { focus = 0; continue; }
-            if (!len) { snprintf(warning, sizeof warning, "Enter a name to continue."); focus = 0; continue; }
+            if (!len) { snprintf(warning, sizeof warning, "Enter a value to continue."); focus = 0; continue; }
             if (ui_text_encode(value, len, out, size)) {
                 if (!directory || create_named_entry(ui, *directory, out, warning, sizeof warning)) { accepted = true; break; }
                 focus = 0;
-            } else snprintf(warning, sizeof warning, "Name is too long.");
+            } else { snprintf(warning, sizeof warning, "Input is too long."); focus = 0; }
             continue;
         }
         if (focus != 0) continue;
@@ -254,10 +255,8 @@ bool confirm(UiContext *ui, const char *name, bool directory) {
     dialog_close(ui, win); return result;
 }
 
-static int choice_dialog(UiContext *ui, const char *title, const char **labels, int total) {
-    WINDOW *win = dialog_open(ui, title, total + 4, 52);
-    if (!win) return -1;
-    int selected_row = 0, offset = 0, result = -1;
+static int choice_dialog(WINDOW *win, const char *title, const char **labels, int total, int *selection, int *scroll, const char *warning) {
+    int selected_row = *selection, offset = *scroll, result = -1;
     for (;;) {
         int h, w; getmaxyx(win, h, w); int rows = h - 4;
         if (selected_row < offset) offset = selected_row;
@@ -266,6 +265,11 @@ static int choice_dialog(UiContext *ui, const char *title, const char **labels, 
         for (int i = 0; i < rows && offset + i < total; i++) {
             if (offset + i == selected_row) wattron(win, ui_selection());
             draw_window_text(win, i + 1, 2, w - 4, labels[offset + i]); wattroff(win, ui_selection());
+        }
+        if (warning && *warning) {
+            wattron(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
+            draw_window_text(win, h - 3, 2, w - 4, warning);
+            wattroff(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
         }
         draw_window_text(win, h - 2, 2, w - 4, "Up/Down  Enter: choose  Esc: close"); dialog_refresh(win);
         int key = input_key(win);
@@ -283,14 +287,23 @@ static int choice_dialog(UiContext *ui, const char *title, const char **labels, 
         if (key == KEY_DOWN && selected_row + 1 < total) selected_row++;
         if (key == '\n' || key == KEY_ENTER) { result = selected_row; break; }
     }
-    dialog_close(ui, win); return result;
+    *selection = result >= 0 ? result : selected_row; *scroll = offset;
+    return result;
 }
 int show_menu(UiContext *ui) {
     const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh"};
     const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r'};
-    int i = choice_dialog(ui, "Menu", labels, 10); return i < 0 ? 0 : keys[i];
+    WINDOW *win = dialog_open(ui, "Menu", 14, 52);
+    if (!win) return 0;
+    int selected = 0, offset = 0;
+    int i = choice_dialog(win, "Menu", labels, 10, &selected, &offset, NULL);
+    dialog_close(ui, win); return i < 0 ? 0 : keys[i];
 }
 void show_options(UiContext *ui) {
+    WINDOW *win = dialog_open(ui, "Options", 10, 52);
+    if (!win) return;
+    int selected = 0, offset = 0;
+    char warning[sizeof ui->status] = "";
     for (;;) {
         char hidden[64], preview_text[64], wheel[64], sort[64], direction[64];
         snprintf(hidden, sizeof hidden, "[%c] Show hidden files", ui->app.show_hidden ? 'x' : ' ');
@@ -299,11 +312,14 @@ void show_options(UiContext *ui) {
         snprintf(sort, sizeof sort, "Sort by: %s (click to change)", sort_label(ui->app.sort.key));
         snprintf(direction, sizeof direction, "Sort order: %s (click to change)", ui->app.sort.descending ? "Descending" : "Ascending");
         const char *labels[] = {hidden, preview_text, wheel, sort, direction, "Done (settings apply to this session)"};
-        int i = choice_dialog(ui, "Options", labels, 6);
+        int i = choice_dialog(win, "Options", labels, 6, &selected, &offset, warning);
         if (i < 0 || i == 5) break;
         if (i == 0) {
             ui->app.show_hidden = !ui->app.show_hidden;
-            if (load_dir(ui, NULL).code != RESULT_OK) ui->app.show_hidden = !ui->app.show_hidden;
+            if (load_dir(ui, NULL).code != RESULT_OK) {
+                ui->app.show_hidden = !ui->app.show_hidden;
+                snprintf(warning, sizeof warning, "%s", ui->status);
+            }
         }
         if (i == 1) ui->app.show_preview = !ui->app.show_preview;
         if (i == 2) ui->app.wheel_step = ui->app.wheel_step == 1 ? 3 : ui->app.wheel_step == 3 ? 5 : 1;
@@ -311,4 +327,5 @@ void show_options(UiContext *ui) {
         if (i == 4) change_sort(ui, (SortSettings){ui->app.sort.key, !ui->app.sort.descending});
         draw(ui);
     }
+    dialog_close(ui, win);
 }

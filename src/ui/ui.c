@@ -19,16 +19,16 @@ void ui_size(const Item *it, char *out, size_t size) {
     snprintf(out, size, unit ? "%.1f %s" : "%.0f %s", value, units[unit]);
 }
 
-static void draw_box(int x, int y, int w, int h, const char *title) {
+static void draw_box(int x, int y, int w, int h, const char *title, bool focused) {
     if (w < 2 || h < 2) return;
-    attron(COLOR_PAIR(UI_BORDER));
+    attrset(COLOR_PAIR(focused ? UI_BASE : UI_BORDER) | (focused ? A_BOLD : A_NORMAL));
     mvhline(y, x, ACS_HLINE, w); mvhline(y + h - 1, x, ACS_HLINE, w);
     mvvline(y, x, ACS_VLINE, h); mvvline(y, x + w - 1, ACS_VLINE, h);
     mvaddch(y, x, ACS_ULCORNER); mvaddch(y, x + w - 1, ACS_URCORNER);
     mvaddch(y + h - 1, x, ACS_LLCORNER); mvaddch(y + h - 1, x + w - 1, ACS_LRCORNER);
     if (w > 5) {
         attrset(COLOR_PAIR(UI_MUTED));
-        mvaddch(y, x + 2, ' '); draw_text(y, x + 3, w - 5, title);
+        mvaddch(y, x + 2, focused ? '*' : ' '); draw_text(y, x + 3, w - 5, title);
         attrset(COLOR_PAIR(UI_BASE) | A_BOLD);
         draw_text(y, x + 4, w - 6, x ? "Preview" : "Files");
     }
@@ -76,6 +76,7 @@ int header_action(int x, int width) {
 }
 
 static void draw_screen(UiContext *ui, bool prepare) {
+    if (!ui->app.show_preview) ui->focus = UI_FOCUS_FILES;
     erase(); int h, w; getmaxyx(stdscr, h, w);
     if (prepare) preview_prepare(ui, h >= 9 && w >= 50 ? h - 7 : 0);
     if (h < 9 || w < 50) { mvaddstr(0, 0, "Terminal too small (minimum 50x9)"); refresh(); return; }
@@ -114,8 +115,8 @@ static void draw_screen(UiContext *ui, bool prepare) {
         snprintf(title, sizeof title, " Files (%zu) %s%c ", ui->app.files.len,
                  ui->app.sort.key == SORT_MODIFIED ? "Time" : sort_label(ui->app.sort.key),
                  ui->app.sort.descending ? '-' : '+');
-    draw_box(0, 2, mid, panel_h, title);
-    if (ui->app.show_preview) draw_box(mid, 2, w - mid, panel_h, " Preview ");
+    draw_box(0, 2, mid, panel_h, title, ui->focus == UI_FOCUS_FILES);
+    if (ui->app.show_preview) draw_box(mid, 2, w - mid, panel_h, " Preview ", ui->focus == UI_FOCUS_PREVIEW);
     attron(COLOR_PAIR(UI_MUTED));
     draw_text(3, 2, mid - 4, "[Parent]  [Open]");
     int date_x = mid >= 72 ? mid - 18 : 0;
@@ -169,7 +170,12 @@ static void draw_screen(UiContext *ui, bool prepare) {
         attrset(A_NORMAL);
     }
     if (ui->app.show_preview) preview(ui, mid, 2, w - mid, panel_h);
-    if (!ui->app.files.len) draw_text(layout.list_y, 2, mid - 4, "Empty directory - F2 New");
+    if (!ui->app.files.len) {
+        draw_text(layout.list_y, 2, mid - 4, "No visible items");
+        attron(COLOR_PAIR(UI_MUTED));
+        draw_text(layout.list_y + 1, 2, mid - 4, ui->app.show_hidden ? "F2: New" : "F7: Show hidden files");
+        attroff(COLOR_PAIR(UI_MUTED));
+    }
     char summary[96];
     snprintf(summary, sizeof summary, "Shown: %zu | Hidden: %s", ui->app.files.len, ui->app.show_hidden ? "on" : "off");
     attron(COLOR_PAIR(UI_STATUS)); mvhline(h - 2, 0, ' ', w);
@@ -177,10 +183,12 @@ static void draw_screen(UiContext *ui, bool prepare) {
     attroff(COLOR_PAIR(UI_STATUS));
     attrset(ui_bar()); mvhline(h - 1, 0, ' ', w);
     if (!ui->modal_depth) {
-        const char *keys[] = {"Enter", "Backspace", "F1", "F9"};
-        const char *labels[] = {": Open", ": Parent", ": Help", ": Menu"};
+        bool reading = ui->focus == UI_FOCUS_PREVIEW;
+        const char *keys[] = {reading ? "Esc" : "Enter", reading ? "Up/Down" : "Tab", reading ? "PgUp/PgDn" : "Backspace", reading ? "Home" : "F1", reading ? "Tab" : "F9"};
+        const char *labels[] = {reading ? ": Files" : ": Open", reading ? ": Row" : (ui->app.show_preview ? ": Preview" : ": Files"), reading ? ": Page" : ": Parent", reading ? ": Top" : ": Help", reading ? ": Files" : ": Menu"};
         int x = 1;
-        for (size_t i = 0; i < 4; i++) {
+        for (size_t i = 0; i < 5; i++) {
+            if (!reading && i == 1 && !ui->app.show_preview) continue;
             int keylen = (int)strlen(keys[i]), len = keylen + (int)strlen(labels[i]);
             if (x + len > w - 1) break;
             attron(A_BOLD); draw_text(h - 1, x, keylen, keys[i]); attroff(A_BOLD);
