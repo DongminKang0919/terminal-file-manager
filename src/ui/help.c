@@ -27,6 +27,7 @@ static const HelpEntry entries[] = {
     {"Copy/Delete", "Cancel, Esc, Enter, x or resize requests a stop. Completed changes and incomplete copies are kept; deleted items are not restored."},
     {"", "Cancellation waits for the current filesystem call. Move is a single call with no in-flight cancellation. Refresh failures are reported separately from operation results."},
     {NULL, "SEARCH"},
+    {"Ctrl+F", "Find in the loaded list (also F9 menu). Type a substring; Up/Down cycles matches. Enter selects without opening; Esc/resize restores selection and list scroll. Letters are input, not commands."},
     {"F3 or /", "Search file names below the current directory, including hidden entries; not file contents."},
     {"Input", "Enter or Search starts. Tab changes focus. Cancel/Esc/x closes. Results expand in the same window."},
     {"While scanning", "Cancel/Esc/Enter keeps collected results. x or resize stops and closes. Errors, skipped entries and limits are reported."},

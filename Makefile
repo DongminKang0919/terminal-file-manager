@@ -85,6 +85,7 @@ check: tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests
 	python3 tests/layout_pty.py
 	python3 tests/navigation_pty.py
 	python3 tests/history_pty.py
+	python3 tests/quick_find_pty.py
 	python3 tests/keyboard_pty.py
 	python3 tests/search_ui_pty.py
 	python3 tests/help_pty.py

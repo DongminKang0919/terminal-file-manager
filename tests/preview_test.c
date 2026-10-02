@@ -190,6 +190,14 @@ int main(void) {
         assert(ui.preview_offset==saved_offset && ui.selected==saved_selected && ui.top==saved_top);
         assert(reads==saved && opens==saved_opens);
     }
+    snprintf(ui.status,sizeof ui.status,"Important partial result");
+    unget_wch('\n'); unget_wch('e'); unget_wch('l'); unget_wch('i'); unget_wch('f');
+    quick_find(&ui);
+    assert(ui.selected==saved_selected && ui.top==saved_top);
+    assert(reads==saved && opens==saved_opens && ui.preview_session==session && ui.preview_page.lines==page);
+    assert(!strcmp(ui.status,"Important partial result"));
+    unget_wch(27); unget_wch('!'); quick_find(&ui);
+    assert(ui.selected==saved_selected && ui.top==saved_top && reads==saved && opens==saved_opens);
     enter_item(&ui); assert(panel_key(&ui,KEY_DOWN,24)); draw(&ui);
     assert(ui.preview_offset==saved_offset+1);
     assert(panel_key(&ui,KEY_NPAGE,24)); draw(&ui);

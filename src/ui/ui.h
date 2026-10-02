@@ -13,10 +13,15 @@
 
 /* Existing terminal form input limit; core/platform paths are dynamically allocated. */
 #define UI_INPUT_CAP 4096
-enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE };
+enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE, UI_RENAME, UI_QUICK_FIND };
 void input_init(void);
 int input_key(WINDOW *win);
 int input_wide(WINDOW *win, wint_t *key);
+typedef struct { wchar_t value[UI_INPUT_CAP]; size_t len, cursor, start; } UiField;
+bool field_init(UiField *field, const char *initial);
+bool field_edit(UiField *field, int kind, wint_t key);
+int field_draw(WINDOW *win, int y, int x, int width, UiField *field, bool focused);
+void field_click(UiField *field, int column);
 typedef FileInfo Item;
 typedef enum { UI_FOCUS_FILES, UI_FOCUS_PREVIEW } UiFocus;
 typedef struct {
@@ -34,6 +39,7 @@ typedef struct {
     bool preview_ready;
     char status[512];
 } UiContext;
+void quick_find(UiContext *ui);
 enum { UI_BASE = 1, UI_BORDER, UI_HEADER, UI_SELECTED, UI_DIR, UI_MUTED, UI_STATUS, UI_PATH,
        UI_FILE, UI_LINK, UI_DIR_SELECTED, UI_FILE_SELECTED, UI_LINK_SELECTED,
        UI_EXEC, UI_HIDDEN, UI_SPECIAL, UI_EXEC_SELECTED, UI_HIDDEN_SELECTED, UI_SPECIAL_SELECTED,

@@ -71,6 +71,7 @@ int main(int argc, char **argv) {
         if (key == 'q' || key == KEY_F(10)) break;
         if (panel_key(ui, key, h)) continue;
         switch (key) {
+            case 6: case UI_QUICK_FIND: quick_find(ui); break;
             case UI_BACK: history_dir(ui, false); break;
             case UI_FORWARD: history_dir(ui, true); break;
             case KEY_F(7): show_options(ui); break;

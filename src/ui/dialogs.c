@@ -85,12 +85,11 @@ void dialog_close(UiContext *ui, WINDOW *win) {
 static bool input_dialog(UiContext *ui, const char *label, char *out, size_t size, bool *directory, const char *initial, WINDOW *host) {
     WINDOW *win = host ? host : dialog_open(ui, label, 9, 76);
     if (!win) return false;
-    wchar_t value[UI_INPUT_CAP] = L"";
-    size_t len = 0, cursor = 0, start = 0;
-    if (initial) {
-        for (size_t at = 0; initial[at] && len + 1 < UI_INPUT_CAP; ++len)
-            at += ui_text_decode(initial + at, &value[len]);
-        value[len] = 0; cursor = len;
+    UiField field;
+    if (!field_init(&field, initial ? initial : "")) {
+        message(ui, "Input exceeds terminal limit");
+        if (!host) dialog_close(ui, win);
+        return false;
     }
     int focus = 0;
     bool accepted = false;
@@ -119,19 +118,7 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
             draw_window_text(win, 4, 2, w - 4, warning);
             wattroff(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
         }
-        if (cursor < start) start = cursor;
-        int cols = 0;
-        for (size_t i = start; i < cursor; i++) { cols += ui_text_token(value[i]).cells; }
-        while (cols >= w - 5 && start < cursor) { cols -= ui_text_token(value[start++]).cells; }
-        attr_t field_style = focus == 0 ? ui_selection() : COLOR_PAIR(UI_BASE);
-        wattron(win, field_style); mvwhline(win, 3, 2, ' ', w - 4);
-        int used = 0;
-        for (size_t i = start; i < len; i++) {
-            UiTextToken token = ui_text_token(value[i]);
-            if (used + token.cells > w - 5) break;
-            mvwaddnwstr(win, 3, 2 + used, token.text, token.length); used += token.cells;
-        }
-        wattroff(win, field_style);
+        int cols = field_draw(win, 3, 2, w - 4, &field, focus == 0);
         dialog_button(win, h - 2, 2, directory ? "[ Create ]" : host ? "[ Search ]" : "[ OK ]", focus == 1, true);
         dialog_button(win, h - 2, cancel_x, "[ Cancel ]", focus == 2, true);
         curs_set(focus == 0); wmove(win, 3, 2 + cols); dialog_refresh(win);
@@ -154,8 +141,7 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
             if (e.y == y + h - 2 && e.x >= x + cancel_x && e.x < x + cancel_x + 10) break;
             if (e.y == y + h - 2 && e.x >= x + 2 && e.x < x + ((directory || host) ? 12 : 8)) { key = '\n'; kind = OK; focus = 1; }
             else if (e.y == y + 3 && e.x >= x + 2 && e.x < x + w - 2) {
-                focus = 0; cursor = start; int col = 0;
-                while (cursor < len) { int n = ui_text_token(value[cursor]).cells; if (col + n > e.x - x - 2) break; col += n; cursor++; }
+                focus = 0; field_click(&field, e.x - x - 2);
                 continue;
             } else continue;
         }
@@ -164,25 +150,15 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
         if ((kind == OK && (key == '\n' || key == '\r')) || (kind == KEY_CODE_YES && key == KEY_ENTER)) {
             if (focus == 2) break;
             if (focus == 3) { focus = 0; continue; }
-            if (!len) { snprintf(warning, sizeof warning, "Enter a value to continue."); focus = 0; continue; }
-            if (ui_text_encode(value, len, out, size)) {
+            if (!field.len) { snprintf(warning, sizeof warning, "Enter a value to continue."); focus = 0; continue; }
+            if (ui_text_encode(field.value, field.len, out, size)) {
                 if (!directory || create_named_entry(ui, *directory, out, warning, sizeof warning)) { accepted = true; break; }
                 focus = 0;
             } else { snprintf(warning, sizeof warning, "Input is too long."); focus = 0; }
             continue;
         }
         if (focus != 0) continue;
-        if (kind == KEY_CODE_YES && key == KEY_LEFT) { if (cursor) cursor--; }
-        else if (kind == KEY_CODE_YES && key == KEY_RIGHT) { if (cursor < len) cursor++; }
-        else if (kind == KEY_CODE_YES && key == KEY_HOME) cursor = 0;
-        else if (kind == KEY_CODE_YES && key == KEY_END) cursor = len;
-        else if ((kind == KEY_CODE_YES && key == KEY_BACKSPACE) || (kind == OK && (key == 127 || key == 8))) {
-            if (cursor) { memmove(value + cursor - 1, value + cursor, (len - cursor + 1) * sizeof *value); cursor--; len--; }
-        } else if (kind == KEY_CODE_YES && key == KEY_DC) {
-            if (cursor < len) { memmove(value + cursor, value + cursor + 1, (len - cursor) * sizeof *value); len--; }
-        } else if (kind == OK && key >= 32 && iswprint(key) && len + 1 < UI_INPUT_CAP) {
-            memmove(value + cursor + 1, value + cursor, (len - cursor + 1) * sizeof *value); value[cursor++] = key; len++;
-        }
+        field_edit(&field, kind, key);
     }
     if (host) curs_set(0); else dialog_close(ui, win);
     return accepted;
@@ -291,12 +267,12 @@ static int choice_dialog(WINDOW *win, const char *title, const char **labels, in
     return result;
 }
 int show_menu(UiContext *ui) {
-    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh"};
-    const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r'};
+    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list"};
+    const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r', UI_QUICK_FIND};
     WINDOW *win = dialog_open(ui, "Menu", 14, 52);
     if (!win) return 0;
     int selected = 0, offset = 0;
-    int i = choice_dialog(win, "Menu", labels, 10, &selected, &offset, NULL);
+    int i = choice_dialog(win, "Menu", labels, 11, &selected, &offset, NULL);
     dialog_close(ui, win); return i < 0 ? 0 : keys[i];
 }
 void show_options(UiContext *ui) {
