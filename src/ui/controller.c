@@ -1,8 +1,9 @@
 #include "ui.h"
 
 void message(UiContext *ui, const char *text) {
-    (void)ui; snprintf(ui->status, sizeof ui->status, "%s", text); }
+    ui->status_kind = NOTICE_INFO; snprintf(ui->status, sizeof ui->status, "%s", text); }
 static void show_failure(UiContext *ui, const char *action, Result r) {
+    ui->status_kind = r.code == RESULT_CANCELLED ? NOTICE_CANCELLED : NOTICE_ERROR;
     snprintf(ui->status, sizeof ui->status, "%s: %.450s", action, r.detail);
 }
 static void reset_selection(UiContext *ui, const char *highlight) {
@@ -57,6 +58,7 @@ bool open_search_result(UiContext *ui, const char *path) {
 }
 static void refresh_after_operation(UiContext *ui, const char *highlight, const char *success) {
     Result r = load_dir(ui, highlight);
+    ui->notice.refresh_attempted = true; ui->notice.refresh = r;
     if (r.code == RESULT_OK) message(ui, success);
     else snprintf(ui->status, sizeof ui->status, "%.370s; list refresh failed: %.100s", success, r.detail);
 }
@@ -111,6 +113,9 @@ static void operation_warning(Result r, char *warning, size_t size) {
 }
 bool create_named_entry(UiContext *ui, bool directory, const char *name, char *warning, size_t size) {
     Result r = core_create(ui->app.directory, name, directory);
+    char *target = core_path_join(ui->app.directory, name);
+    notice_record(ui, directory ? "Create directory" : "Create file", r, NULL, target);
+    free(target);
     if (r.code != RESULT_OK) { operation_warning(r, warning, size); return false; }
     refresh_after_operation(ui, name, directory ? "Directory created" : "File created"); return true;
 }
@@ -121,6 +126,9 @@ bool rename_named_entry(UiContext *ui, const char *source, const char *name, cha
     if (unchanged) return true;
     char *destination = NULL;
     Result r = core_transfer(true, source, ui->app.directory, name, &destination);
+    char *requested = destination ? NULL : core_path_join(ui->app.directory, name);
+    notice_record(ui, "Rename", r, source, destination ? destination : requested);
+    free(requested);
     free(destination);
     if (r.code != RESULT_OK) { operation_warning(r, warning, size); return false; }
     refresh_after_operation(ui, name, "Renamed"); return true;
@@ -132,9 +140,13 @@ void delete_entry(UiContext *ui) {
     const FileInfo *it = &ui->app.files.entries[ui->selected];
     char *path = text_copy(it->path); if (!path) { message(ui, "Out of memory"); return; }
     if (!confirm(ui, it->name, it->kind == FILE_DIRECTORY)) {
+        /* Closing a confirmation did no file work; preserve an unread result. */
+        if (!(ui->notice.present && ui->notice.visible))
+            notice_record(ui, "Delete", result_make(RESULT_CANCELLED, "Confirmation cancelled; no changes"), path, NULL);
         free(path); message(ui, "Delete cancelled"); return;
     }
-    Result r = run_file_operation(ui, false, path, NULL, NULL, NULL); free(path);
+    Result r = run_file_operation(ui, false, path, NULL, NULL, NULL);
+    notice_record(ui, "Delete", r, path, NULL); free(path);
     char summary[sizeof ui->status];
     snprintf(summary, sizeof summary, "%s%.190s; completed: %llu%s",
              r.code == RESULT_OK ? "Deleted" : "Delete: ", r.code == RESULT_OK ? "" : r.detail,
@@ -150,7 +162,11 @@ bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *
     char *destination = NULL;
     Result r = move_it ? core_transfer(true, source, directory, name, &destination) :
                          run_file_operation(ui, true, source, directory, name, &destination);
+    char *requested = destination ? NULL : core_path_join(directory, name);
+    notice_record(ui, move_it ? "Move" : "Copy", r, source, destination ? destination : requested);
+    free(requested);
     if (r.code != RESULT_OK) {
+        free(destination);
         operation_warning(r, warning, size);
         if (!move_it) {
             char summary[sizeof ui->status];

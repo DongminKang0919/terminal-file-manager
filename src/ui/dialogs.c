@@ -279,12 +279,12 @@ static int choice_dialog(WINDOW *win, const char *title, const char **labels, in
     return result;
 }
 int show_menu(UiContext *ui) {
-    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list", "Rename selected item"};
-    const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r', UI_QUICK_FIND, UI_RENAME};
+    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list", "Rename selected item", "!    Recent operation result", "z    Dismiss notification"};
+    const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r', UI_QUICK_FIND, UI_RENAME, UI_RESULT, 'z'};
     WINDOW *win = dialog_open(ui, "Menu", 14, 52);
     if (!win) return 0;
     int selected = 0, offset = 0;
-    int i = choice_dialog(win, "Menu", labels, 12, &selected, &offset, NULL);
+    int i = choice_dialog(win, "Menu", labels, 14, &selected, &offset, NULL);
     dialog_close(ui, win); return i < 0 ? 0 : keys[i];
 }
 void show_options(UiContext *ui) {

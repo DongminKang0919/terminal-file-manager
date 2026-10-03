@@ -50,14 +50,14 @@ for w,h in [(50,9),(80,24),(100,24),(160,32)]:
             option(0)
             assert 'Shown: 61 | Hidden: on' in t.screen.row(h-2)
             t.send('\x1b[19~\x1b')
-            assert 'Delete cancelled' in t.screen.row(h-2)
+            assert '[Cancelled]' in t.screen.row(h-2)
             t.send('\x1bOA')
-            assert 'Delete cancelled' in t.screen.row(h-2)
+            assert '[Cancelled]' in t.screen.row(h-2)
             # Gaps (including wide group gaps) have no hidden button targets.
             top=t.screen.row(0)
             for x in [i+1 for i,c in enumerate(top[:-1]) if c==']']:
                 t.click(x,0)
-                assert 'Delete cancelled' in t.screen.row(h-2)
+                assert '[Cancelled]' in t.screen.row(h-2)
             # Enlarging preserves top; off-screen rows above still need a range.
             fcntl.ioctl(t.master,termios.TIOCSWINSZ,struct.pack('HHHH',80,w,0,0))
             t.screen=Screen(80,w)
@@ -71,7 +71,7 @@ for w,h in [(50,9),(80,24),(100,24),(160,32)]:
             t.screen=Screen(9,51 if w==50 else 50)
             os.kill(t.proc.pid,signal.SIGWINCH); t.read()
             assert '/61' in t.screen.row(6)
-            assert 'Delete cancelled' in t.screen.row(7)
+            assert '[Cancelled]' in t.screen.row(7)
         finally: t.close()
     with tempfile.TemporaryDirectory() as directory:
         t=Terminal(directory,w,h)

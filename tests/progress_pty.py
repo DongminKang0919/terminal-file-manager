@@ -63,7 +63,7 @@ for copy, action, width, height in [(True,'esc',100,24),(True,'mouse',50,9),(Tru
             line=bytes(events).split(b'R ')[1].splitlines()[0].split()
             assert line[0]==b'cancelled' and line[3]==b'1',line
             assert line[1:3]==([b'0',b'65536'] if copy else [b'2',b'0']),line
-            pump_until(lambda:(b'Copy cancelled' if copy else b'Delete cancelled') in output)
+            pump_until(lambda:b'[Cancelled]' in output or b'Copy cancelled' in output)
             assert proc.poll() is None
             if copy:
                 assert source.stat().st_size==1048576 and target.stat().st_size==65536

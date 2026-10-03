@@ -14,9 +14,9 @@ for w,h in [(50,9),(80,24),(160,32)]:
             t.send('없는'); assert 'No match:' in t.screen.row(h-2) and 'a-한글' in selected()
             t.send('\x7f\x7f\x1bOB'); assert 'b-한글' in selected()
             t.send('\x1bOA'); assert 'a-한글' in selected()
-            t.send('\x1b'); assert selected()==before and 'Delete cancelled' in t.screen.row(h-2)
+            t.send('\x1b'); assert selected()==before and '[Cancelled]' in t.screen.row(h-2)
             t.send('\x06jkqr\n'); assert 'jkqr' in selected() and 'Enter: Open' in t.screen.row(h-1)
-            assert 'Delete cancelled' in t.screen.row(h-2)
+            assert '[Cancelled]' in t.screen.row(h-2)
             t.send('\x06ćŗšƚ\n'); assert 'ćŗšƚ' in selected()
             t.send('\x06한글\n'); assert 'a-한글' in selected()
             assert 'Enter: Open' in t.screen.row(h-1) # Enter selects, never opens

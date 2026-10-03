@@ -178,8 +178,21 @@ static void draw_screen(UiContext *ui, bool prepare) {
     }
     char summary[96];
     snprintf(summary, sizeof summary, "Shown: %zu | Hidden: %s", ui->app.files.len, ui->app.show_hidden ? "on" : "off");
+    /* A compact summary leaves space for transient diagnostics on narrow screens. */
+    if (!(ui->notice.present && ui->notice.visible) && w < 90 &&
+        strlen(ui->status) + (ui->status_kind == NOTICE_INFO ? 6u : 0u) > (size_t)(w - (int)strlen(summary) - 4))
+        snprintf(summary, sizeof summary, "Shown: %zu H:%s", ui->app.files.len, ui->app.show_hidden ? "on" : "off");
     attron(COLOR_PAIR(UI_STATUS)); mvhline(h - 2, 0, ' ', w);
-    draw_text(h - 2, 1, w - 2, ui->status[0] ? ui->status : summary);
+    int summary_width = (int)strlen(summary);
+    draw_text(h - 2, 1, summary_width, summary);
+    int x = summary_width + 3;
+    char alert[600];
+    if (ui->notice.present && ui->notice.visible) {
+        snprintf(alert, sizeof alert, "[%s] ! detail%s%s", notice_label(ui->notice.kind),
+                 w >= 90 ? (ui->notice.refresh_attempted && ui->notice.refresh.code != RESULT_OK ? ": refresh failed; " : ": ") : "", w >= 90 ? ui->notice.action : "");
+    } else snprintf(alert, sizeof alert, "%s%s%s", ui->status[0] && ui->status_kind == NOTICE_INFO ? "Info" : "",
+                    ui->status[0] && ui->status_kind == NOTICE_INFO ? ": " : "", ui->status);
+    draw_text(h - 2, x, w - x - 1, alert);
     attroff(COLOR_PAIR(UI_STATUS));
     attrset(ui_bar()); mvhline(h - 1, 0, ' ', w);
     if (!ui->modal_depth) {

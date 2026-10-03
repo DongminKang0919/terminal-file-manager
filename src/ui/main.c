@@ -46,7 +46,8 @@ int main(int argc, char **argv) {
                     if (event.x > 0 && event.x < list_width - 1) ui->focus = UI_FOCUS_FILES;
                     else if (ui->app.show_preview && event.x > list_width && event.x < w - 1) ui->focus = UI_FOCUS_PREVIEW;
                 }
-                if (event.y == 0) key = header_action(event.x, w);
+                if (event.y == h - 2) key = UI_RESULT;
+                else if (event.y == 0) key = header_action(event.x, w);
                 else if (event.y == 1 && event.x >= 1 && event.x < 4) key = UI_BACK;
                 else if (event.y == 1 && event.x >= 5 && event.x < 8) key = UI_FORWARD;
                 else if (event.y == 3 && event.x >= 2 && event.x < 10) key = KEY_BACKSPACE;
@@ -71,6 +72,8 @@ int main(int argc, char **argv) {
         if (key == 'q' || key == KEY_F(10)) break;
         if (panel_key(ui, key, h)) continue;
         switch (key) {
+            case '!': case UI_RESULT: show_result(ui); break;
+            case 'z': notice_dismiss(ui); break;
             case 6: case UI_QUICK_FIND: quick_find(ui); break;
             case UI_RENAME: rename_entry(ui); break;
             case UI_BACK: history_dir(ui, false); break;
@@ -95,5 +98,5 @@ int main(int argc, char **argv) {
             case KEY_RESIZE: break;
         }
     }
-    endwin(); preview_reset(ui); app_free(&ui->app); return 0;
+    endwin(); notice_clear(ui); preview_reset(ui); app_free(&ui->app); return 0;
 }

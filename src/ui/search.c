@@ -156,12 +156,15 @@ search_done:;
     if (s.close_requested) flushinp();
     search_result_free(&result); dialog_close(ui, win);
     if (destination) { open_search_result(ui, destination); free(destination); }
-    else if (s.outcome.code != RESULT_OK)
+    else if (s.outcome.code != RESULT_OK) {
+        ui->status_kind = NOTICE_ERROR;
         snprintf(ui->status, sizeof ui->status, "Search error: %.180s: %.250s", s.outcome.detail, s.outcome.path);
-    else if (s.stopped)
+    } else if (s.stopped) {
+        ui->status_kind = NOTICE_CANCELLED;
         snprintf(ui->status, sizeof ui->status, "Search cancelled: %zu found, %zu skipped%s", s.len, s.skipped_directories + s.skipped_entries, s.limited ? " (limit)" : "");
-    else if (s.incomplete)
+    } else if (s.incomplete) {
+        ui->status_kind = NOTICE_WARNING;
         snprintf(ui->status, sizeof ui->status, "Search incomplete%s: %zu dirs / %zu entries skipped; %.120s: %.240s", s.limited ? " (limit)" : "", s.skipped_directories, s.skipped_entries, s.omission.detail, s.omission.path);
-    else if (s.limited) message(ui, "Search limit reached");
+    } else if (s.limited) { message(ui, "Search limit reached"); ui->status_kind = NOTICE_WARNING; }
     /* Closing a normal search leaves the prior operation status intact. */
 }

@@ -190,6 +190,18 @@ int main(void) {
         assert(ui.preview_offset==saved_offset && ui.selected==saved_selected && ui.top==saved_top);
         assert(reads==saved && opens==saved_opens);
     }
+    checked=checks;
+    Result nr=result_make(RESULT_CANCELLED,"Important partial result"); nr.partial=true;
+    notice_record(&ui,"Copy",nr,"/long/한글\033/path",NULL);
+    ui.focus=UI_FOCUS_PREVIEW;
+    ungetch(27); ungetch(KEY_HOME); ungetch(KEY_END); ungetch(KEY_NPAGE); show_result(&ui);
+    assert(ui.notice.visible && ui.focus==UI_FOCUS_PREVIEW);
+    assert(reads==saved && opens==saved_opens && checks==checked);
+    assert(ui.preview_session==session && ui.preview_page.lines==page);
+    assert(ui.preview_offset==saved_offset && ui.selected==saved_selected && ui.top==saved_top);
+    ungetch('a'); show_result(&ui); assert(!ui.notice.visible && ui.notice.present);
+    ungetch(27); show_result(&ui);
+    assert(reads==saved && opens==saved_opens && checks==checked);
     snprintf(ui.status,sizeof ui.status,"Important partial result");
     unget_wch('\n'); unget_wch('e'); unget_wch('l'); unget_wch('i'); unget_wch('f');
     quick_find(&ui);
@@ -239,5 +251,6 @@ int main(void) {
     endwin(); delscreen(screen); fclose(out); fclose(in);
     for(size_t i=0;i<40;i++) { assert(!unlink(extras[i])); free(extras[i]); }
     assert(!unlink(path)); assert(!rmdir(dir));
+    notice_clear(&ui);
     puts("PASS: 1000 sequential pages: 1 open, 1020 chunk reads, 12240 bytes; 100 unchanged redraws: 0 reads/opens; backward cache, EOF, changes, cleanup; sort preserves reader/page/selection without content or list I/O; refresh resets safely");
 }

@@ -52,9 +52,11 @@ for width,height in [(100,24),(50,9)]:
             t.send('\n'); retained('Name-')
             (root/'zz-new').write_text('new')
             t.send('r')
-            assert 'Refreshed' in t.screen.row(height-2)
+            assert '[Cancelled]' in t.screen.row(height-2)  # Explicit refresh retains important operation display.
+            assert 'Shown: 33' in t.screen.row(height-2)
             assert 'e16' in t.screen.row(3)[(width*3//5 if width<80 else width*11//20):]  # preview position reset on explicit refresh
             assert 'e16' in '\n'.join(t.screen.row(y)[:(width*3//5 if width<80 else width*11//20)] for y in range(4,height-3))
+            t.send('z')  # Acknowledge the retained cancellation before testing routine refresh errors.
             if os.geteuid()!=0:
                 root.chmod(0)
                 try:

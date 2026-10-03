@@ -103,10 +103,14 @@ with tempfile.TemporaryDirectory(prefix='tfile-search-state-') as directory:
         t.send('\x1b[15~')
         t.rename_transfer('selected-copy.txt')
         assert (root / 'selected-copy.txt').read_text() == 'UNIQUE_HIDDEN_PREVIEW'
+        t.send('z')  # Explicitly dismiss Copy display before testing routine open errors.
         t.send('\x1bORvanishes\n')
         (root / 'vanishes.txt').unlink()
         failed = t.send('\n')
         assert b'open search result: No such file' in failed and b'Opened search result' not in failed
+        retained = t.send('!')
+        assert b'File operation: Success' in retained  # Navigation errors retain the Copy result.
+        t.send('\x1b')
         t.send('\x1bOR')
         assert b'Cancelled:' in t.send('target\n\x1b')
         t.click(90, 1)
@@ -152,7 +156,11 @@ if os.geteuid() != 0:
             t.send('\x1bOQ')
             output = t.send('created-without-refresh\n')
             assert (root / 'created-without-refresh').is_file()
-            assert b'File created' in output and b'list refresh failed' in output
+            assert b'[Success]' in output and b'refresh failed' in output
+            details = t.send('!')
+            assert b'File operation: Success' in details
+            assert b'List refresh (separate result): Error' in details and b'Permission denied' in details
+            t.send('a')
             root.chmod(0o700)
             assert b'Refreshed' in t.send('r')
         finally:

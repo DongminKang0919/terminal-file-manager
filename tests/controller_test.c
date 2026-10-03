@@ -1,6 +1,6 @@
 #include "../src/ui/ui.h"
 #include <assert.h>
-static bool fail_refresh, cancel_operation;
+static bool fail_refresh, cancel_operation, cancel_confirmation;
 static bool cancel_callback(const OperationProgress *p, void *context) {
     unsigned *calls = context;
     return ++*calls < 3 && !p->completed_items;
@@ -18,11 +18,13 @@ Result __wrap_app_refresh(AppState *app) {
     return fail_refresh ? result_make(RESULT_ACCESS, "Injected refresh failure") : __real_app_refresh(app);
 }
 bool __wrap_confirm(UiContext *ui, const char *name, bool directory) {
-    (void)ui; (void)name; (void)directory; return true; /* Disposable fixture only. */
+    (void)ui; (void)name; (void)directory; return !cancel_confirmation; /* Disposable fixture only. */
 }
 static void ok(Result r) { if (r.code) fprintf(stderr, "%s\n", r.detail); assert(r.code == RESULT_OK); }
 static void preserved(UiContext *ui, FileInfo *files, size_t len, const char *success) {
     assert(ui->app.files.entries == files && ui->app.files.len == len);
+    assert(ui->notice.present && ui->notice.visible && ui->notice.refresh_attempted);
+    assert(ui->notice.refresh.code == RESULT_ACCESS);
     assert(strstr(ui->status, success) && strstr(ui->status, "list refresh failed"));
 }
 int main(int argc, char **argv) {
@@ -37,6 +39,7 @@ int main(int argc, char **argv) {
     char warning[256];
     assert(create_named_entry(&ui, false, "created.txt", warning, sizeof warning));
     preserved(&ui, files, len, "File created");
+    assert(ui.notice.operation.code == RESULT_OK && ui.notice.kind == NOTICE_SUCCESS);
     char *created = core_path_join(root, "created.txt"); FileInfo info;
     ok(core_info(created, &info)); file_info_free(&info);
     assert(create_named_entry(&ui, true, "created-dir", warning, sizeof warning));
@@ -47,6 +50,8 @@ int main(int argc, char **argv) {
     assert(!transfer_path(&ui, false, created, root, "cancelled-copy", warning, sizeof warning));
     preserved(&ui, files, len, "Copy cancelled");
     assert(strstr(ui.status, "incomplete files/directories kept") && strstr(ui.status, "completed: 0"));
+    assert(ui.notice.operation.code == RESULT_CANCELLED && ui.notice.operation.partial);
+    assert(ui.notice.kind == NOTICE_CANCELLED && ui.notice.operation.copied_bytes == 0);
     char *cancelled = core_path_join(root, "cancelled-copy");
     ok(core_info(cancelled, &info)); file_info_free(&info); free(cancelled);
     cancel_operation = false;
@@ -64,6 +69,14 @@ int main(int argc, char **argv) {
     /* Failed deletion and failed refresh must both survive in the message. */
     delete_entry(&ui); assert(strstr(ui.status, "Delete: No changes") && strstr(ui.status, "list refresh failed"));
     assert(!strstr(ui.status, "Deleted"));
+    assert(ui.notice.operation.code != RESULT_OK && ui.notice.refresh.code == RESULT_ACCESS);
+    Result retained = ui.notice.operation;
+    cancel_confirmation=true; delete_entry(&ui); cancel_confirmation=false;
+    assert(!memcmp(&retained,&ui.notice.operation,sizeof retained) && ui.notice.visible);
+    message(&ui, "Focus moved");
+    assert(!memcmp(&retained, &ui.notice.operation, sizeof retained) && ui.notice.visible);
+    notice_dismiss(&ui);
+    assert(ui.notice.present && !ui.notice.visible);
     assert(!open_search_result(&ui, moved)); assert(strstr(ui.status, "Cannot open search result"));
     assert(!strstr(ui.status, "Opened search result") && ui.app.files.entries == files);
     fail_refresh=false; ok(load_dir(&ui,NULL));
@@ -80,6 +93,10 @@ int main(int argc, char **argv) {
     files=ui.app.files.entries; len=ui.app.files.len; fail_refresh=true;
     assert(rename_named_entry(&ui,raw,"after-refresh-failure",warning,sizeof warning));
     preserved(&ui,files,len,"Renamed"); free(raw);
-    free(moved); free(created); preview_reset(&ui); app_free(&ui.app);
+    fail_refresh=false;
+    assert(!transfer_path(&ui,false,"/missing-source",root,"copy.txt",warning,sizeof warning));
+    assert(ui.notice.operation.code==RESULT_EXISTS && ui.notice.refresh_attempted && ui.notice.refresh.code==RESULT_OK);
+    assert(ui.notice.kind==NOTICE_ERROR);
+    notice_clear(&ui); free(moved); free(created); preview_reset(&ui); app_free(&ui.app);
     puts("PASS: refresh errors preserve UI state; create/copy/move/delete success remains distinct from refresh failure");
 }
