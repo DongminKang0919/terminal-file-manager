@@ -1,6 +1,7 @@
 #include "ui.h"
 
 void message(UiContext *ui, const char *text) {
+    ui->status_priority=false;
     ui->status_kind = NOTICE_INFO; snprintf(ui->status, sizeof ui->status, "%s", text); }
 static void show_failure(UiContext *ui, const char *action, Result r) {
     ui->status_kind = r.code == RESULT_CANCELLED ? NOTICE_CANCELLED : NOTICE_ERROR;
@@ -8,36 +9,29 @@ static void show_failure(UiContext *ui, const char *action, Result r) {
 }
 static void reset_selection(UiContext *ui, const char *highlight) {
     ui->focus = UI_FOCUS_FILES;
+    ui_panel(ui)->stale=false;
+    if(ui->status_priority) { ui->status_priority=false; ui->status[0]=0; }
     ui_panel(ui)->selected = ui_panel(ui)->top = 0; preview_reset(ui);
     if (highlight) for (size_t i = 0; i < ui_panel(ui)->app.files.len; i++)
         if (!strcmp(ui_panel(ui)->app.files.entries[i].name, highlight)) { ui_panel(ui)->selected = i; break; }
 }
 void change_sort(UiContext *ui, SortSettings sort) {
     app_set_sort(&ui_panel(ui)->app, sort, &ui_panel(ui)->selected);
-    fit_selection(ui, stdscr && LINES >= 9 ? ui_layout(COLS, LINES, ui->show_preview).list_rows : 1);
+    fit_selection(ui, stdscr && LINES >= 9 ? ui_screen_layout(ui,COLS,LINES).list.list_rows : 1);
 }
 const char *sort_label(SortKey key) {
     static const char *const labels[] = {"Name", "Size", "Modified", "Kind"};
     return key >= SORT_NAME && key <= SORT_KIND ? labels[key] : "Name";
 }
 Result load_dir(UiContext *ui, const char *highlight) {
-    size_t previous = ui_panel(ui)->selected;
-    const char *wanted = highlight ? highlight : previous < ui_panel(ui)->app.files.len ? ui_panel(ui)->app.files.entries[previous].name : NULL;
-    /* Refresh replaces the list, so copy identity before calling core. */
-    char *name = wanted ? text_copy(wanted) : NULL;
-    if (wanted && !name) {
-        Result r = result_make(RESULT_NO_MEMORY, "Out of memory"); show_failure(ui, "Refresh failed", r); return r;
-    }
-    Result r = app_refresh(&ui_panel(ui)->app);
-    if (r.code == RESULT_OK) {
+    Result r=ui_refresh_panel(ui,ui->active,highlight,ui->mode==UI_LIST_LIST);
+    if(r.code==RESULT_OK) {
         preview_reset(ui);
-        ui_panel(ui)->selected = ui_panel(ui)->app.files.len ? (previous < ui_panel(ui)->app.files.len ? previous : ui_panel(ui)->app.files.len - 1) : 0;
-        if (name) for (size_t i = 0; i < ui_panel(ui)->app.files.len; i++)
-            if (!strcmp(ui_panel(ui)->app.files.entries[i].name, name)) { ui_panel(ui)->selected = i; break; }
-        fit_selection(ui, stdscr && LINES >= 9 ? ui_layout(COLS, LINES, ui->show_preview).list_rows : 1);
-    } else show_failure(ui, "Refresh failed", r);
-    free(name); return r;
+        if(ui->status_priority) { ui->status_priority=false; ui->status[0]=0; }
+    } else show_failure(ui,"Refresh failed",r);
+    return r;
 }
+
 bool navigate(UiContext *ui, const char *path, const char *highlight) {
     char *name = highlight ? text_copy(highlight) : NULL;
     if (highlight && !name) { message(ui, "Open directory: Out of memory"); return false; }
@@ -52,13 +46,14 @@ bool open_search_result(UiContext *ui, const char *path) {
     Result r = app_remember_selection(&ui_panel(ui)->app, ui_panel(ui)->selected, ui_panel(ui)->top);
     if (r.code == RESULT_OK) r = app_open_search_result(&ui_panel(ui)->app, path, &selected, &revealed);
     if (r.code != RESULT_OK) { show_failure(ui, "Cannot open search result", r); return false; }
+    ui_panel(ui)->stale=false;
     ui_panel(ui)->selected = selected; ui_panel(ui)->top = 0; preview_reset(ui);
     message(ui, revealed ? "Opened search result; hidden files shown" : "Opened search result");
     return true;
 }
 static void refresh_after_operation(UiContext *ui, const char *highlight, const char *success) {
-    Result r = load_dir(ui, highlight);
-    ui->notice.refresh_attempted = true; ui->notice.refresh = r;
+    refresh_operation_lists(ui,highlight);
+    Result r=ui->notice.refresh;
     if (r.code == RESULT_OK) message(ui, success);
     else snprintf(ui->status, sizeof ui->status, "%.370s; list refresh failed: %.100s", success, r.detail);
 }
@@ -73,7 +68,7 @@ void history_dir(UiContext *ui, bool forward) {
         if (entry->selected_name) for (size_t i = 0; i < count; i++) {
             if (!strcmp(ui_panel(ui)->app.files.entries[i].name, entry->selected_name)) { ui_panel(ui)->selected = i; break; }
         }
-        int rows = stdscr && LINES >= 9 ? ui_layout(COLS, LINES, ui->show_preview).list_rows : 1;
+        int rows = stdscr && LINES >= 9 ? ui_screen_layout(ui,COLS,LINES).list.list_rows : 1;
         size_t max_top = count > (size_t)rows ? count - (size_t)rows : 0;
         ui_panel(ui)->top = entry->top < max_top ? entry->top : max_top;
         fit_selection(ui, rows);
@@ -89,7 +84,7 @@ void enter_item(UiContext *ui) {
     if (ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) return;
     FileInfo *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
     if (it->directory_target) navigate(ui, it->path, NULL);
-    else { ui->show_preview = true; ui->focus = UI_FOCUS_PREVIEW; }
+    else { ui_set_mode(ui,UI_LIST_PREVIEW); ui->focus = UI_FOCUS_PREVIEW; }
 }
 /* Fixed-size buffers belong only to the terminal forms, never to core paths. */
 int join(char *out, size_t size, const char *directory, const char *name) {
@@ -112,14 +107,16 @@ static void operation_warning(Result r, char *warning, size_t size) {
     snprintf(warning, size, "%s", text);
 }
 bool create_named_entry(UiContext *ui, bool directory, const char *name, char *warning, size_t size) {
+    if(!ui_operation_allowed(ui,warning,size)) return false;
     Result r = core_create(ui_panel(ui)->app.directory, name, directory);
     char *target = core_path_join(ui_panel(ui)->app.directory, name);
     notice_record(ui, directory ? "Create directory" : "Create file", r, NULL, target);
     free(target);
-    if (r.code != RESULT_OK) { operation_warning(r, warning, size); return false; }
+    if (r.code != RESULT_OK) { operation_warning(r, warning, size); refresh_peer_after_operation(ui); return false; }
     refresh_after_operation(ui, name, directory ? "Directory created" : "File created"); return true;
 }
 bool rename_named_entry(UiContext *ui, const char *source, const char *name, char *warning, size_t size) {
+    if(!ui_operation_allowed(ui,warning,size)) return false;
     char *original = core_path_name(source);
     if (!original) { snprintf(warning, size, "Out of memory"); return false; }
     bool unchanged = !strcmp(original, name); free(original);
@@ -133,13 +130,15 @@ bool rename_named_entry(UiContext *ui, const char *source, const char *name, cha
     r = core_transfer(true, source, ui_panel(ui)->app.directory, name, &destination);
     notice_commit(ui,&prepared,r);
     free(destination);
-    if (r.code != RESULT_OK) { operation_warning(r, warning, size); return false; }
+    if (r.code != RESULT_OK) { operation_warning(r, warning, size); refresh_peer_after_operation(ui); return false; }
     const char *old=strrchr(source,'/'); app_unmark(&ui_panel(ui)->app,old?old+1:source);
     refresh_after_operation(ui, name, "Renamed"); return true;
 }
 void create_entry(UiContext *ui, bool directory) {
+    if(!ui_operation_allowed(ui,NULL,0)) return;
     (void)ui; char name[UI_INPUT_CAP]; new_entry_dialog(ui, directory, name, sizeof name); }
 void delete_entry(UiContext *ui) {
+    if(!ui_operation_allowed(ui,NULL,0)) return;
     if (ui_panel(ui)->app.marks_len > 1) { batch_entry(ui, BATCH_DELETE); return; }
     if (ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) return;
     const FileInfo *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
@@ -171,6 +170,7 @@ void delete_entry(UiContext *ui) {
     refresh_after_operation(ui, NULL, summary);
 }
 bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *directory, const char *name, char *warning, size_t size) {
+    if(!ui_operation_allowed(ui,warning,size)) return false;
     char *requested=core_path_join(directory,name);
     OperationNotice prepared;
     Result r=requested ? notice_prepare(&prepared,move_it?"Move":"Copy",source,requested) : result_make(RESULT_NO_MEMORY,"Out of memory; no changes");
@@ -194,7 +194,7 @@ bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *
                remain in the retained notice, rather than hiding the cause. */
             if (r.code == RESULT_CANCELLED)
                 snprintf(warning, size, "Copy cancelled; %s", r.partial ? "changes kept" : "no changes");
-        }
+        } else refresh_peer_after_operation(ui);
         return false;
     }
     char success[sizeof ui->status];
@@ -208,9 +208,10 @@ bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *
 
 /* Panel-only keys never perform list navigation while preview has focus. */
 bool panel_key(UiContext *ui, int key, int height) {
-    if (!ui->show_preview) ui->focus = UI_FOCUS_FILES;
+    if (!ui_preview_enabled(ui)) ui->focus = UI_FOCUS_FILES;
     if (key == '\t' || key == KEY_BTAB) {
-        if (ui->show_preview) ui->focus = ui->focus == UI_FOCUS_FILES ? UI_FOCUS_PREVIEW : UI_FOCUS_FILES;
+        if(ui->mode==UI_LIST_LIST) { ui_activate_panel(ui,ui->active^1u); return true; }
+        if (ui_preview_enabled(ui)) ui->focus = ui->focus == UI_FOCUS_FILES ? UI_FOCUS_PREVIEW : UI_FOCUS_FILES;
         return true;
     }
     if (ui->focus != UI_FOCUS_PREVIEW) return false;

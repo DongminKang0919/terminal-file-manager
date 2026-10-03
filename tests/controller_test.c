@@ -29,7 +29,7 @@ static void preserved(UiContext *ui, FileInfo *files, size_t len, const char *su
 }
 int main(int argc, char **argv) {
     assert(argc == 2); const char *root = argv[1];
-    UiContext ui = {0}; ok(ui_init(&ui, root)); assert(ui.show_preview && ui.wheel_step==1);
+    UiContext ui = {0}; ok(ui_init(&ui, root)); assert(ui_preview_enabled(&ui) && ui.wheel_step==1);
     change_sort(&ui, (SortSettings){SORT_SIZE, true});
     FileInfo *files = ui_panel(&ui)->app.files.entries; size_t len = ui_panel(&ui)->app.files.len;
     ui_panel(&ui)->selected = 2; ui_panel(&ui)->top = 1; ui.preview_offset = 10;

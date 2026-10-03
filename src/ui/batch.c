@@ -63,7 +63,7 @@ void batch_finish(UiContext *ui,BatchJob *job) {
     notice_record(ui,job->action==BATCH_DELETE?"Batch delete":job->action==BATCH_MOVE?"Batch move":"Batch copy",job->result,NULL,NULL);
     ui->notice.batch=*job; *job=(BatchJob){0}; /* transfer ownership, no result allocation */
     if(ui->notice.batch.executed) {
-        ui->notice.refresh=load_dir(ui,NULL); ui->notice.refresh_attempted=true;
+        refresh_operation_lists(ui,NULL);
     }
 }
 /* Own the frozen job throughout editing; only execution transfers it to notice. */
@@ -139,6 +139,7 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
     dialog_close(ui,win); free(base);
 }
 void batch_entry(UiContext *ui,BatchAction action) {
+    if(!ui_operation_allowed(ui,NULL,0)) return;
     BatchJob job; Result r=batch_prepare(&ui_panel(ui)->app,ui_panel(ui)->selected,action,&job);
     if(r.code!=RESULT_OK) {
         notice_record(ui,action==BATCH_DELETE?"Batch delete":action==BATCH_MOVE?"Batch move":"Batch copy",r,NULL,NULL);return;

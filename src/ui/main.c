@@ -5,7 +5,7 @@ int main(int argc, char **argv) {
     if (argc > 2) { fprintf(stderr, "Usage: %s [directory]\n", argv[0]); return 1; }
     UiContext context = {0}; UiContext *ui = &context;
     Result initialized = ui_init(ui, argc == 2 ? argv[1] : NULL);
-    if (initialized.code != RESULT_OK) { fprintf(stderr, "%s\n", initialized.detail); app_free(&ui_panel(ui)->app); return 1; }
+    if (initialized.code != RESULT_OK) { fprintf(stderr, "%s\n", initialized.detail); ui_free(ui); return 1; }
 
     initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0); init_theme();
     input_init();
@@ -17,19 +17,26 @@ int main(int argc, char **argv) {
     int key;
     for (;;) {
         draw(ui); key = input_key(stdscr);
-        int h, w; getmaxyx(stdscr, h, w); UiLayout layout = ui_layout(w, h, ui->show_preview); int rows = layout.list_rows; if (rows < 1) rows = 1;
+        int h, w; getmaxyx(stdscr, h, w); UiScreenLayout screen=ui_screen_layout(ui,w,h); UiLayout layout=screen.list; int rows = layout.list_rows; if (rows < 1) rows = 1;
         if (key == KEY_MOUSE) {
             MEVENT event;
             if (getmouse(&event) != OK) continue;
-            int list_width = layout.list_width;
+            int list_width = layout.list_width, list_x=screen.x[ui->active];
             if (h < 9 || w < 50) continue;
+            int hit=ui_panel_at(&screen,event.x,event.y);
+            if(ui->mode==UI_LIST_LIST && hit>=0 && (mouse_click(&event)||(event.bstate&(BUTTON4_PRESSED|BUTTON5_PRESSED)))) {
+                if(ui->active!=(unsigned)hit) last_index=SIZE_MAX;
+                ui_activate_panel(ui,(unsigned)hit);
+                list_x=screen.x[ui->active]; list_width=screen.width[ui->active];
+            }
+            int local_x=event.x-list_x;
             if (event.bstate & (BUTTON4_PRESSED | BUTTON5_PRESSED)) {
                 last_index = SIZE_MAX;
-                if (ui->show_preview && event.x > list_width && event.x < w - 1 && event.y > 2 && event.y < h - 3) {
+                if (ui_preview_enabled(ui) && event.x > list_width && event.x < w - 1 && event.y > 2 && event.y < h - 3) {
                     preview_scroll(ui, (event.bstate & BUTTON5_PRESSED) != 0);
                     continue;
                 }
-                if (event.x <= 0 || event.x >= list_width - 1 || event.y < layout.list_y || event.y >= h - 3) continue;
+                if (local_x <= 0 || local_x >= list_width - 1 || event.y < layout.list_y || event.y >= h - 3) continue;
                 size_t max_top = ui_panel(ui)->app.files.len > (size_t)rows ? ui_panel(ui)->app.files.len - (size_t)rows : 0;
                 if (event.bstate & BUTTON4_PRESSED) {
                     ui_panel(ui)->top = ui_panel(ui)->top > (size_t)ui->wheel_step ? ui_panel(ui)->top - ui->wheel_step : 0;
@@ -44,16 +51,16 @@ int main(int argc, char **argv) {
             }
             else if (mouse_click(&event)) {
                 if (event.y > 2 && event.y < h - 3) {
-                    if (event.x > 0 && event.x < list_width - 1) ui->focus = UI_FOCUS_FILES;
-                    else if (ui->show_preview && event.x > list_width && event.x < w - 1) ui->focus = UI_FOCUS_PREVIEW;
+                    if (local_x > 0 && local_x < list_width - 1) ui->focus = UI_FOCUS_FILES;
+                    else if (ui_preview_enabled(ui) && event.x > list_width && event.x < w - 1) ui->focus = UI_FOCUS_PREVIEW;
                 }
                 if (event.y == h - 2) key = UI_RESULT;
                 else if (event.y == 0) key = header_action(event.x, w);
-                else if (event.y == 1 && event.x >= 1 && event.x < 4) key = UI_BACK;
-                else if (event.y == 1 && event.x >= 5 && event.x < 8) key = UI_FORWARD;
-                else if (event.y == 3 && event.x >= 2 && event.x < 10) key = KEY_BACKSPACE;
-                else if (event.y == 3 && event.x >= 12 && event.x < 18) key = KEY_ENTER;
-                else if (event.y >= layout.list_y && event.y < h - 3 && event.x > 0 && event.x < list_width - 1 && ui_panel(ui)->top + (size_t)(event.y - layout.list_y) < ui_panel(ui)->app.files.len) {
+                else if (event.y == 1 && local_x >= 1 && local_x < 4) key = UI_BACK;
+                else if (event.y == 1 && local_x >= 5 && local_x < 8) key = UI_FORWARD;
+                else if (event.y == 3 && local_x >= 2 && local_x < 10) key = KEY_BACKSPACE;
+                else if (event.y == 3 && local_x >= 12 && local_x < 18) key = KEY_ENTER;
+                else if (event.y >= layout.list_y && event.y < h - 3 && local_x > 0 && local_x < list_width - 1 && ui_panel(ui)->top + (size_t)(event.y - layout.list_y) < ui_panel(ui)->app.files.len) {
                     ui_panel(ui)->selected = ui_panel(ui)->top + (size_t)(event.y - layout.list_y);
                     uint64_t now = core_monotonic_ms();
                     uint64_t ms = now - last_click;
@@ -73,6 +80,9 @@ int main(int argc, char **argv) {
         if (key == 'q' || key == KEY_F(10)) break;
         if (panel_key(ui, key, h)) continue;
         switch (key) {
+            case UI_MODE_PREVIEW: ui_set_mode(ui,UI_LIST_PREVIEW); break;
+            case UI_MODE_FILES: ui_set_mode(ui,UI_LIST_ONLY); break;
+            case UI_MODE_DUAL: ui_set_mode(ui,UI_LIST_LIST); break;
             case ' ':
                 if (ui->focus == UI_FOCUS_FILES && ui_panel(ui)->selected < ui_panel(ui)->app.files.len) {
                     Result r = app_mark_toggle(&ui_panel(ui)->app, ui_panel(ui)->app.files.entries[ui_panel(ui)->selected].name);

@@ -22,14 +22,15 @@ for width,height in [(50,9),(80,24),(160,32)]:
             before=[t.screen.row(y) for y in range(height)]
             t.send('\x1bOP')
             seen={}; previous=0
-            for _ in range(100):
+            # Bound traversal by the reported line count and strict forward progress.
+            while True:
                 t.frame(px,py,pw,ph)
                 assert 'Help' in t.screen.row(py)
                 footer=''.join(t.screen.rows[py+ph-3][px+2:px+pw-2])
                 match=re.search(r'Lines (\d+)-(\d+)/(\d+) \| (Top|\^ more) (v more|End)',footer)
                 assert match,footer
                 start,end,total=map(int,match.group(1,2,3))
-                assert end-start+1<=ph-4 and start>=previous
+                assert end-start+1<=ph-4 and 1<=start<=end<=total and start>previous
                 assert 'Wheel/Arrows/PgUp/PgDn  Esc: close' in t.screen.row(py+ph-2)
                 for number in range(start,end+1):
                     text=''.join(t.screen.rows[py+1+number-start][px+2:px+pw-2]).rstrip()
@@ -38,7 +39,6 @@ for width,height in [(50,9),(80,24),(160,32)]:
                     seen[number]=text
                 if end==total: break
                 previous=start; t.send('\x1b[6~')
-            else: raise AssertionError('Help did not reach End')
             assert set(seen)==set(range(1,total+1))
             body=' '.join(' '.join(seen[i].split()) for i in range(1,total+1))
             for text in ['GETTING STARTED','NAVIGATION','FILE OPERATIONS','SEARCH','PREVIEW','OPTIONS',
@@ -46,7 +46,8 @@ for width,height in [(50,9),(80,24),(160,32)]:
                          'incomplete copies are kept','deleted items are not restored',
                          'Cancel/Esc/Enter keeps collected results','x or resize stops and closes',
                          'Sorting preserves','Settings last for this session only',
-                         'Popup input cannot operate the background']:
+                         'Popup input cannot operate the background', 'SCREEN MODES AND FILE PANELS',
+                         'Left + Right files', 'STALE lists block file changes', 'both refresh results separately']:
                 assert text in body,text
             t.send('\x1bOH'); assert 'Lines 1-' in t.screen.row(py+ph-3)
             t.send(f'\x1b[<65;{px+4};{py+3}M'); assert 'Lines 2-' in t.screen.row(py+ph-3)

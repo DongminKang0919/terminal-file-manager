@@ -11,7 +11,7 @@ void notice_clear(UiContext *ui) {
 }
 void notice_dismiss(UiContext *ui) {
     ui->notice.visible = false;
-    ui->status[0] = 0;
+    ui->status[0] = 0; ui->status_priority=false;
 }
 Result notice_prepare(OperationNotice *out,const char *action,const char *source,const char *destination) {
     *out=(OperationNotice){0};
@@ -25,10 +25,10 @@ Result notice_prepare(OperationNotice *out,const char *action,const char *source
 void notice_commit(UiContext *ui,OperationNotice *prepared,Result result) {
     notice_clear(ui);ui->notice=*prepared;*prepared=(OperationNotice){0};
     OperationNotice *n=&ui->notice;
-    n->present=n->visible=true;n->operation=result;
+    n->present=n->visible=true;n->operation=result; n->source_panel=ui->active;
     n->kind=result.code==RESULT_CANCELLED?NOTICE_CANCELLED:result.code!=RESULT_OK?NOTICE_ERROR:NOTICE_SUCCESS;
     if(result.partial&&result.code!=RESULT_CANCELLED) n->kind=NOTICE_WARNING;
-    ui->status[0]=0;
+    ui->status[0]=0; ui->status_priority=false;
 }
 void notice_record(UiContext *ui,const char *action,Result result,const char *source,const char *destination) {
     OperationNotice prepared; (void)notice_prepare(&prepared,action,source,destination);
@@ -109,8 +109,12 @@ void show_result(UiContext *ui) {
                      "No filesystem changes reported by this operation.", false);
             add_text(&text, "Remaining recursive item count and total progress are unknown. No automatic retry or rollback.", false);
         }
-        if (n->refresh_attempted) result_rows(&text, "List refresh (separate result)", n->refresh);
+        if (n->refresh_attempted) result_rows(&text, n->peer_refresh_attempted ?
+            (n->source_panel ? "Right list refresh (separate result)" : "Left list refresh (separate result)") :
+            "List refresh (separate result)", n->refresh);
         else add_text(&text, "List refresh: not attempted.", false);
+        if(n->peer_refresh_attempted) result_rows(&text,n->source_panel ?
+            "Left list refresh (separate result)" : "Right list refresh (separate result)",n->peer_refresh);
         add_text(&text, "Result limits: detail 255 bytes; diagnostic path 1023 bytes (may retain only tail). Stored diagnostics may already be shortened.", false);
         add_text(&text, "Only the latest file operation result is kept. Acknowledgement closes its display; details remain available.", false);
     }

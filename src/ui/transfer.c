@@ -149,6 +149,7 @@ static void show_transfer_paths(UiContext *ui, const char *source, const char *b
 }
 
 void transfer_entry(UiContext *ui, bool move_it) {
+    if(!ui_operation_allowed(ui,NULL,0)) return;
     if (ui_panel(ui)->app.marks_len > 1) { batch_entry(ui, move_it ? BATCH_MOVE : BATCH_COPY); return; }
     const FileInfo *initial=ui_panel(ui)->selected<ui_panel(ui)->app.files.len ? &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected] : NULL;
     bool fixed_source=ui_panel(ui)->app.marks_len!=0;

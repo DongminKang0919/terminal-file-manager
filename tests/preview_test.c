@@ -89,7 +89,7 @@ int main(void) {
         char name[32]; snprintf(name,sizeof name,"z%zu",i);
         extras[i]=core_path_join(dir,i<7 ? special[i] : name); assert(extras[i]); write_file(extras[i],0);
     }
-    UiContext ui={0}; assert(ui_init(&ui,dir).code==RESULT_OK); ui.show_preview=true;
+    UiContext ui={0}; assert(ui_init(&ui,dir).code==RESULT_OK); ui.mode=UI_LIST_PREVIEW;
     FILE *out=tmpfile(), *in=tmpfile(); assert(out && in); SCREEN *screen=newterm("xterm-256color",out,in); assert(screen);
     preview_prepare(&ui,17); saved=reads; size_t saved_opens=opens;
     for(int i=0;i<100;i++) { preview_prepare(&ui,17); preview(&ui,50,2,50,20); }
@@ -130,8 +130,8 @@ int main(void) {
     write_file(path,1000); preview_reset(&ui); preview_prepare(&ui,17);
     assert(ui.preview_result.code==RESULT_OK && live==1);
     for(int i=0;i<100;i++) { preview_reset(&ui); preview_prepare(&ui,17); assert(live==1); }
-    ui.show_preview=false; preview_prepare(&ui,17); assert(live==0);
-    ui.show_preview=true; preview_prepare(&ui,2); preview_prepare(&ui,30); assert(live==1);
+    ui.mode=UI_LIST_ONLY; preview_prepare(&ui,17); assert(live==0);
+    ui.mode=UI_LIST_PREVIEW; preview_prepare(&ui,2); preview_prepare(&ui,30); assert(live==1);
     init_theme(); resizeterm(24,100); ui_panel(&ui)->selected=0; ui_panel(&ui)->top=0; draw(&ui);
     assert((mvinch(5,1)&A_CHARTEXT)=='>');
     assert(mvinch(5,3)&A_BOLD);
@@ -229,9 +229,9 @@ int main(void) {
     assert(ui_panel(&ui)->app.show_hidden==hidden && ui_panel(&ui)->app.files.entries==entries);
     assert(ui_panel(&ui)->selected==option_selected && ui_panel(&ui)->top==option_top && strstr(ui.status,"Refresh failed"));
     assert(ui.preview_session==session && ui.preview_page.lines==page && reads==saved && opens==saved_opens);
-    ui.show_preview=false; draw(&ui);
+    ui.mode=UI_LIST_ONLY; draw(&ui);
     assert(ui.focus==UI_FOCUS_FILES && !ui.preview_session && !live);
-    enter_item(&ui); assert(ui.show_preview && ui.focus==UI_FOCUS_PREVIEW);
+    enter_item(&ui); assert(ui_preview_enabled(&ui) && ui.focus==UI_FOCUS_PREVIEW);
     draw(&ui); assert(live==1);
     forbid_list=false;
     short fg, bg, base_fg, base_bg;

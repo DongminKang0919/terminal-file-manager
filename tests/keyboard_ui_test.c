@@ -87,7 +87,7 @@ int main(void) {
         assert(strstr(ui.status,"Refresh failed"));
         assert(ui_panel(&ui)->app.files.entries==&item && ui_panel(&ui)->app.files.len==1 && !strcmp(item.name,"kept"));
         assert(!ui.modal_depth);
-        ui.show_preview=true; ui.focus=UI_FOCUS_PREVIEW; ui_panel(&ui)->selected=0; ui_panel(&ui)->top=0; ui.preview_offset=23;
+        ui.mode=UI_LIST_PREVIEW; ui.focus=UI_FOCUS_PREVIEW; ui_panel(&ui)->selected=0; ui_panel(&ui)->top=0; ui.preview_offset=23;
         Result result=result_make(RESULT_IO,"first diagnostic\nsecond diagnostic\nthird diagnostic");
         strcpy(result.path,"/");
         for(int i=0;i<150;i++) strcat(result.path,"한글");

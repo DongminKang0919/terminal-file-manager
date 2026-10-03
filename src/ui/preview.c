@@ -16,7 +16,7 @@ void preview_scroll(UiContext *ui, bool down) {
    No idle timer: metadata is checked on viewport changes or the next redraw
    after one second. Explicit refresh resets even a latched error. */
 void preview_prepare(UiContext *ui, int rows) {
-    if (!ui->show_preview || ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) { preview_reset(ui); return; }
+    if (!ui_preview_enabled(ui) || ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) { preview_reset(ui); return; }
     const Item *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
     bool fresh = !ui->preview_path || strcmp(ui->preview_path, it->path);
     if (fresh) {

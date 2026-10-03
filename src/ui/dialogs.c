@@ -183,6 +183,7 @@ bool search_prompt(UiContext *ui, WINDOW *win, char *out, size_t size) {
     return input_dialog(ui, "Search", out, size, NULL, out, win, NULL, NULL);
 }
 void rename_entry(UiContext *ui) {
+    if(!ui_operation_allowed(ui,NULL,0)) return;
     if(ui_panel(ui)->app.marks_len>1) { message(ui,"Rename unavailable: multiple marked items");return; }
     if (ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) return;
     char *source = text_copy(ui_panel(ui)->app.files.entries[ui_panel(ui)->selected].path);
@@ -286,13 +287,13 @@ static int choice_dialog(WINDOW *win, const char *title, const char **labels, in
     return result;
 }
 int show_menu(UiContext *ui) {
-    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list", "Rename selected item", "!    Recent operation result", "z    Dismiss notification", "Select all visible items", "Clear selection"};
+    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list", "Rename selected item", "!    Recent operation result", "z    Dismiss notification", "Select all visible items", "Clear selection", "View: Files + Preview", "View: Files only", "View: Left + Right files"};
     if(ui_panel(ui)->app.marks_len > 1) labels[11]="[disabled] Rename: multiple marked items";
-    const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r', UI_QUICK_FIND, UI_RENAME, UI_RESULT, 'z', UI_SELECT_ALL, UI_CLEAR_SELECTION};
+    const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r', UI_QUICK_FIND, UI_RENAME, UI_RESULT, 'z', UI_SELECT_ALL, UI_CLEAR_SELECTION, UI_MODE_PREVIEW, UI_MODE_FILES, UI_MODE_DUAL};
     WINDOW *win = dialog_open(ui, "Menu", 14, 52);
     if (!win) return 0;
     int selected = 0, offset = 0;
-    int i = choice_dialog(win, "Menu", labels, 16, &selected, &offset, NULL);
+    int i = choice_dialog(win, "Menu", labels, 19, &selected, &offset, NULL);
     dialog_close(ui, win);
     if (i == 11 && ui_panel(ui)->app.marks_len > 1) { message(ui, "Rename unavailable: multiple marked items"); return 0; }
     return i < 0 ? 0 : keys[i];
@@ -305,7 +306,7 @@ void show_options(UiContext *ui) {
     for (;;) {
         char hidden[64], preview_text[64], wheel[64], sort[64], direction[64];
         snprintf(hidden, sizeof hidden, "[%c] Show hidden files", ui_panel(ui)->app.show_hidden ? 'x' : ' ');
-        snprintf(preview_text, sizeof preview_text, "[%c] Show preview panel", ui->show_preview ? 'x' : ' ');
+        snprintf(preview_text, sizeof preview_text, "[%c] Show preview panel", ui_preview_enabled(ui) ? 'x' : ' ');
         snprintf(wheel, sizeof wheel, "Wheel scroll: %d rows (click to change)", ui->wheel_step);
         snprintf(sort, sizeof sort, "Sort by: %s (click to change)", sort_label(ui_panel(ui)->app.sort.key));
         snprintf(direction, sizeof direction, "Sort order: %s (click to change)", ui_panel(ui)->app.sort.descending ? "Descending" : "Ascending");
@@ -319,7 +320,7 @@ void show_options(UiContext *ui) {
                 snprintf(warning, sizeof warning, "%s", ui->status);
             }
         }
-        if (i == 1) ui->show_preview = !ui->show_preview;
+        if (i == 1) ui_set_mode(ui,ui_preview_enabled(ui) ? UI_LIST_ONLY : UI_LIST_PREVIEW);
         if (i == 2) ui->wheel_step = ui->wheel_step == 1 ? 3 : ui->wheel_step == 3 ? 5 : 1;
         if (i == 3) change_sort(ui, (SortSettings){(ui_panel(ui)->app.sort.key + 1) % 4, ui_panel(ui)->app.sort.descending});
         if (i == 4) change_sort(ui, (SortSettings){ui_panel(ui)->app.sort.key, !ui_panel(ui)->app.sort.descending});

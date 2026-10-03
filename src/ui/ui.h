@@ -13,7 +13,7 @@
 
 /* Existing terminal form input limit; core/platform paths are dynamically allocated. */
 #define UI_INPUT_CAP 4096
-enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE, UI_RENAME, UI_QUICK_FIND, UI_RESULT, UI_SELECT_ALL, UI_CLEAR_SELECTION };
+enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE, UI_RENAME, UI_QUICK_FIND, UI_RESULT, UI_SELECT_ALL, UI_CLEAR_SELECTION, UI_MODE_PREVIEW, UI_MODE_FILES, UI_MODE_DUAL };
 void input_init(void);
 int input_key(WINDOW *win);
 int input_wide(WINDOW *win, wint_t *key);
@@ -29,9 +29,10 @@ typedef FileInfo Item;
 typedef enum { UI_FOCUS_FILES, UI_FOCUS_PREVIEW } UiFocus;
 typedef enum { NOTICE_INFO, NOTICE_SUCCESS, NOTICE_CANCELLED, NOTICE_WARNING, NOTICE_ERROR } NoticeKind;
 typedef struct {
-    bool present, visible, refresh_attempted;
+    bool present, visible, refresh_attempted, peer_refresh_attempted;
+    unsigned source_panel;
     NoticeKind kind;
-    Result operation, refresh;
+    Result operation, refresh, peer_refresh;
     BatchJob batch;
     char action[32];
     char *source, *destination;
@@ -40,11 +41,14 @@ typedef struct {
 typedef struct {
     AppState app;
     size_t selected, top;
+    bool stale; /* A failed dual-panel refresh blocks writes until a successful load. */
 } UiFilePanel;
+typedef enum { UI_LIST_ONLY, UI_LIST_PREVIEW, UI_LIST_LIST } UiMode;
 typedef struct {
-    UiFilePanel panels[1];
+    UiFilePanel panels[2];
+    bool second_initialized;
     unsigned active;
-    bool show_preview;
+    UiMode mode;
     int wheel_step;
     unsigned modal_depth;
     UiFocus focus;
@@ -59,11 +63,19 @@ typedef struct {
     bool preview_ready;
     char status[512]; /* Routine/transient guidance, separate from the retained result. */
     NoticeKind status_kind;
+    bool status_priority; /* Panel errors are visible without replacing the retained result. */
     OperationNotice notice;
 } UiContext;
 static inline UiFilePanel *ui_panel(UiContext *ui) { return &ui->panels[ui->active]; }
+static inline bool ui_preview_enabled(const UiContext *ui) { return ui->mode==UI_LIST_PREVIEW; }
 /* Initialize an empty context; ui_free releases all owned UI and panel data. */
 Result ui_init(UiContext *ui, const char *directory);
+Result ui_set_mode(UiContext *ui, UiMode mode);
+bool ui_activate_panel(UiContext *ui, unsigned panel);
+Result ui_refresh_panel(UiContext *ui, unsigned panel, const char *highlight, bool require_fresh);
+bool ui_operation_allowed(UiContext *ui, char *warning, size_t size);
+void refresh_peer_after_operation(UiContext *ui);
+void refresh_operation_lists(UiContext *ui, const char *highlight);
 void ui_free(UiContext *ui);
 void quick_find(UiContext *ui);
 void notice_clear(UiContext *ui);
@@ -118,6 +130,14 @@ size_t draw_window_page(WINDOW *win, int y, int x, int width, const char *text, 
 int header_action(int x, int width);
 typedef struct { int list_width, panel_height, list_y, list_rows; bool columns; } UiLayout;
 UiLayout ui_layout(int width, int height, bool preview);
+typedef struct {
+    UiLayout list;
+    int x[2], width[2];
+    bool visible[2];
+} UiScreenLayout;
+UiScreenLayout ui_screen_layout(const UiContext *ui, int width, int height);
+/* File panel paths/content share hit regions; hidden panels have none. */
+int ui_panel_at(const UiScreenLayout *layout, int x, int y);
 const char *ui_kind(const Item *it);
 void ui_size(const Item *it, char *out, size_t size);
 #define PREVIEW_METADATA_ROWS 3

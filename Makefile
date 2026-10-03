@@ -77,7 +77,8 @@ tests/startup_ui_test: tests/startup_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCE
 tests/search_progress_ui_test: tests/search_progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/search_progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_monotonic_ms,--wrap=core_monotonic_ms,--wrap=input_key,--wrap=input_wide,--wrap=wrefresh
 
-check: tests/tfile_batch tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/progress_ui_test tests/tfile_progress tests/preview_test tfile check-core tests/controller_test tests/text_test tests/text_window_test
+check: tests/panels_ui_test tests/tfile_batch tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/progress_ui_test tests/tfile_progress tests/preview_test tfile check-core tests/controller_test tests/text_test tests/text_window_test
+	./tests/panels_ui_test
 	./tests/batch_ui_test
 	./tests/startup_ui_test
 	./tests/search_progress_ui_test
@@ -103,12 +104,13 @@ check: tests/tfile_batch tests/batch_ui_test tests/startup_ui_test tests/search_
 	python3 tests/keyboard_pty.py
 	python3 tests/search_ui_pty.py
 	python3 tests/help_pty.py
+	python3 tests/panels_pty.py
 	python3 tests/batch_destination_pty.py
 	python3 tests/batch_pty.py
 	python3 tests/batch_progress_pty.py
 
 clean:
-	rm -f tfile tests/tfile_batch tests/batch_test tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/ownership_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
+	rm -f tfile tests/panels_ui_test tests/tfile_batch tests/batch_test tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/ownership_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
 
 .PHONY: all clean check check-core
 
@@ -123,3 +125,7 @@ tests/batch_ui_test: tests/batch_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $
 
 tests/tfile_batch: tests/batch_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/batch_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=batch_execute
+
+
+tests/panels_ui_test: tests/panels_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/panels_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=app_init,--wrap=app_refresh,--wrap=platform_directory_open,--wrap=platform_reader_line,--wrap=qsort,--wrap=newwin,--wrap=delwin,--wrap=input_key,--wrap=input_wide,--wrap=confirm,--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=free

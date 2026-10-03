@@ -40,6 +40,6 @@ void quick_find(UiContext *ui) {
             if (text_contains(ui_panel(ui)->app.files.entries[i].name,term)) { ui_panel(ui)->selected=i; found=true; break; }
         }
     }
-    ui_panel(ui)->selected=selected; ui_panel(ui)->top=top; ui->focus=ui->show_preview?focus:UI_FOCUS_FILES;
+    ui_panel(ui)->selected=selected; ui_panel(ui)->top=top; ui->focus=ui_preview_enabled(ui)?focus:UI_FOCUS_FILES;
     curs_set(0); draw(ui);
 }
