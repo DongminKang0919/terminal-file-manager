@@ -21,7 +21,7 @@ bool text_contains(const char *text, const char *needle) {
     }
     return false;
 }
-Result core_list(const char *directory, bool hidden, bool directories_only, FileList *out) {
+static Result read_list(const char *directory, bool hidden, bool directories_only, FileList *out) {
     *out = (FileList){0}; PlatformDirectory *dir = NULL;
     Result r = platform_directory_open(directory, &dir);
     size_t capacity = 0;
@@ -40,7 +40,13 @@ Result core_list(const char *directory, bool hidden, bool directories_only, File
     }
     platform_directory_close(dir);
     if (r.code != RESULT_OK) file_list_free(out);
-    else if (out->len > 1) qsort(out->entries, out->len, sizeof *out->entries, file_compare);
+    return r;
+}
+/* Pickers retain their legacy order; the main list applies its own comparator
+   directly to the read list, including the raw-name tie breaker. */
+Result core_list(const char *directory, bool hidden, bool directories_only, FileList *out) {
+    Result r = read_list(directory, hidden, directories_only, out);
+    if (r.code == RESULT_OK && out->len > 1) qsort(out->entries, out->len, sizeof *out->entries, file_compare);
     return r;
 }
 Result core_resolve_directory(const char *base, const char *input, char **out) {
@@ -70,7 +76,7 @@ static Result navigate_to(AppState *app, const char *directory, bool record, boo
     Result r = core_resolve_directory(app->directory, directory, &resolved);
     if (r.code != RESULT_OK) return r;
     FileList list;
-    r = core_list(resolved, hidden, false, &list);
+    r = read_list(resolved, hidden, false, &list);
     if (r.code != RESULT_OK) { free(resolved); return r; }
     main_list_sort(&list, app->sort);
     size_t choice = 0;

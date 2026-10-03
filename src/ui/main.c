@@ -13,7 +13,8 @@ int main(int argc, char **argv) {
     uint64_t last_click = 0;
     size_t last_index = SIZE_MAX;
 
-    load_dir(ui, NULL); int key;
+    /* app_init already loaded and sorted this directory. */
+    int key;
     for (;;) {
         draw(ui); key = input_key(stdscr);
         int h, w; getmaxyx(stdscr, h, w); UiLayout layout = ui_layout(w, h, ui->app.show_preview); int rows = layout.list_rows; if (rows < 1) rows = 1;

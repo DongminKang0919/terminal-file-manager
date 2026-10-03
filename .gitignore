@@ -49,3 +49,7 @@ __pycache__/
 
 /tests/keyboard_ui_test
 /tests/history_ui_test
+
+/tests/startup_ui_test
+/tests/search_progress_ui_test
+/tests/ownership_test

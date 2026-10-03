@@ -175,7 +175,10 @@ bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *
                      r.partial ? "incomplete files/directories kept" : "no changes",
                      (unsigned long long)r.completed_items, (unsigned long long)r.copied_bytes, warning);
             refresh_after_operation(ui, NULL, summary);
-            snprintf(warning, size, "%s", ui->status);
+            /* Keep the actionable cause in the form. The full outcome/counters
+               remain in the retained notice, rather than hiding the cause. */
+            if (r.code == RESULT_CANCELLED)
+                snprintf(warning, size, "Copy cancelled; %s", r.partial ? "changes kept" : "no changes");
         }
         return false;
     }

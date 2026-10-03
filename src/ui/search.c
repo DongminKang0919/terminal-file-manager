@@ -9,6 +9,8 @@ typedef struct {
     WINDOW *win;
     char term[256];
     unsigned frame;
+    bool drawn;
+    uint64_t last_draw;
 
 } Search;
 
@@ -61,7 +63,12 @@ static bool search_progress(const SearchResult *progress, const char *path, void
     (void)path;
     Search *s = context;
     search_update(s, progress);
-    search_draw(s, 0, s->len > 1 ? s->len - 1 : 0, true);
+    uint64_t now = core_monotonic_ms();
+    if (!s->drawn || now - s->last_draw >= 100) {
+        search_draw(s, 0, s->len > 1 ? s->len - 1 : 0, true);
+        s->drawn = true; s->last_draw = now;
+    }
+    /* Poll every callback, including callbacks whose rendering was suppressed. */
     nodelay(s->win, TRUE);
     int key = input_key(s->win);
     if (key == KEY_MOUSE) {
