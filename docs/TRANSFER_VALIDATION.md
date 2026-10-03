@@ -26,6 +26,16 @@ README, REFERENCE, PANELS_VALIDATION, BATCH_VALIDATION과 UI/core/platform 및 �
 
 로그는 /tmp의 격리 디렉터리에 두며 저장소에는 바이너리/임시 사용자 데이터를 추가하지 않는다.
 
-LeakSanitizer를 켠 17개 검사 실행은 모두 `LeakSanitizer does not work under ptrace` 오류로 완료하지 못했다. 누수 검사 통과로 간주하지 않는다. 로그: `/tmp/tfile-sanitizers-dual-transfer/`. 별도로 누수 검출을 끈 ASan/UBSan 검사와 명시적 메모리/FD 계측을 실행했다. 이 계측은 libc/ncurses 내부 전체 누수 증명이 아니다.
+자동 실행 환경에서 LeakSanitizer를 켠 17개 검사 실행은 모두 `LeakSanitizer does not work under ptrace` 오류로 완료하지 못했다. 누수 검사 통과로 간주하지 않는다. 로그: `/tmp/tfile-sanitizers-dual-transfer/`. 별도로 누수 검출을 끈 ASan/UBSan 검사와 명시적 메모리/FD 계측을 실행했다. 이 계측은 libc/ncurses 내부 전체 누수 증명이 아니다.
+
+### 별도 WSL 터미널의 수동 누수 검사 검토
+
+자동 실행 환경에서는 ptrace 제약으로 미완료였으나, 별도 WSL 터미널에서 해당 17개 테스트의 누수 검사 완료 및 누수 미검출을 확인했다. 사용자가 실행한 명령은 `python3 tests/run_sanitizers.py --output-directory /tmp/tfile-sanitizers-manual`이며, 17개 모두 PASS(exit 0)와 `Leak detection requested and enabled; inspect logs for runtime limitations. No suppressions are used.` 종료 출력을 보고했다. 테스트를 재실행하지 않고 해당 디렉터리의 산출물을 검토했다.
+
+- 실행 로그 17개는 모두 PASS이고 ptrace/LeakSanitizer fatal error, 검사 생략·비활성화 안내, 누수 보고 또는 sanitizer 오류가 없다. 빌드 로그 17개는 모두 비어 있다.
+- 스크립트는 `--disable-leaks` 없는 실행에서 `ASAN_OPTIONS=detect_leaks=1:halt_on_error=1`을 설정한다. search/controller 하위 실행도 이 환경을 상속하며 스크립트는 suppression을 지정하지 않는다.
+- 17개 바이너리 모두 `libasan` 연결을 확인했다. 바이너리 심볼과 코드에서 누수 검사를 끄거나 객체를 제외하는 훅, 기본 옵션·suppression 훅을 발견하지 않았다.
+
+이 결과는 위 수동 실행에 포함된 17개 테스트와 실제 실행 경로에 한정한다. 프로젝트 전체, 모든 PTY 실행 또는 모든 사용 경로에 누수가 없다는 증명이 아니다. 자동 실행 환경의 미완료 기록은 별도로 유지한다. 수동 검토 로그 경로: `/tmp/tfile-sanitizers-manual/*.build.log`, `/tmp/tfile-sanitizers-manual/*.run.log`.
 
 입력 상한 4,095바이트, 작은 화면의 한 줄 생략/초점 기반 스크롤, 동기 호출과 개별 이동 중 취소 제한은 유지한다. 경로 고정은 파일시스템 스냅샷이 아니며 모든 외부 교체 경쟁을 재현하지 않았다. 실제 다른 파일시스템 사이 이동은 새로 실행하지 않고 기존 EXDEV 주입 검사를 유지했다. 모든 PTY를 sanitizer 바이너리로 실행한 것은 아니다.
