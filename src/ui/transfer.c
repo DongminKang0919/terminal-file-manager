@@ -1,6 +1,6 @@
 #include "ui.h"
 
-static bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *result) {
+bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *result, bool *resized) {
     WINDOW *win = dialog_open(ui, folders_only ? "Choose destination directory" : "Choose source file or directory", LINES - 2, 86);
     if (!win) return false;
     if (strlen(initial) >= UI_INPUT_CAP) { dialog_close(ui, win); message(ui, "Path exceeds terminal input limit"); return false; }
@@ -68,7 +68,7 @@ static bool pick_path(UiContext *ui, bool folders_only, const char *initial, cha
                 }
             }
         }
-        if (key == 27 || key == KEY_RESIZE) break;
+        if (key == 27 || key == KEY_RESIZE) { if(key==KEY_RESIZE && resized) *resized=true; break; }
         if (key == KEY_UP && choice) choice--;
         if (key == KEY_DOWN && choice + 1 < picker_count) choice++;
         if (key == KEY_HOME) choice = 0;
@@ -84,7 +84,8 @@ static bool pick_path(UiContext *ui, bool folders_only, const char *initial, cha
         } else if (path) {
             char input[UI_INPUT_CAP];
             int old_h = LINES, old_w = COLS;
-            if (prompt_value(ui, "Directory path - absolute or relative", input, sizeof input, folder)) {
+            bool path_resized=false;
+            if (prompt_value_status(ui, "Directory path - absolute or relative", input, sizeof input, folder, &path_resized)) {
                 char *resolved = NULL;
                 Result r = core_resolve_directory(folder, input, &resolved);
                 if (r.code == RESULT_OK && strlen(resolved) < sizeof folder) {
@@ -92,7 +93,7 @@ static bool pick_path(UiContext *ui, bool folders_only, const char *initial, cha
                 } else snprintf(warning, sizeof warning, "Cannot open directory: %.220s", r.code == RESULT_OK ? "Path exceeds input limit" : r.detail);
                 free(resolved);
             }
-            if (old_h != LINES || old_w != COLS) break;
+            if (path_resized || old_h != LINES || old_w != COLS) { if(resized) *resized=true; break; }
             touchwin(win);
         } else if (use || open) {
             if (use && folders_only) { snprintf(result, UI_INPUT_CAP, "%s", folder); accepted = true; break; }
@@ -247,15 +248,15 @@ void transfer_entry(UiContext *ui, bool move_it) {
         }
         if (action==CANCEL) break;
         if (!valid && action!=SOURCE) { snprintf(warning,sizeof warning,"Input is too long."); continue; }
-        int old_h=LINES,old_w=COLS;
+        int old_h=LINES,old_w=COLS; bool resized=false;
         if (action==BROWSE) {
             char *start=NULL; core_resolve_directory(base,*folder?folder:".",&start);
             char picked[UI_INPUT_CAP];
-            if (pick_path(ui,true,start?start:base,picked)) field_init(&folder_field,picked);
+            if (pick_path(ui,true,start?start:base,picked,&resized)) field_init(&folder_field,picked);
             free(start);
         } else if (action==SOURCE && !fixed_source) {
             char picked[UI_INPUT_CAP];
-            if (pick_path(ui,false,base,picked)) {
+            if (pick_path(ui,false,base,picked,&resized)) {
                 char *old_name=core_path_name(source), *new_name=core_path_name(picked);
                 if (new_name && (!name_field.len || (valid && old_name && !strcmp(name,old_name)))) field_init(&name_field,new_name);
                 snprintf(source,sizeof source,"%s",picked); free(old_name); free(new_name);
@@ -273,7 +274,7 @@ void transfer_entry(UiContext *ui, bool move_it) {
             else if(transfer_path(ui,move_it,source,resolved,name,warning,sizeof warning)) { free(resolved); break; }
             free(resolved);
         }
-        if(old_h!=LINES || old_w!=COLS) break;
+        if(resized || old_h!=LINES || old_w!=COLS) break;
         touchwin(win);
     }
     dialog_close(ui,win);

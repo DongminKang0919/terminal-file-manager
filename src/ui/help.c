@@ -26,6 +26,7 @@ static const HelpEntry entries[] = {
     {"F9 > Rename", "Rename the selected item directly. Unchanged names do no work; collisions keep input open. The renamed item stays selected."},
     {"F5 / F6 / F8", "Marked items are targets; without marks use the cursor item. Multiple targets use one destination and original names; Rename is disabled with multiple marks."},
     {"F5 / F6", "For one target, choose destination/name then Copy now / Move now. For several, enter a destination, inspect the wrapped source list and destination, Tab from Cancel to Execute and Enter."},
+    {"Batch destination", "Type or Browse using the single-transfer picker. Base is fixed for relative paths. Errors retain input/cursor. Enter/Next validates and reviews; confirmation Esc/Cancel returns to editing. Form Esc/Cancel or resize closes without changes or replacing recent results."},
     {"Batch confirmation", "Arrows/wheel, PgUp/PgDn, Home/End scroll targets without selecting Delete. Cancel is the default. Tab changes button focus; mouse buttons also work."},
     {"Batch results", "Run in current list order; stop at first error or cancellation. Details show Success/Failed/Cancelled/Unexecuted, partial changes, recursive counts and bytes. Main list refreshes once."},
     {"", "Successes lose marks; failed/cancelled/unexecuted targets retain marks if still visible. No automatic retry, rollback or leftover deletion. Move checks cancellation between targets only."},

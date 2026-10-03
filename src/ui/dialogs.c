@@ -82,7 +82,7 @@ void dialog_close(UiContext *ui, WINDOW *win) {
 }
 
 /* Wide-character editing keeps cursor movement and deletion on UTF-8 boundaries. */
-static bool input_dialog(UiContext *ui, const char *label, char *out, size_t size, bool *directory, const char *initial, WINDOW *host, const char *rename_source) {
+static bool input_dialog(UiContext *ui, const char *label, char *out, size_t size, bool *directory, const char *initial, WINDOW *host, const char *rename_source, bool *resized) {
     WINDOW *win = host ? host : dialog_open(ui, label, 9, 76);
     if (!win) return false;
     UiField field;
@@ -124,7 +124,10 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
         curs_set(focus == 0); wmove(win, 3, 2 + cols); dialog_refresh(win);
         wint_t key; int kind = input_wide(win, &key);
         if (kind == ERR) continue;
-        if ((kind == KEY_CODE_YES && key == KEY_RESIZE) || (kind == OK && key == 27)) break;
+        if ((kind == KEY_CODE_YES && key == KEY_RESIZE) || (kind == OK && key == 27)) {
+            if(kind==KEY_CODE_YES && key==KEY_RESIZE && resized) *resized=true;
+            break;
+        }
         if (directory && focus == 3 && ((kind == KEY_CODE_YES && (key == KEY_LEFT || key == KEY_RIGHT)) || (kind == OK && key == ' '))) {
             *directory = !*directory; continue;
         }
@@ -165,16 +168,19 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
     return accepted;
 }
 bool prompt(UiContext *ui, const char *label, char *out, size_t size) {
-    return input_dialog(ui, label, out, size, NULL, NULL, NULL, NULL);
+    return input_dialog(ui, label, out, size, NULL, NULL, NULL, NULL, NULL);
 }
 bool new_entry_dialog(UiContext *ui, bool directory, char *name, size_t size) {
-    return input_dialog(ui, "New - File or Directory", name, size, &directory, NULL, NULL, NULL);
+    return input_dialog(ui, "New - File or Directory", name, size, &directory, NULL, NULL, NULL, NULL);
 }
 bool prompt_value(UiContext *ui, const char *label, char *out, size_t size, const char *initial) {
-    return input_dialog(ui, label, out, size, NULL, initial, NULL, NULL);
+    return input_dialog(ui, label, out, size, NULL, initial, NULL, NULL, NULL);
+}
+bool prompt_value_status(UiContext *ui, const char *label, char *out, size_t size, const char *initial, bool *resized) {
+    return input_dialog(ui, label, out, size, NULL, initial, NULL, NULL, resized);
 }
 bool search_prompt(UiContext *ui, WINDOW *win, char *out, size_t size) {
-    return input_dialog(ui, "Search", out, size, NULL, out, win, NULL);
+    return input_dialog(ui, "Search", out, size, NULL, out, win, NULL, NULL);
 }
 void rename_entry(UiContext *ui) {
     if(ui->app.marks_len>1) { message(ui,"Rename unavailable: multiple marked items");return; }
@@ -184,7 +190,7 @@ void rename_entry(UiContext *ui) {
     if (!source || !name) message(ui, "Rename: Out of memory");
     else {
         char out[UI_INPUT_CAP];
-        input_dialog(ui, "Rename selected item", out, sizeof out, NULL, name, NULL, source);
+        input_dialog(ui, "Rename selected item", out, sizeof out, NULL, name, NULL, source, NULL);
     }
     free(source); free(name);
 }

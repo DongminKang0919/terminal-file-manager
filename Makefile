@@ -103,6 +103,7 @@ check: tests/tfile_batch tests/batch_ui_test tests/startup_ui_test tests/search_
 	python3 tests/keyboard_pty.py
 	python3 tests/search_ui_pty.py
 	python3 tests/help_pty.py
+	python3 tests/batch_destination_pty.py
 	python3 tests/batch_pty.py
 	python3 tests/batch_progress_pty.py
 
@@ -118,7 +119,7 @@ tests/batch_test: tests/batch_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADE
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/batch_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) -Wl,--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=platform_move
 
 tests/batch_ui_test: tests/batch_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
-	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/batch_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=app_refresh,--wrap=platform_directory_open,--wrap=platform_reader_line,--wrap=qsort,--wrap=core_monotonic_ms,--wrap=wrefresh,--wrap=input_key,--wrap=input_wide,--wrap=malloc,--wrap=calloc,--wrap=realloc
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/batch_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=app_refresh,--wrap=platform_directory_open,--wrap=platform_reader_line,--wrap=qsort,--wrap=core_monotonic_ms,--wrap=wrefresh,--wrap=input_key,--wrap=input_wide,--wrap=batch_prepare,--wrap=newwin,--wrap=delwin,--wrap=malloc,--wrap=calloc,--wrap=realloc
 
 tests/tfile_batch: tests/batch_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/batch_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=batch_execute

@@ -9,7 +9,7 @@ static void review_text(WINDOW *w,const char *text,size_t top,size_t page,size_t
         (*line)++; if(next==at && text[at]) break; at=next;
     } while(text[at]);
 }
-bool batch_review(UiContext *ui,const BatchJob *job) {
+static bool review(UiContext *ui,const BatchJob *job,bool *resized) {
     const char *title=job->action==BATCH_DELETE ? "Batch delete confirmation" : job->action==BATCH_MOVE ? "Batch move confirmation" : "Batch copy confirmation";
     WINDOW *w=dialog_open(ui,title,LINES-2,88); if(!w) return false;
     bool run=false,accepted=false; size_t top=0;
@@ -44,7 +44,7 @@ bool batch_review(UiContext *ui,const BatchJob *job) {
                 if(e.x>=x+14&&e.x<x+14+(int)strlen(label)) { accepted=true;break; }
             }
         }
-        if(key==27||key=='x'||key==KEY_RESIZE) break;
+        if(key==27||key=='x'||key==KEY_RESIZE) { if(key==KEY_RESIZE && resized) *resized=true; break; }
         if(key=='\t'||key==KEY_BTAB||key==KEY_LEFT||key==KEY_RIGHT) run=!run;
         if(key=='\n'||key==KEY_ENTER) { accepted=run; break; }
         if(key==KEY_UP&&top) top--;
@@ -56,6 +56,7 @@ bool batch_review(UiContext *ui,const BatchJob *job) {
     }
     dialog_close(ui,w);return accepted;
 }
+bool batch_review(UiContext *ui,const BatchJob *job) { return review(ui,job,NULL); }
 void batch_finish(UiContext *ui,BatchJob *job) {
     /* Remove successes before refresh: even a failed refresh cannot retain them. */
     app_marks_apply_result(&ui->app,job);
@@ -65,18 +66,87 @@ void batch_finish(UiContext *ui,BatchJob *job) {
         ui->notice.refresh=load_dir(ui,NULL); ui->notice.refresh_attempted=true;
     }
 }
+/* Own the frozen job throughout editing; only execution transfers it to notice. */
+static void batch_transfer_form(UiContext *ui,BatchJob *job) {
+    const char *title="Batch destination directory";
+    char *base=text_copy(ui->app.directory);
+    UiField field;
+    if(!base || !field_init(&field,base)) {
+        free(base); message(ui,"Path exceeds input limit / out of memory"); return;
+    }
+    WINDOW *win=dialog_open(ui,title,9,88);
+    if(!win) { free(base); return; }
+    enum { DESTINATION, BROWSE, NEXT, CANCEL, FIELDS };
+    const char *buttons[]={"[ Browse ]","[ Next ]","[ Cancel ]"};
+    const int xs[]={2,15,26};
+    int focus=DESTINATION;
+    char warning[512]="";
+    for(;;) {
+        int h,w; getmaxyx(win,h,w);
+        dialog_frame(win,title);
+        draw_window_text(win,1,2,6,"Base:");
+        draw_window_text(win,1,8,w-10,base);
+        draw_window_text(win,2,2,w-4,"Relative paths use Base; blank uses Base.");
+        draw_window_text(win,3,2,6,"To:");
+        int col=field_draw(win,3,8,w-10,&field,focus==DESTINATION);
+        wattron(win,COLOR_PAIR(*warning?UI_SPECIAL:UI_MUTED));
+        draw_window_text(win,h-3,2,w-4,*warning?warning:"Enter: review targets  Tab: focus  Esc: cancel");
+        wattroff(win,COLOR_PAIR(*warning?UI_SPECIAL:UI_MUTED));
+        for(int i=0;i<3;i++) dialog_button(win,h-2,xs[i],buttons[i],focus==i+1,true);
+        curs_set(focus==DESTINATION); if(focus==DESTINATION) wmove(win,3,8+col);
+        dialog_refresh(win);
+        wint_t key; int kind=input_wide(win,&key),action=-1;
+        if(kind==ERR) continue;
+        if((kind==OK&&key==27)||(kind==KEY_CODE_YES&&key==KEY_RESIZE)) break;
+        if(kind==KEY_CODE_YES&&key==KEY_MOUSE) {
+            MEVENT e; if(getmouse(&e)!=OK) continue;
+            if(dialog_closed(win,&e)) break;
+            if(!mouse_click(&e)) continue;
+            int y,x; getbegyx(win,y,x); y=e.y-y; x=e.x-x;
+            if(y==3&&x>=8&&x<w-2) { focus=DESTINATION; field_click(&field,x-8); continue; }
+            if(y==h-2) for(int i=0;i<3;i++)
+                if(x>=xs[i]&&x<xs[i]+(int)strlen(buttons[i])) action=focus=i+1;
+        }
+        if(kind==OK&&key=='\t') { focus=(focus+1)%FIELDS; continue; }
+        if(kind==KEY_CODE_YES&&key==KEY_BTAB) { focus=(focus+FIELDS-1)%FIELDS; continue; }
+        if((kind==OK&&(key=='\n'||key=='\r'))||(kind==KEY_CODE_YES&&key==KEY_ENTER)) action=focus==DESTINATION?NEXT:focus;
+        if(action<0) { if(focus==DESTINATION) field_edit(&field,kind,key); continue; }
+        if(action==CANCEL) break;
+        char input[UI_INPUT_CAP];
+        if(!ui_text_encode(field.value,field.len,input,sizeof input)) {
+            snprintf(warning,sizeof warning,"Destination: input is too long"); continue;
+        }
+        int old_h=LINES,old_w=COLS; bool resized=false;
+        char *resolved=NULL;
+        Result r=core_resolve_directory(base,*input?input:".",&resolved);
+        if(action==BROWSE) {
+            char picked[UI_INPUT_CAP];
+            if(pick_path(ui,true,r.code==RESULT_OK?resolved:base,picked,&resized)) {
+                field_init(&field,picked); warning[0]=0;
+            }
+        } else {
+            if(r.code==RESULT_OK) r=batch_destination(job,resolved);
+            if(r.code!=RESULT_OK) snprintf(warning,sizeof warning,"Destination: %.450s",r.detail);
+            else if(review(ui,job,&resized)) {
+                free(resolved); dialog_close(ui,win); free(base);
+                run_batch_operation(ui,job); batch_finish(ui,job); return;
+            }
+        }
+        free(resolved);
+        if(resized||old_h!=LINES||old_w!=COLS) break;
+        touchwin(win);
+    }
+    dialog_close(ui,win); free(base);
+}
 void batch_entry(UiContext *ui,BatchAction action) {
     BatchJob job; Result r=batch_prepare(&ui->app,ui->selected,action,&job);
     if(r.code!=RESULT_OK) {
         notice_record(ui,action==BATCH_DELETE?"Batch delete":action==BATCH_MOVE?"Batch move":"Batch copy",r,NULL,NULL);return;
     }
     if(action!=BATCH_DELETE) {
-        char input[UI_INPUT_CAP];
-        if(!prompt_value(ui,"Batch destination directory",input,sizeof input,ui->app.directory)) { batch_free(&job);return; }
-        char *resolved=NULL; r=core_resolve_directory(ui->app.directory,*input?input:".",&resolved);
-        if(r.code==RESULT_OK) r=batch_destination(&job,resolved);
-        free(resolved);
-        if(r.code!=RESULT_OK) { job.result=r;batch_finish(ui,&job);return; }
+        batch_transfer_form(ui,&job);
+        batch_free(&job);
+        return;
     }
     if(batch_review(ui,&job)) run_batch_operation(ui,&job); else batch_cancel(&job);
     batch_finish(ui,&job);

@@ -132,4 +132,9 @@ void batch_finish(UiContext *ui, BatchJob *job);
 void run_batch_operation(UiContext *ui, BatchJob *job);
 bool batch_review(UiContext *ui, const BatchJob *job);
 
+/* Shared transfer picker; cancellation leaves result untouched. */
+bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *result, bool *resized);
+
+bool prompt_value_status(UiContext *ui, const char *label, char *out, size_t size, const char *initial, bool *resized);
+
 #endif

@@ -32,10 +32,11 @@ for w,h in [(50,9),(80,24),(160,32)]:
             t.send('\x06a \x1b');summary(2)
             t.send(F5);assert 'Batch destination' in body();destination(dst)
             assert 'Batch copy confirmation' in body();t.send(END+HOME+PGDN+'\n') # default Cancel after scroll
-            summary(2);assert not list(dst.iterdir());t.send('!');assert 'Recent operation result' in body();t.send(END);assert 'Only the latest' in body() or 'details remain' in body();t.send('\x1b')
+            assert 'Batch destination' in body();assert not list(dst.iterdir());t.send('\x1b');summary(2)
             # Full copy through keyboard. No Name field in batch form.
             t.send(F5);destination(dst);assert 'Batch copy confirmation' in body();assert 'Name:' not in body();t.send(END+'\t\n');summary(0)
             assert len(list(dst.iterdir()))==2
+            t.send('!');assert 'Recent operation result' in body();t.send(END);assert 'Only the latest' in body() or 'details remain' in body();t.send('\x1b')
             # Marked single target is used even when cursor points elsewhere.
             t.send(HOME+DOWN+' '+END+F5);assert 'Batch destination' not in body();t.send('\x1b');summary(1)
             t.send(HOME+DOWN+DOWN+' ');summary(2)
