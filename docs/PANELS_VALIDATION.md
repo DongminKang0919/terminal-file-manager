@@ -49,3 +49,7 @@ LSan을 켠 17개 실행은 ptrace 환경 제한의 fatal error로 종료되어 
 ## 작업 재개 후 최종 확인 (2026-10-03)
 
 현재 작업 트리에서 `make check` 전체를 다시 실행하여 종료 코드 0을 확인했다. 이중 패널 PTY와 단일/이중 일괄 진행·취소 검사도 통과했다. `python3 tests/run_sanitizers.py --output-directory /tmp/tfile-sanitizers-resume --disable-leaks`는 17개 검사 모두 통과했다. 누수 검사는 제외했으며 위 미확인 범위는 유지한다. 실행 로그는 `/tmp/tfile-resume-check.log`, `/tmp/tfile-resume-sanitizers.log`이고 sanitizer별 상세 로그는 `/tmp/tfile-sanitizers-resume`에 있다.
+
+## 2026-10-04 전송 기본값 변경
+
+위 기록의 “원본 기준 목적지”는 당시 동작이다. 현재 목록+목록의 F5/F6는 반대편 디렉터리를 기본 목적지로 고정하고, 단일/미리보기 모드는 기존 기본값을 유지한다. 반대편 STALE 안내와 현재 목적지 검증은 구분한다. 변경 범위와 추가 검증·제한은 [복사·이동 검증 기록](TRANSFER_VALIDATION.md)을 참고한다.
