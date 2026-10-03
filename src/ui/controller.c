@@ -124,20 +124,27 @@ bool rename_named_entry(UiContext *ui, const char *source, const char *name, cha
     if (!original) { snprintf(warning, size, "Out of memory"); return false; }
     bool unchanged = !strcmp(original, name); free(original);
     if (unchanged) return true;
-    char *destination = NULL;
-    Result r = core_transfer(true, source, ui->app.directory, name, &destination);
-    char *requested = destination ? NULL : core_path_join(ui->app.directory, name);
-    notice_record(ui, "Rename", r, source, destination ? destination : requested);
+    char *requested=core_path_join(ui->app.directory,name);
+    OperationNotice prepared;
+    Result r=requested ? notice_prepare(&prepared,"Rename",source,requested) : result_make(RESULT_NO_MEMORY,"Out of memory; no changes");
     free(requested);
+    if(r.code!=RESULT_OK) { operation_warning(r,warning,size);return false; }
+    char *destination = NULL;
+    r = core_transfer(true, source, ui->app.directory, name, &destination);
+    notice_commit(ui,&prepared,r);
     free(destination);
     if (r.code != RESULT_OK) { operation_warning(r, warning, size); return false; }
+    const char *old=strrchr(source,'/'); app_unmark(&ui->app,old?old+1:source);
     refresh_after_operation(ui, name, "Renamed"); return true;
 }
 void create_entry(UiContext *ui, bool directory) {
     (void)ui; char name[UI_INPUT_CAP]; new_entry_dialog(ui, directory, name, sizeof name); }
 void delete_entry(UiContext *ui) {
+    if (ui->app.marks_len > 1) { batch_entry(ui, BATCH_DELETE); return; }
     if (ui->selected >= ui->app.files.len) return;
     const FileInfo *it = &ui->app.files.entries[ui->selected];
+    if (ui->app.marks_len) for (size_t i=0;i<ui->app.files.len;i++)
+        if (app_marked(&ui->app,ui->app.files.entries[i].name)) { it=&ui->app.files.entries[i]; break; }
     char *path = text_copy(it->path); if (!path) { message(ui, "Out of memory"); return; }
     if (!confirm(ui, it->name, it->kind == FILE_DIRECTORY)) {
         /* Closing a confirmation did no file work; preserve an unread result. */
@@ -145,8 +152,13 @@ void delete_entry(UiContext *ui) {
             notice_record(ui, "Delete", result_make(RESULT_CANCELLED, "Confirmation cancelled; no changes"), path, NULL);
         free(path); message(ui, "Delete cancelled"); return;
     }
-    Result r = run_file_operation(ui, false, path, NULL, NULL, NULL);
-    notice_record(ui, "Delete", r, path, NULL); free(path);
+    OperationNotice prepared;
+    Result r=notice_prepare(&prepared,"Delete",path,NULL);
+    if(r.code!=RESULT_OK) { message(ui,r.detail);free(path);return; }
+    r = run_file_operation(ui, false, path, NULL, NULL, NULL);
+    notice_commit(ui,&prepared,r);
+    if (r.code == RESULT_OK) { const char *name=strrchr(path,'/'); app_unmark(&ui->app,name?name+1:path); }
+    free(path);
     char summary[sizeof ui->status];
     snprintf(summary, sizeof summary, "%s%.190s; completed: %llu%s",
              r.code == RESULT_OK ? "Deleted" : "Delete: ", r.code == RESULT_OK ? "" : r.detail,
@@ -159,12 +171,15 @@ void delete_entry(UiContext *ui) {
     refresh_after_operation(ui, NULL, summary);
 }
 bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *directory, const char *name, char *warning, size_t size) {
-    char *destination = NULL;
-    Result r = move_it ? core_transfer(true, source, directory, name, &destination) :
-                         run_file_operation(ui, true, source, directory, name, &destination);
-    char *requested = destination ? NULL : core_path_join(directory, name);
-    notice_record(ui, move_it ? "Move" : "Copy", r, source, destination ? destination : requested);
+    char *requested=core_path_join(directory,name);
+    OperationNotice prepared;
+    Result r=requested ? notice_prepare(&prepared,move_it?"Move":"Copy",source,requested) : result_make(RESULT_NO_MEMORY,"Out of memory; no changes");
     free(requested);
+    if(r.code!=RESULT_OK) { operation_warning(r,warning,size);return false; }
+    char *destination = NULL;
+    r = move_it ? core_transfer(true, source, directory, name, &destination) :
+                         run_file_operation(ui, true, source, directory, name, &destination);
+    notice_commit(ui,&prepared,r);
     if (r.code != RESULT_OK) {
         free(destination);
         operation_warning(r, warning, size);
@@ -186,6 +201,7 @@ bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *
     snprintf(success, sizeof success, "%s to %.450s", move_it ? "Moved" : "Copied", destination);
     if (!move_it) snprintf(success, sizeof success, "Copied; completed: %llu; bytes: %llu; to %.300s",
                            (unsigned long long)r.completed_items, (unsigned long long)r.copied_bytes, destination);
+    const char *source_name=strrchr(source,'/'); app_unmark(&ui->app,source_name?source_name+1:source);
     refresh_after_operation(ui, name, success);
     free(destination); return true;
 }
@@ -215,6 +231,7 @@ bool panel_key(UiContext *ui, int key, int height) {
             if (ui->preview_more) ui->preview_offset += page;
             return true;
         case KEY_HOME: ui->preview_offset = 0; return true;
+        case ' ': return true;
         case KEY_END: case KEY_LEFT: case KEY_RIGHT: case KEY_BACKSPACE:
         case 127: case 8: case '\n': case KEY_ENTER: return true;
         default: return false;

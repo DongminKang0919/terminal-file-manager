@@ -5,6 +5,7 @@ const char *notice_label(NoticeKind kind) {
     return labels[kind];
 }
 void notice_clear(UiContext *ui) {
+    batch_free(&ui->notice.batch);
     free(ui->notice.source); free(ui->notice.destination);
     ui->notice = (OperationNotice){0};
 }
@@ -12,24 +13,34 @@ void notice_dismiss(UiContext *ui) {
     ui->notice.visible = false;
     ui->status[0] = 0;
 }
-void notice_record(UiContext *ui, const char *action, Result result,
-                   const char *source, const char *destination) {
-    notice_clear(ui);
-    OperationNotice *n = &ui->notice;
-    n->present = n->visible = true; n->operation = result;
-    n->kind = result.code == RESULT_CANCELLED ? NOTICE_CANCELLED :
-              result.code != RESULT_OK ? NOTICE_ERROR : NOTICE_SUCCESS;
-    if (result.partial && result.code != RESULT_CANCELLED) n->kind = NOTICE_WARNING;
-    snprintf(n->action, sizeof n->action, "%s", action);
-    n->source = source ? text_copy(source) : NULL;
-    n->destination = destination ? text_copy(destination) : NULL;
-    ui->status[0] = 0;
+Result notice_prepare(OperationNotice *out,const char *action,const char *source,const char *destination) {
+    *out=(OperationNotice){0};
+    out->source=source?text_copy(source):NULL; out->destination=destination?text_copy(destination):NULL;
+    if((source&&!out->source)||(destination&&!out->destination)) {
+        free(out->source);free(out->destination);*out=(OperationNotice){0};
+        return result_make(RESULT_NO_MEMORY,"Cannot allocate result paths; no changes");
+    }
+    snprintf(out->action,sizeof out->action,"%s",action); return result_make(RESULT_OK,NULL);
+}
+void notice_commit(UiContext *ui,OperationNotice *prepared,Result result) {
+    notice_clear(ui);ui->notice=*prepared;*prepared=(OperationNotice){0};
+    OperationNotice *n=&ui->notice;
+    n->present=n->visible=true;n->operation=result;
+    n->kind=result.code==RESULT_CANCELLED?NOTICE_CANCELLED:result.code!=RESULT_OK?NOTICE_ERROR:NOTICE_SUCCESS;
+    if(result.partial&&result.code!=RESULT_CANCELLED) n->kind=NOTICE_WARNING;
+    ui->status[0]=0;
+}
+void notice_record(UiContext *ui,const char *action,Result result,const char *source,const char *destination) {
+    OperationNotice prepared; (void)notice_prepare(&prepared,action,source,destination);
+    /* Legacy informational callers can retain the inline Result even if optional paths fail. */
+    snprintf(prepared.action,sizeof prepared.action,"%s",action);
+    notice_commit(ui,&prepared,result);
 }
 
 /* Rows wrap original bytes with the same safe-token cell widths as the main UI.
    Only diagnostic newlines are separators; path control bytes stay escaped. */
 typedef struct { char text[512]; } NoticeRow;
-typedef struct { NoticeRow *rows; size_t len; bool failed; int width; } NoticeRows;
+typedef struct { NoticeRow *rows; size_t len, capacity; bool failed; int width; } NoticeRows;
 static void add_text(NoticeRows *r, const char *text, bool diagnostic) {
     if (r->failed) return;
     do {
@@ -38,10 +49,14 @@ static void add_text(NoticeRows *r, const char *text, bool diagnostic) {
             const char *newline = strchr(text, '\n');
             if (newline && (size_t)(newline - text) < end) end = (size_t)(newline - text);
         }
-        NoticeRow *rows = realloc(r->rows, (r->len + 1) * sizeof *rows);
-        if (!rows) { r->failed = true; return; }
-        r->rows = rows;
-        snprintf(r->rows[r->len++].text, sizeof rows->text, "%.*s", (int)end, text);
+        if(r->len==r->capacity) {
+            size_t next=r->capacity ? r->capacity*2 : 64;
+            if(next<r->capacity || next>SIZE_MAX/sizeof *r->rows) { r->failed=true;return; }
+            NoticeRow *rows=realloc(r->rows,next*sizeof *rows);
+            if(!rows) { r->failed=true;return; }
+            r->rows=rows;r->capacity=next;
+        }
+        snprintf(r->rows[r->len++].text, sizeof r->rows->text, "%.*s", (int)end, text);
         text += end;
         if (diagnostic && *text == '\n') text++;
         else if (!end && *text) { r->failed = true; return; }
@@ -69,6 +84,22 @@ void show_result(UiContext *ui) {
         snprintf(counts, sizeof counts, "Reported completed items: %llu | Copied bytes: %llu",
                  (unsigned long long)n->operation.completed_items, (unsigned long long)n->operation.copied_bytes);
         add_text(&text, counts, false);
+        if (n->batch.len) {
+            snprintf(counts,sizeof counts,"Top-level targets: %zu | Succeeded: %zu | Execution: %s",n->batch.len,n->batch.succeeded,n->batch.executed ? "started" : "not started");
+            add_text(&text,counts,false);
+            if(n->batch.directory) { add_text(&text,"Batch destination:",false); add_text(&text,n->batch.directory,false); }
+            const char *labels[]={"Unexecuted","Success","Failed","Cancelled"};
+            for(size_t i=0;i<n->batch.len;i++) {
+                const BatchTarget *t=&n->batch.targets[i];
+                snprintf(counts,sizeof counts,"Target %zu/%zu: %s%s",i+1,n->batch.len,labels[t->status],t->result.partial?" | Partial changes":"");
+                add_text(&text,counts,false); add_text(&text,t->source,false);
+                if(t->status!=BATCH_UNEXECUTED) {
+                    result_rows(&text,"Target result",t->result);
+                    snprintf(counts,sizeof counts,"Recursive completed items: %llu | Copied bytes: %llu",(unsigned long long)t->result.completed_items,(unsigned long long)t->result.copied_bytes);
+                    add_text(&text,counts,false);
+                }
+            }
+        }
         if (n->source) { add_text(&text, "Source:", false); add_text(&text, n->source, false); }
         if (n->destination) { add_text(&text, "Destination / requested destination:", false); add_text(&text, n->destination, false); }
         add_text(&text, "Counters are reported values; create/move may report 0. Bytes include successful writes to unfinished files.", false);
@@ -76,7 +107,7 @@ void show_result(UiContext *ui) {
             add_text(&text, n->operation.partial ?
                      "Changes already made are kept. Incomplete copies may remain; deleted items are not restored." :
                      "No filesystem changes reported by this operation.", false);
-            add_text(&text, "Remaining item count and total progress are unknown. No automatic retry or rollback.", false);
+            add_text(&text, "Remaining recursive item count and total progress are unknown. No automatic retry or rollback.", false);
         }
         if (n->refresh_attempted) result_rows(&text, "List refresh (separate result)", n->refresh);
         else add_text(&text, "List refresh: not attempted.", false);

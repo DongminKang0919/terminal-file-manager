@@ -148,10 +148,16 @@ static void show_transfer_paths(UiContext *ui, const char *source, const char *b
 }
 
 void transfer_entry(UiContext *ui, bool move_it) {
+    if (ui->app.marks_len > 1) { batch_entry(ui, move_it ? BATCH_MOVE : BATCH_COPY); return; }
+    const FileInfo *initial=ui->selected<ui->app.files.len ? &ui->app.files.entries[ui->selected] : NULL;
+    bool fixed_source=ui->app.marks_len!=0;
+    if(fixed_source) for(size_t i=0;i<ui->app.files.len;i++)
+        if(app_marked(&ui->app,ui->app.files.entries[i].name)) { initial=&ui->app.files.entries[i]; break; }
+
     WINDOW *win = dialog_open(ui, move_it ? "Move" : "Copy", 13, 88);
     if (!win) return;
     if (strlen(ui->app.directory) >= UI_INPUT_CAP ||
-        (ui->selected < ui->app.files.len && strlen(ui->app.files.entries[ui->selected].path) >= UI_INPUT_CAP)) {
+        (initial && strlen(initial->path) >= UI_INPUT_CAP)) {
         dialog_close(ui,win); message(ui,"Path exceeds terminal input limit"); return;
     }
     /* The process cwd is not the browsed location. Keep this base even when a
@@ -159,9 +165,9 @@ void transfer_entry(UiContext *ui, bool move_it) {
     char base[UI_INPUT_CAP], source[UI_INPUT_CAP] = "", warning[512] = "";
     snprintf(base,sizeof base,"%s",ui->app.directory);
     UiField folder_field, name_field; field_init(&folder_field,""); field_init(&name_field,"");
-    if (ui->selected < ui->app.files.len) {
-        snprintf(source,sizeof source,"%s",ui->app.files.entries[ui->selected].path);
-        field_init(&name_field,ui->app.files.entries[ui->selected].name);
+    if (initial) {
+        snprintf(source,sizeof source,"%s",initial->path);
+        field_init(&name_field,initial->name);
     }
     enum { DESTINATION, NAME, BROWSE, PATHS, SOURCE, RUN, CANCEL, FIELDS };
     int focus = DESTINATION, offset = 0;
@@ -194,7 +200,7 @@ void transfer_entry(UiContext *ui, bool move_it) {
                 int col = field_draw(win,y,8,w-10,row == 3 ? &folder_field : &name_field,active);
                 if (active) { cursor_y = y; cursor_x = 8 + col; }
             }
-            if (row == 5) for (int i = 0; i < 3; i++) dialog_button(win,y,button_x[i],buttons[i],focus==BROWSE+i,true);
+            if (row == 5) for (int i = 0; i < 3; i++) dialog_button(win,y,button_x[i],buttons[i],focus==BROWSE+i,i!=2 || !fixed_source);
             if (row == 6) { draw_window_text(win,y,2,8,"Target:"); draw_window_text(win,y,10,w-12,target ? target : "Input too long / no memory"); }
         }
         wattron(win,COLOR_PAIR(*warning ? UI_SPECIAL : UI_MUTED));
@@ -247,7 +253,7 @@ void transfer_entry(UiContext *ui, bool move_it) {
             char picked[UI_INPUT_CAP];
             if (pick_path(ui,true,start?start:base,picked)) field_init(&folder_field,picked);
             free(start);
-        } else if (action==SOURCE) {
+        } else if (action==SOURCE && !fixed_source) {
             char picked[UI_INPUT_CAP];
             if (pick_path(ui,false,base,picked)) {
                 char *old_name=core_path_name(source), *new_name=core_path_name(picked);

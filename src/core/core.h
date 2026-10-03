@@ -6,7 +6,9 @@ typedef enum { SORT_NAME, SORT_SIZE, SORT_MODIFIED, SORT_KIND } SortKey;
 typedef struct { SortKey key; bool descending; } SortSettings;
 /* Owned history data; positions are logical list ordinals, never terminal coordinates. */
 typedef struct { char *directory, *selected_name; size_t selected, top; } HistoryEntry;
+typedef struct { char *name; bool seen; } SelectionName;
 typedef struct {
+    SelectionName *marks; size_t marks_len, marks_cap;
     SortSettings sort;
     char *directory;
     FileList files;
@@ -20,6 +22,12 @@ typedef struct {
 int main_file_compare(const FileInfo *a, const FileInfo *b, SortSettings sort);
 void main_list_sort(FileList *list, SortSettings sort);
 void app_set_sort(AppState *app, SortSettings sort, size_t *selected);
+bool app_marked(const AppState *app, const char *name);
+Result app_mark_toggle(AppState *app, const char *name);
+Result app_mark_all(AppState *app);
+void app_unmark(AppState *app, const char *name);
+void app_marks_clear(AppState *app);
+void app_marks_reconcile(AppState *app);
 Result app_init(AppState *app, const char *directory);
 void app_free(AppState *app);
 Result app_navigate(AppState *app, const char *directory);
@@ -49,6 +57,35 @@ Result core_transfer_progress(bool move, const char *source, const char *directo
                               char **destination, OperationCallback callback, void *context);
 Result core_delete(const char *path);
 Result core_link_target(const char *path, char **out);
+
+/* Owned target snapshot and fixed results, prepared before any file changes.
+   This fixes paths/order, not filesystem identities. Single APIs revalidate. */
+typedef enum { BATCH_COPY, BATCH_MOVE, BATCH_DELETE } BatchAction;
+typedef enum { BATCH_UNEXECUTED, BATCH_SUCCESS, BATCH_FAILED, BATCH_CANCELLED } BatchStatus;
+typedef struct {
+    char *source, *name;
+    FileKind kind;
+    BatchStatus status;
+    Result result;
+} BatchTarget;
+typedef struct {
+    BatchTarget *targets; size_t len, succeeded;
+    BatchAction action;
+    char *directory;
+    Result result;
+    bool executed;
+} BatchJob;
+typedef struct {
+    size_t index, total, succeeded; /* index is zero-based; recursive counts separate */
+    OperationProgress progress;
+} BatchProgress;
+typedef bool (*BatchCallback)(const BatchProgress *, void *);
+Result batch_prepare(const AppState *app, size_t cursor, BatchAction action, BatchJob *out);
+Result batch_destination(BatchJob *job, const char *directory);
+void batch_cancel(BatchJob *job); /* confirmation/progress-window cancellation, no changes */
+Result batch_execute(BatchJob *job, BatchCallback callback, void *context);
+void batch_free(BatchJob *job);
+void app_marks_apply_result(AppState *app, const BatchJob *job);
 
 typedef struct { size_t max_visited, max_results; unsigned max_depth; } SearchLimits;
 typedef struct {

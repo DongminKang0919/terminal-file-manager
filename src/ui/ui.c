@@ -141,6 +141,7 @@ static void draw_screen(UiContext *ui, bool prepare) {
         attrset(style);
         mvhline(y, 1, ' ', mid - 2);
         mvaddch(y, 1, active ? '>' : ' ');
+        mvaddch(y, 2, app_marked(&ui->app, it->name) ? '*' : ' ');
         if (!active) attrset(COLOR_PAIR(item_color(it, false)));
         draw_text(y, 3, name_width, it->name);
         attrset(active ? style : COLOR_PAIR(UI_MUTED));
@@ -177,11 +178,16 @@ static void draw_screen(UiContext *ui, bool prepare) {
         attroff(COLOR_PAIR(UI_MUTED));
     }
     char summary[96];
-    snprintf(summary, sizeof summary, "Shown: %zu | Hidden: %s", ui->app.files.len, ui->app.show_hidden ? "on" : "off");
-    /* A compact summary leaves space for transient diagnostics on narrow screens. */
-    if (!(ui->notice.present && ui->notice.visible) && w < 90 &&
-        strlen(ui->status) + (ui->status_kind == NOTICE_INFO ? 6u : 0u) > (size_t)(w - (int)strlen(summary) - 4))
-        snprintf(summary, sizeof summary, "Shown: %zu H:%s", ui->app.files.len, ui->app.show_hidden ? "on" : "off");
+    snprintf(summary,sizeof summary,"Shown: %zu | Hidden: %s Sel:%zu",ui->app.files.len,ui->app.show_hidden ? "on" : "off",ui->app.marks_len);
+    if(w>=90 && ui->app.marks_len)
+        snprintf(summary,sizeof summary,"Shown: %zu | Hidden: %s | Selected: %zu",ui->app.files.len,ui->app.show_hidden ? "on" : "off",ui->app.marks_len);
+    if(w<90 && (ui->app.marks_len || (ui->notice.present && ui->notice.visible)))
+        snprintf(summary,sizeof summary,"Shown: %zu H:%s Sel:%zu",ui->app.files.len,ui->app.show_hidden ? "on" : "off",ui->app.marks_len);
+    /* Reserve routine guidance as well as all three counts on narrow screens.
+       S=Shown, H=hidden (1/on, 0/off), M=marked. Retained result labels stay separate. */
+    if(!(ui->notice.present && ui->notice.visible) && w<90 &&
+       strlen(ui->status)+(ui->status_kind==NOTICE_INFO?6u:0u) > (size_t)(w-(int)strlen(summary)-4))
+        snprintf(summary,sizeof summary,"S:%zu H:%d M:%zu",ui->app.files.len,ui->app.show_hidden,ui->app.marks_len);
     attron(COLOR_PAIR(UI_STATUS)); mvhline(h - 2, 0, ' ', w);
     int summary_width = (int)strlen(summary);
     draw_text(h - 2, 1, summary_width, summary);

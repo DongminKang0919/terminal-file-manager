@@ -13,7 +13,7 @@
 
 /* Existing terminal form input limit; core/platform paths are dynamically allocated. */
 #define UI_INPUT_CAP 4096
-enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE, UI_RENAME, UI_QUICK_FIND, UI_RESULT };
+enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE, UI_RENAME, UI_QUICK_FIND, UI_RESULT, UI_SELECT_ALL, UI_CLEAR_SELECTION };
 void input_init(void);
 int input_key(WINDOW *win);
 int input_wide(WINDOW *win, wint_t *key);
@@ -32,6 +32,7 @@ typedef struct {
     bool present, visible, refresh_attempted;
     NoticeKind kind;
     Result operation, refresh;
+    BatchJob batch;
     char action[32];
     char *source, *destination;
 } OperationNotice;
@@ -54,6 +55,8 @@ typedef struct {
 } UiContext;
 void quick_find(UiContext *ui);
 void notice_clear(UiContext *ui);
+Result notice_prepare(OperationNotice *out, const char *action, const char *source, const char *destination);
+void notice_commit(UiContext *ui, OperationNotice *prepared, Result result);
 void notice_record(UiContext *ui, const char *action, Result result, const char *source, const char *destination);
 void notice_dismiss(UiContext *ui);
 const char *notice_label(NoticeKind kind);
@@ -124,4 +127,9 @@ void preview_scroll(UiContext *ui, bool down);
 void preview(UiContext *ui, int x, int y, int w, int h);
 void search_items(UiContext *ui);
 void transfer_entry(UiContext *ui, bool move_it);
+void batch_entry(UiContext *ui, BatchAction action);
+void batch_finish(UiContext *ui, BatchJob *job);
+void run_batch_operation(UiContext *ui, BatchJob *job);
+bool batch_review(UiContext *ui, const BatchJob *job);
+
 #endif

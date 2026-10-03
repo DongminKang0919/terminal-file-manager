@@ -98,8 +98,11 @@ static Result navigate_to(AppState *app, const char *directory, bool record, boo
         if (length == 128) { history_free(&history[0]); memmove(history, history + 1, (--length) * sizeof *history); }
         history[length] = (HistoryEntry){.directory = entry}; app->history_at = length; app->history_len = length + 1;
     }
+    bool changed = !app->directory || strcmp(app->directory, resolved);
     free(app->directory); file_list_free(&app->files);
-    app->directory = resolved; app->files = list; app->show_hidden = hidden;
+    app->directory = resolved; app->files = list;
+    if (changed) app_marks_clear(app); else app_marks_reconcile(app);
+    app->show_hidden = hidden;
     if (selected) *selected = choice;
     return r;
 }
@@ -109,6 +112,7 @@ Result app_init(AppState *app, const char *directory) {
     return app_navigate(app, directory ? directory : ".");
 }
 void app_free(AppState *app) {
+    app_marks_clear(app);
     free(app->directory); file_list_free(&app->files);
     for (size_t i = 0; i < app->history_len; i++) history_free(&app->history[i]);
     free(app->history); *app = (AppState){0};

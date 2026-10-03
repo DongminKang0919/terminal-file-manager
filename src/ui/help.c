@@ -15,12 +15,20 @@ static const HelpEntry entries[] = {
     {"Tab / Shift+Tab", "Switch Files/Preview when preview is shown. Click inside a panel to focus it; * marks the active title."},
     {"r", "Refresh the current directory and preview."},
     {"q / F10", "Quit from the main screen."},
+    {NULL, "MULTIPLE SELECTION"},
+    {"Space in Files", "Toggle * on the cursor item without moving it. > is the cursor; * marks operation targets. Space in Preview or input does not change marks."},
+    {"F9 menu", "Select all visible items or clear selection. Shown/Hidden/Sel summarize loaded items, visibility and marked count. Narrow guidance uses S/H/M (H:1 on, H:0 off)."},
+    {"", "Sort and refresh retain existing marks. Hidden-off drops hidden marks. Changing directory clears marks; history never saves them. Ctrl+F moves only the cursor."},
     {NULL, "FILE OPERATIONS"},
     {"F2 / F4", "Create a file or directory / start with Directory selected."},
     {"Tab / Shift+Tab", "Change form focus. Left/Right or Space changes the selected file/directory type."},
     {"Input errors", "Empty or oversized input shows a warning and keeps the value and edit cursor. Correct it and retry."},
     {"F9 > Rename", "Rename the selected item directly. Unchanged names do no work; collisions keep input open. The renamed item stays selected."},
-    {"F5 / F6", "Copy / move or rename. Choose source, destination and name, then Copy now / Move now."},
+    {"F5 / F6 / F8", "Marked items are targets; without marks use the cursor item. Multiple targets use one destination and original names; Rename is disabled with multiple marks."},
+    {"F5 / F6", "For one target, choose destination/name then Copy now / Move now. For several, enter a destination, inspect the wrapped source list and destination, Tab from Cancel to Execute and Enter."},
+    {"Batch confirmation", "Arrows/wheel, PgUp/PgDn, Home/End scroll targets without selecting Delete. Cancel is the default. Tab changes button focus; mouse buttons also work."},
+    {"Batch results", "Run in current list order; stop at first error or cancellation. Details show Success/Failed/Cancelled/Unexecuted, partial changes, recursive counts and bytes. Main list refreshes once."},
+    {"", "Successes lose marks; failed/cancelled/unexecuted targets retain marks if still visible. No automatic retry, rollback or leftover deletion. Move checks cancellation between targets only."},
     {"Picker", "Arrows browse; Enter opens. Space chooses a source or the current destination directory; p enters a path."},
     {"", "Existing destinations are never overwritten. Duplicate names keep the form open. Moves require the same filesystem."},
     {"F8 / Delete", "Confirm deletion; Cancel is selected by default. PgUp/PgDn or page buttons reveal long names."},
@@ -108,7 +116,7 @@ void show_help(UiContext *ui) {
     if (w > 78) w = 78;
     WINDOW *win = dialog_open(ui, "Help", h, w);
     if (!win) { message(ui, "Cannot open help window"); return; }
-    HelpRow lines[256]; size_t total;
+    HelpRow lines[384]; size_t total;
     if (!help_rows(lines, sizeof lines / sizeof lines[0], w - 4, &total)) {
         dialog_close(ui, win); message(ui, "Help text exceeds display capacity"); return;
     }

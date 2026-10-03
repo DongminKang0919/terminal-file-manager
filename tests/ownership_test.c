@@ -66,6 +66,14 @@ int main(void) {
         calls=0; fail_at=fault; r=app_refresh(&app); fail_at=0;
         if(r.code!=RESULT_OK) { assert(app.files.entries==old); assert(app.files.len==count); }
         app_free(&app); assert(!live); assert(fds()==descriptors);
+        assert(app_init(&app,root).code==RESULT_OK);
+        calls=0;fail_at=fault;r=app_mark_all(&app);fail_at=0;
+        if(r.code==RESULT_OK) {
+            BatchJob job;calls=0;fail_at=fault;r=batch_prepare(&app,0,BATCH_COPY,&job);fail_at=0;
+            if(r.code==RESULT_OK) { calls=0;fail_at=fault;(void)batch_destination(&job,root);fail_at=0; }
+            batch_free(&job);
+        }
+        app_free(&app);assert(!live);assert(fds()==descriptors);
     }
     assert(!unlink(file)); assert(!rmdir(root));
     puts("PASS: 100 allocation-failure positions in listing/refresh/search/preview release explicit ownership and FDs; failed refresh retains list");

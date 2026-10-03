@@ -7,6 +7,7 @@ typedef struct {
     bool copy, drawn, cancelled;
     int height, width;
     uint64_t last_draw;
+    bool batch; BatchAction action; size_t index, total, succeeded;
 } OperationView;
 static bool operation_progress(const OperationProgress *progress, void *context) {
     OperationView *view = context;
@@ -14,15 +15,26 @@ static bool operation_progress(const OperationProgress *progress, void *context)
     uint64_t now = core_monotonic_ms();
     if (!view->cancelled && (!view->drawn || now - view->last_draw >= 100)) {
         int h, w; getmaxyx(view->win, h, w);
-        dialog_frame(view->win, view->copy ? "Copying" : "Deleting");
-        draw_window_text(view->win, 1, 2, w - 4, progress->path);
-        char text[96];
-        snprintf(text, sizeof text, "Completed items: %llu", (unsigned long long)progress->completed_items);
-        draw_window_text(view->win, 2, 2, w - 4, text);
-        if (view->copy) snprintf(text, sizeof text, "Copied bytes: %llu", (unsigned long long)progress->copied_bytes);
-        else snprintf(text, sizeof text, "Deleted items cannot be restored");
-        draw_window_text(view->win, 3, 2, w - 4, text);
-        draw_window_text(view->win, 4, 2, w - 4, "Cancel stops here; changes are kept");
+        dialog_frame(view->win, view->batch ? (view->action==BATCH_MOVE ? "Batch moving" : view->action==BATCH_COPY ? "Batch copying" : "Batch deleting") : view->copy ? "Copying" : "Deleting");
+        if (view->batch) {
+            char counts[120];
+            snprintf(counts,sizeof counts,"Target %zu/%zu | Succeeded: %zu",view->index+1,view->total,view->succeeded);
+            draw_window_text(view->win,1,2,w-4,counts);
+            draw_window_text(view->win,2,2,w-4,progress->path);
+            snprintf(counts,sizeof counts,"Recursive completed items: %llu",(unsigned long long)progress->completed_items);
+            draw_window_text(view->win,3,2,w-4,counts);
+            snprintf(counts,sizeof counts,"Copied bytes: %llu",(unsigned long long)progress->copied_bytes);
+            draw_window_text(view->win,4,2,w-4,counts);
+        } else {
+            draw_window_text(view->win, 1, 2, w - 4, progress->path);
+            char text[96];
+            snprintf(text, sizeof text, "Completed items: %llu", (unsigned long long)progress->completed_items);
+            draw_window_text(view->win, 2, 2, w - 4, text);
+            if (view->copy) snprintf(text, sizeof text, "Copied bytes: %llu", (unsigned long long)progress->copied_bytes);
+            else snprintf(text, sizeof text, "Deleted items cannot be restored");
+            draw_window_text(view->win, 3, 2, w - 4, text);
+            draw_window_text(view->win, 4, 2, w - 4, "Cancel stops here; changes are kept");
+        }
         dialog_button(view->win, h - 2, 2, "[ Cancel ]", true, true);
         draw_window_text(view->win, h - 2, 14, w - 16, "Esc / Enter");
         dialog_refresh(view->win); view->last_draw = now; view->drawn = true;
@@ -63,4 +75,19 @@ Result run_file_operation(UiContext *ui, bool copy, const char *source,
         dialog_close(ui, view.win);
     }
     return r;
+}
+
+static bool batch_progress(const BatchProgress *p,void *context) {
+    OperationView *view=context; view->index=p->index; view->total=p->total; view->succeeded=p->succeeded;
+    return operation_progress(&p->progress,view);
+}
+void run_batch_operation(UiContext *ui,BatchJob *job) {
+    OperationView view={.batch=true,.action=job->action,.height=LINES,.width=COLS};
+    if(stdscr) {
+        view.win=dialog_open(ui,"Batch operation",7,76);
+        if(!view.win) { batch_cancel(job);return; }
+        wtimeout(view.win,0);
+    }
+    batch_execute(job,view.win?batch_progress:NULL,&view);
+    if(view.win) { flushinp();dialog_close(ui,view.win); }
 }

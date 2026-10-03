@@ -18,6 +18,8 @@ ui=[*core,*sorted(x for x in (root/'src/ui').glob('*.c') if x.name!='main.c')]
 flags=['-D_XOPEN_SOURCE=700','-O1','-g','-Wall','-Wextra','-Wpedantic','-std=c11',
        '-fno-omit-frame-pointer','-fsanitize=address,undefined','-fno-pie','-no-pie']
 targets={
+ 'batch_test':(['malloc','calloc','realloc','platform_move'],core),
+ 'batch_ui_test':(['app_refresh','platform_directory_open','platform_reader_line','qsort','core_monotonic_ms','wrefresh','input_key','input_wide','malloc','calloc','realloc'],ui),
  'sort_test':([],core), 'progress_test':([],core),
  'search_test':(['lstat','platform_directory_open','platform_directory_next'],core),
  'controller_test':(['app_refresh','confirm','run_file_operation'],ui),

@@ -53,3 +53,7 @@ __pycache__/
 /tests/startup_ui_test
 /tests/search_progress_ui_test
 /tests/ownership_test
+
+/tests/batch_test
+/tests/batch_ui_test
+/tests/tfile_batch

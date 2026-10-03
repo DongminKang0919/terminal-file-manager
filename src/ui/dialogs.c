@@ -177,6 +177,7 @@ bool search_prompt(UiContext *ui, WINDOW *win, char *out, size_t size) {
     return input_dialog(ui, "Search", out, size, NULL, out, win, NULL);
 }
 void rename_entry(UiContext *ui) {
+    if(ui->app.marks_len>1) { message(ui,"Rename unavailable: multiple marked items");return; }
     if (ui->selected >= ui->app.files.len) return;
     char *source = text_copy(ui->app.files.entries[ui->selected].path);
     char *name = text_copy(ui->app.files.entries[ui->selected].name);
@@ -279,13 +280,16 @@ static int choice_dialog(WINDOW *win, const char *title, const char **labels, in
     return result;
 }
 int show_menu(UiContext *ui) {
-    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list", "Rename selected item", "!    Recent operation result", "z    Dismiss notification"};
-    const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r', UI_QUICK_FIND, UI_RENAME, UI_RESULT, 'z'};
+    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list", "Rename selected item", "!    Recent operation result", "z    Dismiss notification", "Select all visible items", "Clear selection"};
+    if(ui->app.marks_len > 1) labels[11]="[disabled] Rename: multiple marked items";
+    const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r', UI_QUICK_FIND, UI_RENAME, UI_RESULT, 'z', UI_SELECT_ALL, UI_CLEAR_SELECTION};
     WINDOW *win = dialog_open(ui, "Menu", 14, 52);
     if (!win) return 0;
     int selected = 0, offset = 0;
-    int i = choice_dialog(win, "Menu", labels, 14, &selected, &offset, NULL);
-    dialog_close(ui, win); return i < 0 ? 0 : keys[i];
+    int i = choice_dialog(win, "Menu", labels, 16, &selected, &offset, NULL);
+    dialog_close(ui, win);
+    if (i == 11 && ui->app.marks_len > 1) { message(ui, "Rename unavailable: multiple marked items"); return 0; }
+    return i < 0 ? 0 : keys[i];
 }
 void show_options(UiContext *ui) {
     WINDOW *win = dialog_open(ui, "Options", 10, 52);
