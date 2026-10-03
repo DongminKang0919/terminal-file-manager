@@ -8,16 +8,16 @@ void preview_reset(UiContext *ui) {
     ui->preview_offset = 0; ui->preview_more = false; free(ui->preview_path); ui->preview_path = NULL;
 }
 void preview_scroll(UiContext *ui, bool down) {
-    if (down) { if (ui->preview_more) ui->preview_offset += (size_t)ui->app.wheel_step; }
-    else ui->preview_offset = ui->preview_offset > (size_t)ui->app.wheel_step ? ui->preview_offset - ui->app.wheel_step : 0;
+    if (down) { if (ui->preview_more) ui->preview_offset += (size_t)ui->wheel_step; }
+    else ui->preview_offset = ui->preview_offset > (size_t)ui->wheel_step ? ui->preview_offset - ui->wheel_step : 0;
 }
 
 /* Preparation owns all I/O; rendering below only consumes the prepared page.
    No idle timer: metadata is checked on viewport changes or the next redraw
    after one second. Explicit refresh resets even a latched error. */
 void preview_prepare(UiContext *ui, int rows) {
-    if (!ui->app.show_preview || ui->selected >= ui->app.files.len) { preview_reset(ui); return; }
-    const Item *it = &ui->app.files.entries[ui->selected];
+    if (!ui->show_preview || ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) { preview_reset(ui); return; }
+    const Item *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
     bool fresh = !ui->preview_path || strcmp(ui->preview_path, it->path);
     if (fresh) {
         preview_reset(ui); ui->preview_path = text_copy(it->path);
@@ -113,8 +113,8 @@ static void preview_content(UiContext *ui, View *v, const Item *it) {
 
 }
 void preview(UiContext *ui, int x, int y, int w, int h) {
-    if (!ui->app.files.len || ui->selected >= ui->app.files.len || w < 4 || h < 4) return;
-    const Item *it = &ui->app.files.entries[ui->selected];
+    if (!ui_panel(ui)->app.files.len || ui_panel(ui)->selected >= ui_panel(ui)->app.files.len || w < 4 || h < 4) return;
+    const Item *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
     View v = { .x = x + 2, .y = y + 1, .width = w - 4, .rows = h - 3 };
     if (v.rows > PREVIEW_PAGE_MAX - 1) v.rows = PREVIEW_PAGE_MAX - 1;
     preview_content(ui, &v, it);

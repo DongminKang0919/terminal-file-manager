@@ -89,7 +89,7 @@ int main(void) {
         char name[32]; snprintf(name,sizeof name,"z%zu",i);
         extras[i]=core_path_join(dir,i<7 ? special[i] : name); assert(extras[i]); write_file(extras[i],0);
     }
-    UiContext ui={0}; assert(app_init(&ui.app,dir).code==RESULT_OK); ui.app.show_preview=true;
+    UiContext ui={0}; assert(ui_init(&ui,dir).code==RESULT_OK); ui.show_preview=true;
     FILE *out=tmpfile(), *in=tmpfile(); assert(out && in); SCREEN *screen=newterm("xterm-256color",out,in); assert(screen);
     preview_prepare(&ui,17); saved=reads; size_t saved_opens=opens;
     for(int i=0;i<100;i++) { preview_prepare(&ui,17); preview(&ui,50,2,50,20); }
@@ -98,28 +98,28 @@ int main(void) {
     assert(reads==saved && opens==saved_opens); /* Metadata poll does not read contents. */
     ui.preview_offset=200; preview_prepare(&ui,17);
     PreviewSession *session=ui.preview_session; char **page=ui.preview_page.lines;
-    saved=reads; saved_opens=opens; size_t history=ui.app.history_len, checked=checks;
+    saved=reads; saved_opens=opens; size_t history=ui_panel(&ui)->app.history_len, checked=checks;
     forbid_list=true;
     for(int key=0;key<4;key++) for(int down=0;down<2;down++) {
         change_sort(&ui,(SortSettings){key,down});
-        assert(!strcmp(ui.app.files.entries[ui.selected].path,path));
-        assert(ui.top<=ui.selected && ui.selected<ui.top+17);
+        assert(!strcmp(ui_panel(&ui)->app.files.entries[ui_panel(&ui)->selected].path,path));
+        assert(ui_panel(&ui)->top<=ui_panel(&ui)->selected && ui_panel(&ui)->selected<ui_panel(&ui)->top+17);
         ui.preview_checked=0; preview_prepare(&ui,17);
         assert(ui.preview_session==session && ui.preview_page.lines==page && ui.preview_offset==200);
-        assert(reads==saved && opens==saved_opens && ui.app.history_len==history);
+        assert(reads==saved && opens==saved_opens && ui_panel(&ui)->app.history_len==history);
     }
     forbid_list=false; assert(checks>checked); /* Metadata polling is allowed, content I/O is not. */
-    fail_refresh=true; size_t selected=ui.selected, top=ui.top;
+    fail_refresh=true; size_t selected=ui_panel(&ui)->selected, top=ui_panel(&ui)->top;
     assert(load_dir(&ui,NULL).code==RESULT_ACCESS);
-    assert(ui.selected==selected && ui.top==top && ui.preview_session==session && ui.preview_page.lines==page);
+    assert(ui_panel(&ui)->selected==selected && ui_panel(&ui)->top==top && ui.preview_session==session && ui.preview_page.lines==page);
     fail_refresh=false;
-    assert(load_dir(&ui,NULL).code==RESULT_OK && !strcmp(ui.app.files.entries[ui.selected].path,path));
+    assert(load_dir(&ui,NULL).code==RESULT_OK && !strcmp(ui_panel(&ui)->app.files.entries[ui_panel(&ui)->selected].path,path));
     assert(!ui.preview_session && !ui.preview_page.lines && ui.preview_offset==0);
     preview_prepare(&ui,17); assert(opens==saved_opens+1);
-    assert(load_dir(&ui,"zA").code==RESULT_OK && !strcmp(ui.app.files.entries[ui.selected].name,"zA"));
-    selected=ui.selected; assert(!unlink(extras[0]));
+    assert(load_dir(&ui,"zA").code==RESULT_OK && !strcmp(ui_panel(&ui)->app.files.entries[ui_panel(&ui)->selected].name,"zA"));
+    selected=ui_panel(&ui)->selected; assert(!unlink(extras[0]));
     assert(load_dir(&ui,NULL).code==RESULT_OK);
-    assert(ui.selected==(selected<ui.app.files.len ? selected : ui.app.files.len-1));
+    assert(ui_panel(&ui)->selected==(selected<ui_panel(&ui)->app.files.len ? selected : ui_panel(&ui)->app.files.len-1));
     write_file(extras[0],0); assert(load_dir(&ui,"file").code==RESULT_OK);
     ui.preview_offset=900; preview_prepare(&ui,17);
     write_file(path,2); preview_prepare(&ui,18);
@@ -130,9 +130,9 @@ int main(void) {
     write_file(path,1000); preview_reset(&ui); preview_prepare(&ui,17);
     assert(ui.preview_result.code==RESULT_OK && live==1);
     for(int i=0;i<100;i++) { preview_reset(&ui); preview_prepare(&ui,17); assert(live==1); }
-    ui.app.show_preview=false; preview_prepare(&ui,17); assert(live==0);
-    ui.app.show_preview=true; preview_prepare(&ui,2); preview_prepare(&ui,30); assert(live==1);
-    init_theme(); resizeterm(24,100); ui.selected=0; ui.top=0; draw(&ui);
+    ui.show_preview=false; preview_prepare(&ui,17); assert(live==0);
+    ui.show_preview=true; preview_prepare(&ui,2); preview_prepare(&ui,30); assert(live==1);
+    init_theme(); resizeterm(24,100); ui_panel(&ui)->selected=0; ui_panel(&ui)->top=0; draw(&ui);
     assert((mvinch(5,1)&A_CHARTEXT)=='>');
     assert(mvinch(5,3)&A_BOLD);
     assert(PAIR_NUMBER(mvinch(5,3))==UI_SELECTED);
@@ -140,7 +140,7 @@ int main(void) {
     assert(!(mvinch(0,5)&A_BOLD));
     saved=reads; saved_opens=opens; checked=checks;
     session=ui.preview_session; page=ui.preview_page.lines;
-    size_t saved_offset=ui.preview_offset, saved_selected=ui.selected, saved_top=ui.top;
+    size_t saved_offset=ui.preview_offset, saved_selected=ui_panel(&ui)->selected, saved_top=ui_panel(&ui)->top;
     forbid_list=true; ui.preview_checked=0;
     WINDOW *modal=dialog_open(&ui,"Search",7,60); assert(modal);
     assert(ui.modal_depth==1 && !(mvinch(5,3)&A_BOLD));
@@ -169,7 +169,7 @@ int main(void) {
     dialog_close(&ui,modal); assert(ui.modal_depth==0 && (mvinch(5,3)&A_BOLD));
     assert(reads==saved && opens==saved_opens && checks==checked);
     assert(ui.preview_session==session && ui.preview_page.lines==page);
-    assert(ui.preview_offset==saved_offset && ui.selected==saved_selected && ui.top==saved_top);
+    assert(ui.preview_offset==saved_offset && ui_panel(&ui)->selected==saved_selected && ui_panel(&ui)->top==saved_top);
     /* Focus-only changes, Enter on this same file, and modal restore do not
        recreate the session or read the body. Normal metadata checks may run. */
     for (int i=0;i<20;i++) {
@@ -187,7 +187,7 @@ int main(void) {
         dialog_close(&ui,popup); assert(ui.focus==UI_FOCUS_PREVIEW);
         assert(panel_key(&ui,27,24) && ui.focus==UI_FOCUS_FILES);
         assert(ui.preview_session==session && ui.preview_page.lines==page);
-        assert(ui.preview_offset==saved_offset && ui.selected==saved_selected && ui.top==saved_top);
+        assert(ui.preview_offset==saved_offset && ui_panel(&ui)->selected==saved_selected && ui_panel(&ui)->top==saved_top);
         assert(reads==saved && opens==saved_opens);
     }
     checked=checks;
@@ -198,23 +198,23 @@ int main(void) {
     assert(ui.notice.visible && ui.focus==UI_FOCUS_PREVIEW);
     assert(reads==saved && opens==saved_opens && checks==checked);
     assert(ui.preview_session==session && ui.preview_page.lines==page);
-    assert(ui.preview_offset==saved_offset && ui.selected==saved_selected && ui.top==saved_top);
+    assert(ui.preview_offset==saved_offset && ui_panel(&ui)->selected==saved_selected && ui_panel(&ui)->top==saved_top);
     ungetch('a'); show_result(&ui); assert(!ui.notice.visible && ui.notice.present);
     ungetch(27); show_result(&ui);
     assert(reads==saved && opens==saved_opens && checks==checked);
     snprintf(ui.status,sizeof ui.status,"Important partial result");
     unget_wch('\n'); unget_wch('e'); unget_wch('l'); unget_wch('i'); unget_wch('f');
     quick_find(&ui);
-    assert(ui.selected==saved_selected && ui.top==saved_top);
+    assert(ui_panel(&ui)->selected==saved_selected && ui_panel(&ui)->top==saved_top);
     assert(reads==saved && opens==saved_opens && ui.preview_session==session && ui.preview_page.lines==page);
     assert(!strcmp(ui.status,"Important partial result"));
     unget_wch(27); unget_wch('!'); quick_find(&ui);
-    assert(ui.selected==saved_selected && ui.top==saved_top && reads==saved && opens==saved_opens);
+    assert(ui_panel(&ui)->selected==saved_selected && ui_panel(&ui)->top==saved_top && reads==saved && opens==saved_opens);
     enter_item(&ui); assert(panel_key(&ui,KEY_DOWN,24)); draw(&ui);
     assert(ui.preview_offset==saved_offset+1);
     assert(panel_key(&ui,KEY_NPAGE,24)); draw(&ui);
     assert(ui.preview_offset==saved_offset+18);
-    assert(ui.selected==saved_selected && ui.top==saved_top);
+    assert(ui_panel(&ui)->selected==saved_selected && ui_panel(&ui)->top==saved_top);
     saved=reads; assert(panel_key(&ui,KEY_HOME,24)); draw(&ui);
     assert(!ui.preview_offset && reads==saved); /* return within cache */
     saved=reads; saved_opens=opens; session=ui.preview_session; page=ui.preview_page.lines;
@@ -223,15 +223,15 @@ int main(void) {
     show_options(&ui);
     assert(ui.focus==UI_FOCUS_PREVIEW && ui.preview_session==session && ui.preview_page.lines==page);
     assert(reads==saved && opens==saved_opens);
-    Item *entries=ui.app.files.entries; bool hidden=ui.app.show_hidden;
-    size_t option_selected=ui.selected, option_top=ui.top;
+    Item *entries=ui_panel(&ui)->app.files.entries; bool hidden=ui_panel(&ui)->app.show_hidden;
+    size_t option_selected=ui_panel(&ui)->selected, option_top=ui_panel(&ui)->top;
     fail_refresh=true; ungetch(27); ungetch('\n'); show_options(&ui); fail_refresh=false;
-    assert(ui.app.show_hidden==hidden && ui.app.files.entries==entries);
-    assert(ui.selected==option_selected && ui.top==option_top && strstr(ui.status,"Refresh failed"));
+    assert(ui_panel(&ui)->app.show_hidden==hidden && ui_panel(&ui)->app.files.entries==entries);
+    assert(ui_panel(&ui)->selected==option_selected && ui_panel(&ui)->top==option_top && strstr(ui.status,"Refresh failed"));
     assert(ui.preview_session==session && ui.preview_page.lines==page && reads==saved && opens==saved_opens);
-    ui.app.show_preview=false; draw(&ui);
+    ui.show_preview=false; draw(&ui);
     assert(ui.focus==UI_FOCUS_FILES && !ui.preview_session && !live);
-    enter_item(&ui); assert(ui.app.show_preview && ui.focus==UI_FOCUS_PREVIEW);
+    enter_item(&ui); assert(ui.show_preview && ui.focus==UI_FOCUS_PREVIEW);
     draw(&ui); assert(live==1);
     forbid_list=false;
     short fg, bg, base_fg, base_bg;
@@ -239,15 +239,15 @@ int main(void) {
     pair_content(UI_HEADER,&fg,&bg); assert(bg!=base_bg && fg!=bg);
     pair_content(UI_PATH,&fg,&bg); assert(bg==base_bg);
     pair_content(UI_SELECTED,&fg,&bg); assert(bg!=base_bg && fg!=bg);
-    preview_reset(&ui); app_free(&ui.app); assert(live==0);
+    ui_free(&ui); assert(live==0);
     endwin(); delscreen(screen); fclose(out); fclose(in);
     out=tmpfile(); in=tmpfile(); assert(out && in);
     screen=newterm("vt100",out,in); assert(screen); init_theme();
     assert(!has_colors() && (ui_selection()&A_REVERSE));
-    assert(app_init(&ui.app,dir).code==RESULT_OK); ui.selected=0; ui.top=0;
+    assert(ui_init(&ui,dir).code==RESULT_OK); ui_panel(&ui)->selected=0; ui_panel(&ui)->top=0;
     resizeterm(24,100); draw(&ui);
     assert((mvinch(5,1)&A_CHARTEXT)=='>'); assert(mvinch(5,3)&A_REVERSE);
-    preview_reset(&ui); app_free(&ui.app);
+    preview_reset(&ui); app_free(&ui_panel(&ui)->app);
     endwin(); delscreen(screen); fclose(out); fclose(in);
     for(size_t i=0;i<40;i++) { assert(!unlink(extras[i])); free(extras[i]); }
     assert(!unlink(path)); assert(!rmdir(dir));

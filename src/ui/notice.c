@@ -115,7 +115,7 @@ void show_result(UiContext *ui) {
         add_text(&text, "Only the latest file operation result is kept. Acknowledgement closes its display; details remain available.", false);
     }
     if (text.failed) { free(text.rows); message(ui, "Cannot allocate result display"); return; }
-    size_t selected = ui->selected, top = ui->top, preview_offset = ui->preview_offset;
+    size_t selected = ui_panel(ui)->selected, top = ui_panel(ui)->top, preview_offset = ui->preview_offset;
     UiFocus focus = ui->focus; bool preview_more = ui->preview_more;
     WINDOW *win = dialog_open(ui, "Recent operation result", h, w);
     if (!win) { free(text.rows); return; }
@@ -150,6 +150,6 @@ void show_result(UiContext *ui) {
         if (key == KEY_END) offset=max;
     }
     dialog_close(ui, win); free(text.rows);
-    ui->selected = selected; ui->top = top; ui->preview_offset = preview_offset;
+    ui_panel(ui)->selected = selected; ui_panel(ui)->top = top; ui->preview_offset = preview_offset;
     ui->focus = focus; ui->preview_more = preview_more;
 }

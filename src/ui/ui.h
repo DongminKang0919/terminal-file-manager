@@ -36,11 +36,19 @@ typedef struct {
     char action[32];
     char *source, *destination;
 } OperationNotice;
+/* One file panel owns its list, names, history and logical viewport. */
 typedef struct {
     AppState app;
+    size_t selected, top;
+} UiFilePanel;
+typedef struct {
+    UiFilePanel panels[1];
+    unsigned active;
+    bool show_preview;
+    int wheel_step;
     unsigned modal_depth;
     UiFocus focus;
-    size_t selected, top, preview_offset;
+    size_t preview_offset;
     bool preview_more;
     char *preview_path, *preview_link;
     PreviewSession *preview_session;
@@ -53,6 +61,10 @@ typedef struct {
     NoticeKind status_kind;
     OperationNotice notice;
 } UiContext;
+static inline UiFilePanel *ui_panel(UiContext *ui) { return &ui->panels[ui->active]; }
+/* Initialize an empty context; ui_free releases all owned UI and panel data. */
+Result ui_init(UiContext *ui, const char *directory);
+void ui_free(UiContext *ui);
 void quick_find(UiContext *ui);
 void notice_clear(UiContext *ui);
 Result notice_prepare(OperationNotice *out, const char *action, const char *source, const char *destination);

@@ -60,7 +60,7 @@ int main(void) {
     SCREEN *screen=newterm("xterm-256color",out,in); assert(screen); init_theme(); mousemask(ALL_MOUSE_EVENTS,NULL);
     for(int small=0;small<2;small++) {
         resizeterm(small?9:24,small?50:100);
-        UiContext ui={0}; ui.app.directory="/";
+        UiContext ui={0}; ui_panel(&ui)->app.directory="/";
         const char *labels[]={"New name (no directory path)","Directory path - absolute or relative"};
         for(int i=0;i<2;i++) {
             char value[32];
@@ -79,15 +79,15 @@ int main(void) {
         const Step options[]={KEY(KEY_DOWN),KEY(KEY_DOWN),KEY(KEY_DOWN),CHAR('\n'),
             {'\n',OK,"Sort by: Size",2,-1},{KEY_UP,KEY_CODE_YES,"Sort by: Modified",2,-1},
             {27,OK,"Wheel scroll:",2,-1}};
-        SCRIPT(options); show_options(&ui); complete(); assert(ui.app.sort.key==SORT_MODIFIED);
+        SCRIPT(options); show_options(&ui); complete(); assert(ui_panel(&ui)->app.sort.key==SORT_MODIFIED);
         Item item={.name="kept",.path="/kept"};
-        ui.app.files=(FileList){&item,1};
+        ui_panel(&ui)->app.files=(FileList){&item,1};
         const Step failure[]={CHAR('\n'),{27,OK,"Injected refresh failure",0,-1}};
-        SCRIPT(failure); show_options(&ui); complete(); assert(!ui.app.show_hidden);
+        SCRIPT(failure); show_options(&ui); complete(); assert(!ui_panel(&ui)->app.show_hidden);
         assert(strstr(ui.status,"Refresh failed"));
-        assert(ui.app.files.entries==&item && ui.app.files.len==1 && !strcmp(item.name,"kept"));
+        assert(ui_panel(&ui)->app.files.entries==&item && ui_panel(&ui)->app.files.len==1 && !strcmp(item.name,"kept"));
         assert(!ui.modal_depth);
-        ui.app.show_preview=true; ui.focus=UI_FOCUS_PREVIEW; ui.selected=0; ui.top=0; ui.preview_offset=23;
+        ui.show_preview=true; ui.focus=UI_FOCUS_PREVIEW; ui_panel(&ui)->selected=0; ui_panel(&ui)->top=0; ui.preview_offset=23;
         Result result=result_make(RESULT_IO,"first diagnostic\nsecond diagnostic\nthird diagnostic");
         strcpy(result.path,"/");
         for(int i=0;i<150;i++) strcat(result.path,"한글");
@@ -101,7 +101,7 @@ int main(void) {
             {KEY_HOME,KEY_CODE_YES,"latest file operation",0,-1},CHAR(27)};
         SCRIPT(details); show_result(&ui); complete();
         assert(ui.notice.visible && ui.notice.operation.completed_items==7);
-        assert(ui.focus==UI_FOCUS_PREVIEW && ui.preview_offset==23 && ui.app.files.entries==&item);
+        assert(ui.focus==UI_FOCUS_PREVIEW && ui.preview_offset==23 && ui_panel(&ui)->app.files.entries==&item);
         /* Read every wrapped display row, including separate refresh diagnostics
            and escaped control bytes, at both minimum and normal screen sizes. */
         Step scan[161];

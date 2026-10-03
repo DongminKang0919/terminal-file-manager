@@ -149,22 +149,22 @@ static void show_transfer_paths(UiContext *ui, const char *source, const char *b
 }
 
 void transfer_entry(UiContext *ui, bool move_it) {
-    if (ui->app.marks_len > 1) { batch_entry(ui, move_it ? BATCH_MOVE : BATCH_COPY); return; }
-    const FileInfo *initial=ui->selected<ui->app.files.len ? &ui->app.files.entries[ui->selected] : NULL;
-    bool fixed_source=ui->app.marks_len!=0;
-    if(fixed_source) for(size_t i=0;i<ui->app.files.len;i++)
-        if(app_marked(&ui->app,ui->app.files.entries[i].name)) { initial=&ui->app.files.entries[i]; break; }
+    if (ui_panel(ui)->app.marks_len > 1) { batch_entry(ui, move_it ? BATCH_MOVE : BATCH_COPY); return; }
+    const FileInfo *initial=ui_panel(ui)->selected<ui_panel(ui)->app.files.len ? &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected] : NULL;
+    bool fixed_source=ui_panel(ui)->app.marks_len!=0;
+    if(fixed_source) for(size_t i=0;i<ui_panel(ui)->app.files.len;i++)
+        if(app_marked(&ui_panel(ui)->app,ui_panel(ui)->app.files.entries[i].name)) { initial=&ui_panel(ui)->app.files.entries[i]; break; }
 
     WINDOW *win = dialog_open(ui, move_it ? "Move" : "Copy", 13, 88);
     if (!win) return;
-    if (strlen(ui->app.directory) >= UI_INPUT_CAP ||
+    if (strlen(ui_panel(ui)->app.directory) >= UI_INPUT_CAP ||
         (initial && strlen(initial->path) >= UI_INPUT_CAP)) {
         dialog_close(ui,win); message(ui,"Path exceeds terminal input limit"); return;
     }
     /* The process cwd is not the browsed location. Keep this base even when a
        failed operation refreshes/replaces the main list while the form stays open. */
     char base[UI_INPUT_CAP], source[UI_INPUT_CAP] = "", warning[512] = "";
-    snprintf(base,sizeof base,"%s",ui->app.directory);
+    snprintf(base,sizeof base,"%s",ui_panel(ui)->app.directory);
     UiField folder_field, name_field; field_init(&folder_field,""); field_init(&name_field,"");
     if (initial) {
         snprintf(source,sizeof source,"%s",initial->path);

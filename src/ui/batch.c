@@ -59,7 +59,7 @@ static bool review(UiContext *ui,const BatchJob *job,bool *resized) {
 bool batch_review(UiContext *ui,const BatchJob *job) { return review(ui,job,NULL); }
 void batch_finish(UiContext *ui,BatchJob *job) {
     /* Remove successes before refresh: even a failed refresh cannot retain them. */
-    app_marks_apply_result(&ui->app,job);
+    app_marks_apply_result(&ui_panel(ui)->app,job);
     notice_record(ui,job->action==BATCH_DELETE?"Batch delete":job->action==BATCH_MOVE?"Batch move":"Batch copy",job->result,NULL,NULL);
     ui->notice.batch=*job; *job=(BatchJob){0}; /* transfer ownership, no result allocation */
     if(ui->notice.batch.executed) {
@@ -69,7 +69,7 @@ void batch_finish(UiContext *ui,BatchJob *job) {
 /* Own the frozen job throughout editing; only execution transfers it to notice. */
 static void batch_transfer_form(UiContext *ui,BatchJob *job) {
     const char *title="Batch destination directory";
-    char *base=text_copy(ui->app.directory);
+    char *base=text_copy(ui_panel(ui)->app.directory);
     UiField field;
     if(!base || !field_init(&field,base)) {
         free(base); message(ui,"Path exceeds input limit / out of memory"); return;
@@ -139,7 +139,7 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
     dialog_close(ui,win); free(base);
 }
 void batch_entry(UiContext *ui,BatchAction action) {
-    BatchJob job; Result r=batch_prepare(&ui->app,ui->selected,action,&job);
+    BatchJob job; Result r=batch_prepare(&ui_panel(ui)->app,ui_panel(ui)->selected,action,&job);
     if(r.code!=RESULT_OK) {
         notice_record(ui,action==BATCH_DELETE?"Batch delete":action==BATCH_MOVE?"Batch move":"Batch copy",r,NULL,NULL);return;
     }

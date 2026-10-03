@@ -106,7 +106,7 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
             mvwaddstr(win, 2, 2, "Name:");
             if (h > 7) draw_window_text(win, h - 3, 2, w - 4, "Tab: next field   Type: Left/Right   Esc: cancel");
         } else {
-            draw_window_text(win, 1, 2, w - 4, ui->app.directory);
+            draw_window_text(win, 1, 2, w - 4, ui_panel(ui)->app.directory);
             if (host) {
                 mvwaddstr(win, 2, 2, "Name contains:");
                 if (!*warning) draw_window_text(win, 4, 2, w - 4, focus == 2 ?
@@ -183,10 +183,10 @@ bool search_prompt(UiContext *ui, WINDOW *win, char *out, size_t size) {
     return input_dialog(ui, "Search", out, size, NULL, out, win, NULL, NULL);
 }
 void rename_entry(UiContext *ui) {
-    if(ui->app.marks_len>1) { message(ui,"Rename unavailable: multiple marked items");return; }
-    if (ui->selected >= ui->app.files.len) return;
-    char *source = text_copy(ui->app.files.entries[ui->selected].path);
-    char *name = text_copy(ui->app.files.entries[ui->selected].name);
+    if(ui_panel(ui)->app.marks_len>1) { message(ui,"Rename unavailable: multiple marked items");return; }
+    if (ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) return;
+    char *source = text_copy(ui_panel(ui)->app.files.entries[ui_panel(ui)->selected].path);
+    char *name = text_copy(ui_panel(ui)->app.files.entries[ui_panel(ui)->selected].name);
     if (!source || !name) message(ui, "Rename: Out of memory");
     else {
         char out[UI_INPUT_CAP];
@@ -287,14 +287,14 @@ static int choice_dialog(WINDOW *win, const char *title, const char **labels, in
 }
 int show_menu(UiContext *ui) {
     const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list", "Rename selected item", "!    Recent operation result", "z    Dismiss notification", "Select all visible items", "Clear selection"};
-    if(ui->app.marks_len > 1) labels[11]="[disabled] Rename: multiple marked items";
+    if(ui_panel(ui)->app.marks_len > 1) labels[11]="[disabled] Rename: multiple marked items";
     const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r', UI_QUICK_FIND, UI_RENAME, UI_RESULT, 'z', UI_SELECT_ALL, UI_CLEAR_SELECTION};
     WINDOW *win = dialog_open(ui, "Menu", 14, 52);
     if (!win) return 0;
     int selected = 0, offset = 0;
     int i = choice_dialog(win, "Menu", labels, 16, &selected, &offset, NULL);
     dialog_close(ui, win);
-    if (i == 11 && ui->app.marks_len > 1) { message(ui, "Rename unavailable: multiple marked items"); return 0; }
+    if (i == 11 && ui_panel(ui)->app.marks_len > 1) { message(ui, "Rename unavailable: multiple marked items"); return 0; }
     return i < 0 ? 0 : keys[i];
 }
 void show_options(UiContext *ui) {
@@ -304,25 +304,25 @@ void show_options(UiContext *ui) {
     char warning[sizeof ui->status] = "";
     for (;;) {
         char hidden[64], preview_text[64], wheel[64], sort[64], direction[64];
-        snprintf(hidden, sizeof hidden, "[%c] Show hidden files", ui->app.show_hidden ? 'x' : ' ');
-        snprintf(preview_text, sizeof preview_text, "[%c] Show preview panel", ui->app.show_preview ? 'x' : ' ');
-        snprintf(wheel, sizeof wheel, "Wheel scroll: %d rows (click to change)", ui->app.wheel_step);
-        snprintf(sort, sizeof sort, "Sort by: %s (click to change)", sort_label(ui->app.sort.key));
-        snprintf(direction, sizeof direction, "Sort order: %s (click to change)", ui->app.sort.descending ? "Descending" : "Ascending");
+        snprintf(hidden, sizeof hidden, "[%c] Show hidden files", ui_panel(ui)->app.show_hidden ? 'x' : ' ');
+        snprintf(preview_text, sizeof preview_text, "[%c] Show preview panel", ui->show_preview ? 'x' : ' ');
+        snprintf(wheel, sizeof wheel, "Wheel scroll: %d rows (click to change)", ui->wheel_step);
+        snprintf(sort, sizeof sort, "Sort by: %s (click to change)", sort_label(ui_panel(ui)->app.sort.key));
+        snprintf(direction, sizeof direction, "Sort order: %s (click to change)", ui_panel(ui)->app.sort.descending ? "Descending" : "Ascending");
         const char *labels[] = {hidden, preview_text, wheel, sort, direction, "Done (settings apply to this session)"};
         int i = choice_dialog(win, "Options", labels, 6, &selected, &offset, warning);
         if (i < 0 || i == 5) break;
         if (i == 0) {
-            ui->app.show_hidden = !ui->app.show_hidden;
+            ui_panel(ui)->app.show_hidden = !ui_panel(ui)->app.show_hidden;
             if (load_dir(ui, NULL).code != RESULT_OK) {
-                ui->app.show_hidden = !ui->app.show_hidden;
+                ui_panel(ui)->app.show_hidden = !ui_panel(ui)->app.show_hidden;
                 snprintf(warning, sizeof warning, "%s", ui->status);
             }
         }
-        if (i == 1) ui->app.show_preview = !ui->app.show_preview;
-        if (i == 2) ui->app.wheel_step = ui->app.wheel_step == 1 ? 3 : ui->app.wheel_step == 3 ? 5 : 1;
-        if (i == 3) change_sort(ui, (SortSettings){(ui->app.sort.key + 1) % 4, ui->app.sort.descending});
-        if (i == 4) change_sort(ui, (SortSettings){ui->app.sort.key, !ui->app.sort.descending});
+        if (i == 1) ui->show_preview = !ui->show_preview;
+        if (i == 2) ui->wheel_step = ui->wheel_step == 1 ? 3 : ui->wheel_step == 3 ? 5 : 1;
+        if (i == 3) change_sort(ui, (SortSettings){(ui_panel(ui)->app.sort.key + 1) % 4, ui_panel(ui)->app.sort.descending});
+        if (i == 4) change_sort(ui, (SortSettings){ui_panel(ui)->app.sort.key, !ui_panel(ui)->app.sort.descending});
         draw(ui);
     }
     dialog_close(ui, win);

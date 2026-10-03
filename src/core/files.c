@@ -108,7 +108,7 @@ static Result navigate_to(AppState *app, const char *directory, bool record, boo
 }
 Result app_navigate(AppState *app, const char *directory) { return navigate_to(app, directory, true, app->show_hidden, NULL, NULL); }
 Result app_init(AppState *app, const char *directory) {
-    *app = (AppState){ .show_hidden = true, .show_preview = true, .wheel_step = 1 };
+    *app = (AppState){ .show_hidden = true };
     return app_navigate(app, directory ? directory : ".");
 }
 void app_free(AppState *app) {

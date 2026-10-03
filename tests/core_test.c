@@ -21,7 +21,6 @@ int main(int argc, char **argv) {
     const char *root = argv[1];
     AppState first, second;
     ok(app_init(&first, root)); ok(app_init(&second, root));
-    assert(first.wheel_step == 1);
     assert(first.files.len > 0 && first.files.entries[0].kind == FILE_DIRECTORY);
     size_t full_count = first.files.len;
     first.show_hidden = false;

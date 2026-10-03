@@ -12,8 +12,7 @@ typedef struct {
     SortSettings sort;
     char *directory;
     FileList files;
-    bool show_hidden, show_preview;
-    int wheel_step;
+    bool show_hidden;
     HistoryEntry *history;
     size_t history_len, history_at;
 } AppState;

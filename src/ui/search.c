@@ -113,7 +113,7 @@ void search_items(UiContext *ui) {
         WINDOW *host = s.win;
         char term[sizeof s.term]; memcpy(term, s.term, sizeof term);
         s = (Search){ .win = host }; memcpy(s.term, term, sizeof term);
-        result = core_search(ui->app.directory, s.term, search_default_limits(), search_progress, &s);
+        result = core_search(ui_panel(ui)->app.directory, s.term, search_default_limits(), search_progress, &s);
         search_update(&s, &result); s.stopped = result.stopped;
         if (s.close_requested) break;
         size_t choice = 0, offset = 0, last_choice = SIZE_MAX;

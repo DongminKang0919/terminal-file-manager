@@ -3,11 +3,11 @@
 /* This input loop owns input until commit/cancel; ordinary letters are data.
    Matching consumes only the loaded list in its existing order. */
 void quick_find(UiContext *ui) {
-    size_t selected = ui->selected, top = ui->top;
+    size_t selected = ui_panel(ui)->selected, top = ui_panel(ui)->top;
     UiFocus focus = ui->focus;
     UiField field; field_init(&field, "");
     char term[UI_INPUT_CAP] = "", previous[UI_INPUT_CAP] = "";
-    bool found = ui->app.files.len != 0, encoded = true;
+    bool found = ui_panel(ui)->app.files.len != 0, encoded = true;
     ui->focus = UI_FOCUS_FILES;
     for (;;) {
         draw(ui);
@@ -23,7 +23,7 @@ void quick_find(UiContext *ui) {
         if (kind==ERR) continue;
         if ((kind==OK && key==27) || (kind==KEY_CODE_YES && key==KEY_RESIZE)) break;
         if ((kind==OK && (key=='\n' || key=='\r')) || (kind==KEY_CODE_YES && key==KEY_ENTER)) {
-            selected=ui->selected; top=ui->top; break;
+            selected=ui_panel(ui)->selected; top=ui_panel(ui)->top; break;
         }
         bool next=kind==KEY_CODE_YES && key==KEY_DOWN;
         bool prev=kind==KEY_CODE_YES && key==KEY_UP;
@@ -34,12 +34,12 @@ void quick_find(UiContext *ui) {
         if (!changed && !next && !prev) continue;
         snprintf(previous,sizeof previous,"%s",term);
         found=false;
-        size_t count=ui->app.files.len;
+        size_t count=ui_panel(ui)->app.files.len;
         for (size_t n=0;n<count;n++) {
-            size_t i=changed ? n : next ? (ui->selected+1+n)%count : (ui->selected+count-1-n)%count;
-            if (text_contains(ui->app.files.entries[i].name,term)) { ui->selected=i; found=true; break; }
+            size_t i=changed ? n : next ? (ui_panel(ui)->selected+1+n)%count : (ui_panel(ui)->selected+count-1-n)%count;
+            if (text_contains(ui_panel(ui)->app.files.entries[i].name,term)) { ui_panel(ui)->selected=i; found=true; break; }
         }
     }
-    ui->selected=selected; ui->top=top; ui->focus=ui->app.show_preview?focus:UI_FOCUS_FILES;
+    ui_panel(ui)->selected=selected; ui_panel(ui)->top=top; ui->focus=ui->show_preview?focus:UI_FOCUS_FILES;
     curs_set(0); draw(ui);
 }

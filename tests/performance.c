@@ -65,15 +65,15 @@ static bool cancel(const OperationProgress *p,void *context) { (void)context; re
 static void resources(const char *root) {
     char *small=path(root,"small"),*many=path(root,"list1000"),*tree=path(root,"tree"),*text=path(root,"text.txt");
     char *large=path(root,"large.bin"),*out=path(root,"out");
-    UiContext ui={0}; ok(app_init(&ui.app,small)); mode=CLOSE;
+    UiContext ui={0}; ok(ui_init(&ui,small)); mode=CLOSE;
     begin(); finish("resources",0);
     for(int cycle=1;cycle<=100;cycle++) {
-        ok(app_remember_selection(&ui.app,ui.selected,ui.top));
-        ok(app_navigate(&ui.app,many)); ok(app_history(&ui.app,false));
-        ok(app_history(&ui.app,true)); ok(app_navigate(&ui.app,small));
-        app_set_sort(&ui.app,(SortSettings){SORT_SIZE,cycle%2},&ui.selected);
+        ok(app_remember_selection(&ui_panel(&ui)->app,ui_panel(&ui)->selected,ui_panel(&ui)->top));
+        ok(app_navigate(&ui_panel(&ui)->app,many)); ok(app_history(&ui_panel(&ui)->app,false));
+        ok(app_history(&ui_panel(&ui)->app,true)); ok(app_navigate(&ui_panel(&ui)->app,small));
+        app_set_sort(&ui_panel(&ui)->app,(SortSettings){SORT_SIZE,cycle%2},&ui_panel(&ui)->selected);
         /* Match the real UI's session reset on navigation. */
-        preview_reset(&ui); ui.selected=(size_t)cycle%ui.app.files.len;
+        preview_reset(&ui); ui_panel(&ui)->selected=(size_t)cycle%ui_panel(&ui)->app.files.len;
         draw(&ui); ui.focus=UI_FOCUS_PREVIEW;
         WINDOW *w=dialog_open(&ui,"Resource check",7,50); assert(w); dialog_close(&ui,w);
         notice_record(&ui,"Copy",result_make(RESULT_CANCELLED,"diagnostic\nline"),large,out);
@@ -85,7 +85,7 @@ static void resources(const char *root) {
         char *partial=path(out,"cancelled"); ok(core_delete(partial)); free(partial);
         if(cycle%10==0) { begin(); finish("resources",cycle); }
     }
-    notice_clear(&ui); preview_reset(&ui); app_free(&ui.app);
+    notice_clear(&ui); preview_reset(&ui); app_free(&ui_panel(&ui)->app);
     free(small); free(many); free(tree); free(text); free(large); free(out);
     begin(); finish("resources_released",100); mode=IDLE;
 }
@@ -110,9 +110,9 @@ int main(int argc,char **argv) {
             }
             app_free(&app);
             if(size==2) {
-                UiContext ui={0}; ok(app_init(&ui.app,dir)); draw(&ui); mode=FIND; input_at=0;
+                UiContext ui={0}; ok(ui_init(&ui,dir)); draw(&ui); mode=FIND; input_at=0;
                 begin(); quick_find(&ui); finish("quick_find_10000",run); mode=IDLE;
-                preview_reset(&ui); app_free(&ui.app);
+                preview_reset(&ui); app_free(&ui_panel(&ui)->app);
             }
         }
         free(dir);
@@ -120,8 +120,8 @@ int main(int argc,char **argv) {
     char *tree=path(root,"tree"),*text=path(root,"text.txt"),*many=path(root,"small-files"),*large=path(root,"large.bin"),*target=path(root,"out");
     for(int run=0;run<reps;run++) {
         begin(); SearchResult result=core_search(tree,"zzzz-no-match",search_default_limits(),NULL,NULL); ok(result.result); finish("search_core",run); search_result_free(&result);
-        UiContext ui={0}; ok(app_init(&ui.app,tree)); draw(&ui); mode=SEARCH; input_at=0;
-        begin(); search_items(&ui); finish("search_ui",run); mode=IDLE; preview_reset(&ui); app_free(&ui.app);
+        UiContext ui={0}; ok(ui_init(&ui,tree)); draw(&ui); mode=SEARCH; input_at=0;
+        begin(); search_items(&ui); finish("search_ui",run); mode=IDLE; preview_reset(&ui); app_free(&ui_panel(&ui)->app);
         PreviewSession *s=NULL; PreviewText page={0};
         begin(); ok(preview_session_open(text,&s));
         for(size_t at=0;at<20000;at+=20) { ok(preview_session_page(s,at,21,&page)); preview_text_free(&page); }

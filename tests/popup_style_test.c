@@ -22,7 +22,7 @@ int main(void) {
             int h=heights[n], w=widths[n]; resizeterm(h,w);
             Item items[]={ {.name="한글-directory",.path="/a",.valid=true,.kind=FILE_DIRECTORY},
                            {.name="link",.path="/b",.valid=true,.kind=FILE_LINK} };
-            UiContext ui={0}; ui.app.directory="/"; ui.app.files=(FileList){items,2};
+            UiContext ui={0}; ui_panel(&ui)->app.directory="/"; ui_panel(&ui)->app.files=(FileList){items,2};
             draw_cached(&ui);
             UiLayout layout=ui_layout(w,h,false);
             assert(cell(stdscr,0,2).attr&A_BOLD);

@@ -35,10 +35,10 @@ static void draw_box(int x, int y, int w, int h, const char *title, bool focused
     attrset(A_NORMAL);
 }
 void fit_selection(UiContext *ui, int rows) {
-    if (ui->app.files.len && ui->selected >= ui->app.files.len) ui->selected = ui->app.files.len - 1;
-    if (!ui->app.files.len) ui->selected = 0;
-    if (ui->selected < ui->top) ui->top = ui->selected;
-    if (rows > 0 && ui->selected >= ui->top + (size_t)rows) ui->top = ui->selected - (size_t)rows + 1;
+    if (ui_panel(ui)->app.files.len && ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) ui_panel(ui)->selected = ui_panel(ui)->app.files.len - 1;
+    if (!ui_panel(ui)->app.files.len) ui_panel(ui)->selected = 0;
+    if (ui_panel(ui)->selected < ui_panel(ui)->top) ui_panel(ui)->top = ui_panel(ui)->selected;
+    if (rows > 0 && ui_panel(ui)->selected >= ui_panel(ui)->top + (size_t)rows) ui_panel(ui)->top = ui_panel(ui)->selected - (size_t)rows + 1;
 }
 typedef struct { const char *label; const char *compact; int key; } Action;
 static const Action actions[] = {
@@ -76,7 +76,7 @@ int header_action(int x, int width) {
 }
 
 static void draw_screen(UiContext *ui, bool prepare) {
-    if (!ui->app.show_preview) ui->focus = UI_FOCUS_FILES;
+    if (!ui->show_preview) ui->focus = UI_FOCUS_FILES;
     erase(); int h, w; getmaxyx(stdscr, h, w);
     if (prepare) preview_prepare(ui, h >= 9 && w >= 50 ? h - 7 : 0);
     if (h < 9 || w < 50) { mvaddstr(0, 0, "Terminal too small (minimum 50x9)"); refresh(); return; }
@@ -93,30 +93,30 @@ static void draw_screen(UiContext *ui, bool prepare) {
     }
     attrset(COLOR_PAIR(UI_PATH));
     mvhline(1, 0, ' ', w);
-    if (!ui->app.history_at) attrset(COLOR_PAIR(UI_DISABLED) | A_DIM);
+    if (!ui_panel(ui)->app.history_at) attrset(COLOR_PAIR(UI_DISABLED) | A_DIM);
     draw_text(1, 1, 3, "[<]"); attrset(COLOR_PAIR(UI_PATH));
-    if (ui->app.history_at + 1 >= ui->app.history_len) attrset(COLOR_PAIR(UI_DISABLED) | A_DIM);
+    if (ui_panel(ui)->app.history_at + 1 >= ui_panel(ui)->app.history_len) attrset(COLOR_PAIR(UI_DISABLED) | A_DIM);
     draw_text(1, 5, 3, "[>]"); attrset(COLOR_PAIR(UI_MUTED));
     draw_text(1, 10, 10, "Location:");
     attrset(COLOR_PAIR(UI_PATH));
     int available = w - 21;
-    if (ui_text_span(ui->app.directory, 0, available).more) {
+    if (ui_text_span(ui_panel(ui)->app.directory, 0, available).more) {
         mvaddstr(1, 20, "... ");
-        size_t start = ui_text_tail(ui->app.directory, available - 4);
-        draw_window_page(stdscr, 1, 24, available - 4, ui->app.directory, start);
-    } else draw_text(1, 20, available, ui->app.directory);
+        size_t start = ui_text_tail(ui_panel(ui)->app.directory, available - 4);
+        draw_window_page(stdscr, 1, 24, available - 4, ui_panel(ui)->app.directory, start);
+    } else draw_text(1, 20, available, ui_panel(ui)->app.directory);
     attroff(COLOR_PAIR(UI_PATH));
-    UiLayout layout = ui_layout(w, h, ui->app.show_preview);
+    UiLayout layout = ui_layout(w, h, ui->show_preview);
     int mid = layout.list_width, panel_h = layout.panel_height, rows = layout.list_rows;
     char title[320];
-    snprintf(title, sizeof title, " Files (%zu) | %s %s ", ui->app.files.len,
-             sort_label(ui->app.sort.key), ui->app.sort.descending ? "descending" : "ascending");
+    snprintf(title, sizeof title, " Files (%zu) | %s %s ", ui_panel(ui)->app.files.len,
+             sort_label(ui_panel(ui)->app.sort.key), ui_panel(ui)->app.sort.descending ? "descending" : "ascending");
     if ((int)strlen(title) > mid - 5)
-        snprintf(title, sizeof title, " Files (%zu) %s%c ", ui->app.files.len,
-                 ui->app.sort.key == SORT_MODIFIED ? "Time" : sort_label(ui->app.sort.key),
-                 ui->app.sort.descending ? '-' : '+');
+        snprintf(title, sizeof title, " Files (%zu) %s%c ", ui_panel(ui)->app.files.len,
+                 ui_panel(ui)->app.sort.key == SORT_MODIFIED ? "Time" : sort_label(ui_panel(ui)->app.sort.key),
+                 ui_panel(ui)->app.sort.descending ? '-' : '+');
     draw_box(0, 2, mid, panel_h, title, ui->focus == UI_FOCUS_FILES);
-    if (ui->app.show_preview) draw_box(mid, 2, w - mid, panel_h, " Preview ", ui->focus == UI_FOCUS_PREVIEW);
+    if (ui->show_preview) draw_box(mid, 2, w - mid, panel_h, " Preview ", ui->focus == UI_FOCUS_PREVIEW);
     attron(COLOR_PAIR(UI_MUTED));
     draw_text(3, 2, mid - 4, "[Parent]  [Open]");
     int date_x = mid >= 72 ? mid - 18 : 0;
@@ -133,15 +133,15 @@ static void draw_screen(UiContext *ui, bool prepare) {
     }
     attrset(A_NORMAL);
     fit_selection(ui, rows);
-    for (int r = 0; r < rows && ui->top + (size_t)r < ui->app.files.len; ++r) {
-        Item *it = &ui->app.files.entries[ui->top + (size_t)r];
+    for (int r = 0; r < rows && ui_panel(ui)->top + (size_t)r < ui_panel(ui)->app.files.len; ++r) {
+        Item *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->top + (size_t)r];
         int y = layout.list_y + r;
-        bool active = ui->top + (size_t)r == ui->selected;
+        bool active = ui_panel(ui)->top + (size_t)r == ui_panel(ui)->selected;
         attr_t style = active ? ui_selection() : COLOR_PAIR(UI_BASE);
         attrset(style);
         mvhline(y, 1, ' ', mid - 2);
         mvaddch(y, 1, active ? '>' : ' ');
-        mvaddch(y, 2, app_marked(&ui->app, it->name) ? '*' : ' ');
+        mvaddch(y, 2, app_marked(&ui_panel(ui)->app, it->name) ? '*' : ' ');
         if (!active) attrset(COLOR_PAIR(item_color(it, false)));
         draw_text(y, 3, name_width, it->name);
         attrset(active ? style : COLOR_PAIR(UI_MUTED));
@@ -159,35 +159,35 @@ static void draw_screen(UiContext *ui, bool prepare) {
         }
         attrset(A_NORMAL);
     }
-    if (ui->app.files.len && (ui->top || ui->app.files.len > (size_t)rows)) {
-        size_t end = ui->top + (size_t)rows;
-        if (end > ui->app.files.len) end = ui->app.files.len;
+    if (ui_panel(ui)->app.files.len && (ui_panel(ui)->top || ui_panel(ui)->app.files.len > (size_t)rows)) {
+        size_t end = ui_panel(ui)->top + (size_t)rows;
+        if (end > ui_panel(ui)->app.files.len) end = ui_panel(ui)->app.files.len;
         char range[96];
-        snprintf(range, sizeof range, " Shown %zu-%zu/%zu ", ui->top + 1, end, ui->app.files.len);
+        snprintf(range, sizeof range, " Shown %zu-%zu/%zu ", ui_panel(ui)->top + 1, end, ui_panel(ui)->app.files.len);
         if ((int)strlen(range) > mid - 4)
-            snprintf(range, sizeof range, " %s %s ", ui->top ? "^ more" : "Top", end < ui->app.files.len ? "v more" : "End");
+            snprintf(range, sizeof range, " %s %s ", ui_panel(ui)->top ? "^ more" : "Top", end < ui_panel(ui)->app.files.len ? "v more" : "End");
         attrset(COLOR_PAIR(UI_MUTED));
         draw_text(h - 3, 2, mid - 4, range);
         attrset(A_NORMAL);
     }
-    if (ui->app.show_preview) preview(ui, mid, 2, w - mid, panel_h);
-    if (!ui->app.files.len) {
+    if (ui->show_preview) preview(ui, mid, 2, w - mid, panel_h);
+    if (!ui_panel(ui)->app.files.len) {
         draw_text(layout.list_y, 2, mid - 4, "No visible items");
         attron(COLOR_PAIR(UI_MUTED));
-        draw_text(layout.list_y + 1, 2, mid - 4, ui->app.show_hidden ? "F2: New" : "F7: Show hidden files");
+        draw_text(layout.list_y + 1, 2, mid - 4, ui_panel(ui)->app.show_hidden ? "F2: New" : "F7: Show hidden files");
         attroff(COLOR_PAIR(UI_MUTED));
     }
     char summary[96];
-    snprintf(summary,sizeof summary,"Shown: %zu | Hidden: %s Sel:%zu",ui->app.files.len,ui->app.show_hidden ? "on" : "off",ui->app.marks_len);
-    if(w>=90 && ui->app.marks_len)
-        snprintf(summary,sizeof summary,"Shown: %zu | Hidden: %s | Selected: %zu",ui->app.files.len,ui->app.show_hidden ? "on" : "off",ui->app.marks_len);
-    if(w<90 && (ui->app.marks_len || (ui->notice.present && ui->notice.visible)))
-        snprintf(summary,sizeof summary,"Shown: %zu H:%s Sel:%zu",ui->app.files.len,ui->app.show_hidden ? "on" : "off",ui->app.marks_len);
+    snprintf(summary,sizeof summary,"Shown: %zu | Hidden: %s Sel:%zu",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden ? "on" : "off",ui_panel(ui)->app.marks_len);
+    if(w>=90 && ui_panel(ui)->app.marks_len)
+        snprintf(summary,sizeof summary,"Shown: %zu | Hidden: %s | Selected: %zu",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden ? "on" : "off",ui_panel(ui)->app.marks_len);
+    if(w<90 && (ui_panel(ui)->app.marks_len || (ui->notice.present && ui->notice.visible)))
+        snprintf(summary,sizeof summary,"Shown: %zu H:%s Sel:%zu",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden ? "on" : "off",ui_panel(ui)->app.marks_len);
     /* Reserve routine guidance as well as all three counts on narrow screens.
        S=Shown, H=hidden (1/on, 0/off), M=marked. Retained result labels stay separate. */
     if(!(ui->notice.present && ui->notice.visible) && w<90 &&
        strlen(ui->status)+(ui->status_kind==NOTICE_INFO?6u:0u) > (size_t)(w-(int)strlen(summary)-4))
-        snprintf(summary,sizeof summary,"S:%zu H:%d M:%zu",ui->app.files.len,ui->app.show_hidden,ui->app.marks_len);
+        snprintf(summary,sizeof summary,"S:%zu H:%d M:%zu",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden,ui_panel(ui)->app.marks_len);
     attron(COLOR_PAIR(UI_STATUS)); mvhline(h - 2, 0, ' ', w);
     int summary_width = (int)strlen(summary);
     draw_text(h - 2, 1, summary_width, summary);
@@ -204,10 +204,10 @@ static void draw_screen(UiContext *ui, bool prepare) {
     if (!ui->modal_depth) {
         bool reading = ui->focus == UI_FOCUS_PREVIEW;
         const char *keys[] = {reading ? "Esc" : "Enter", reading ? "Up/Down" : "Tab", reading ? "PgUp/PgDn" : "Backspace", reading ? "Home" : "F1", reading ? "Tab" : "F9"};
-        const char *labels[] = {reading ? ": Files" : ": Open", reading ? ": Row" : (ui->app.show_preview ? ": Preview" : ": Files"), reading ? ": Page" : ": Parent", reading ? ": Top" : ": Help", reading ? ": Files" : ": Menu"};
+        const char *labels[] = {reading ? ": Files" : ": Open", reading ? ": Row" : (ui->show_preview ? ": Preview" : ": Files"), reading ? ": Page" : ": Parent", reading ? ": Top" : ": Help", reading ? ": Files" : ": Menu"};
         int x = 1;
         for (size_t i = 0; i < 5; i++) {
-            if (!reading && i == 1 && !ui->app.show_preview) continue;
+            if (!reading && i == 1 && !ui->show_preview) continue;
             int keylen = (int)strlen(keys[i]), len = keylen + (int)strlen(labels[i]);
             if (x + len > w - 1) break;
             attron(A_BOLD); draw_text(h - 1, x, keylen, keys[i]); attroff(A_BOLD);
@@ -229,6 +229,6 @@ static void draw_screen(UiContext *ui, bool prepare) {
 
 /* Modal focus changes consume prepared data only: no metadata poll or reader I/O. */
 void draw_cached(UiContext *ui) {
-    if (stdscr && ui->app.directory) draw_screen(ui, false);
+    if (stdscr && ui_panel(ui)->app.directory) draw_screen(ui, false);
 }
 void draw(UiContext *ui) { draw_screen(ui, true); }
