@@ -68,19 +68,23 @@ void batch_finish(UiContext *ui,BatchJob *job) {
 }
 /* Own the frozen job throughout editing; only execution transfers it to notice. */
 static void batch_transfer_form(UiContext *ui,BatchJob *job) {
-    const char *title="Batch destination directory";
-    char *base=text_copy(ui_panel(ui)->app.directory);
+    char title[80];
+    snprintf(title,sizeof title,"Batch destination directory - %s %zu",job->action==BATCH_MOVE?"Move":"Copy",job->len);
+    UiTransferContext context;
+    if(!ui_transfer_context(ui,&context)) return;
+    char *base=context.base;
     UiField field;
-    if(!base || !field_init(&field,base)) {
-        free(base); message(ui,"Path exceeds input limit / out of memory"); return;
+    if(!base || !field_init(&field,context.destination)) {
+        ui_transfer_context_free(&context); message(ui,"Path exceeds input limit / out of memory"); return;
     }
     WINDOW *win=dialog_open(ui,title,9,88);
-    if(!win) { free(base); return; }
+    if(!win) { ui_transfer_context_free(&context); return; }
     enum { DESTINATION, BROWSE, NEXT, CANCEL, FIELDS };
     const char *buttons[]={"[ Browse ]","[ Next ]","[ Cancel ]"};
     const int xs[]={2,15,26};
     int focus=DESTINATION;
     char warning[512]="";
+    if(context.destination_status.code!=RESULT_OK) snprintf(warning,sizeof warning,"Destination: %.450s",context.destination_status.detail);
     for(;;) {
         int h,w; getmaxyx(win,h,w);
         dialog_frame(win,title);
@@ -121,14 +125,17 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
         Result r=core_resolve_directory(base,*input?input:".",&resolved);
         if(action==BROWSE) {
             char picked[UI_INPUT_CAP];
-            if(pick_path(ui,true,r.code==RESULT_OK?resolved:base,picked,&resized)) {
-                field_init(&field,picked); warning[0]=0;
+            char *start=r.code==RESULT_OK ? text_copy(resolved) : *input=='/' ? text_copy(input) : core_path_join(base,*input?input:".");
+            if(start && pick_path(ui,true,start,picked,&resized)) {
+                field_init(&field,picked); warning[0]=0; context.destination_status=result_make(RESULT_OK,NULL);
             }
+            if(!start) snprintf(warning,sizeof warning,"Out of memory; destination unchanged");
+            free(start);
         } else {
             if(r.code==RESULT_OK) r=batch_destination(job,resolved);
             if(r.code!=RESULT_OK) snprintf(warning,sizeof warning,"Destination: %.450s",r.detail);
             else if(review(ui,job,&resized)) {
-                free(resolved); dialog_close(ui,win); free(base);
+                free(resolved); dialog_close(ui,win); ui_transfer_context_free(&context);
                 run_batch_operation(ui,job); batch_finish(ui,job); return;
             }
         }
@@ -136,7 +143,7 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
         if(resized||old_h!=LINES||old_w!=COLS) break;
         touchwin(win);
     }
-    dialog_close(ui,win); free(base);
+    dialog_close(ui,win); ui_transfer_context_free(&context);
 }
 void batch_entry(UiContext *ui,BatchAction action) {
     if(!ui_operation_allowed(ui,NULL,0)) return;

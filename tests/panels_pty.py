@@ -72,18 +72,18 @@ for width,height in [(50,9),(80,24),(160,32)]:
             t.click(3,4);active('Left');marked(1)
             assert 'M:1' in panel('Right')
             t.click(w//2+3,4);active('Right');marked(1)
-            # Different paths: the opposite directory is never an automatic destination.
+            # Different paths: opposite directory is the editable default.
             t.send('\t'+F6)
             base_line=next(t.screen.row(y) for y in range(h) if 'Base:' in t.screen.row(y))
             to_line=next(t.screen.row(y) for y in range(h) if 'To:' in t.screen.row(y))
-            assert '00-A' in base_line and '01-B' not in to_line
+            assert '00-A' in base_line and '01-B' in to_line
             button('[ Cancel ]');active('Left');marked(1);t.send('\t');active('Right')
             # Same path on both sides: refresh source and peer once and reconcile marks.
             t.send(BACK+HOME+'\n');assert '00-A' in panel('Right');menu(15)
             find('f03');t.send(' ');marked(1)
             t.send('\t');active('Left');find('f03')
             t.send(F6);assert 'Move' in body();button('[ Browse ]');t.send('\x1b')
-            # No automatic opposite-path destination. Base remains the source directory.
+            # Same-directory default retains collision policy. Base is the source.
             assert '00-A' in body()
             button('[ Cancel ]');active('Left');marked(1)
             # Mark two Left files; a Right mark must never enter batch targets.

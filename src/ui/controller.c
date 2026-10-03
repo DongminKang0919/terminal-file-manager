@@ -202,7 +202,7 @@ bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *
     if (!move_it) snprintf(success, sizeof success, "Copied; completed: %llu; bytes: %llu; to %.300s",
                            (unsigned long long)r.completed_items, (unsigned long long)r.copied_bytes, destination);
     const char *source_name=strrchr(source,'/'); app_unmark(&ui_panel(ui)->app,source_name?source_name+1:source);
-    refresh_after_operation(ui, name, success);
+    refresh_after_operation(ui, ui->mode==UI_LIST_LIST ? NULL : name, success);
     free(destination); return true;
 }
 

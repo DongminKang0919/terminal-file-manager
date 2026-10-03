@@ -158,6 +158,15 @@ void preview_reset(UiContext *ui);
 void preview_scroll(UiContext *ui, bool down);
 void preview(UiContext *ui, int x, int y, int w, int h);
 void search_items(UiContext *ui);
+/* Form-owned paths; never borrow a panel directory across refreshes. */
+typedef struct {
+    unsigned source_panel;
+    bool dual;
+    char *base, *destination;
+    Result destination_status;
+} UiTransferContext;
+bool ui_transfer_context(UiContext *ui, UiTransferContext *out);
+void ui_transfer_context_free(UiTransferContext *context);
 void transfer_entry(UiContext *ui, bool move_it);
 void batch_entry(UiContext *ui, BatchAction action);
 void batch_finish(UiContext *ui, BatchJob *job);

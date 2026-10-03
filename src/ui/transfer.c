@@ -1,5 +1,25 @@
 #include "ui.h"
 
+bool ui_transfer_context(UiContext *ui, UiTransferContext *out) {
+    *out=(UiTransferContext){.source_panel=ui->active,.dual=ui->mode==UI_LIST_LIST};
+    out->base=text_copy(ui_panel(ui)->app.directory);
+    out->destination=text_copy(out->dual ? ui->panels[ui->active^1u].app.directory : ui_panel(ui)->app.directory);
+    if(!out->base || !out->destination) {
+        ui_transfer_context_free(out); message(ui,"Out of memory; no changes"); return false;
+    }
+    if(out->dual) {
+        char *resolved=NULL;
+        out->destination_status=core_resolve_directory(out->base,out->destination,&resolved);
+        free(resolved);
+        if(out->destination_status.code==RESULT_OK && ui->panels[ui->active^1u].stale)
+            out->destination_status=result_make(RESULT_ACCESS,"Opposite list is STALE; destination will be revalidated");
+    }
+    return true;
+}
+void ui_transfer_context_free(UiTransferContext *context) {
+    free(context->base); free(context->destination); *context=(UiTransferContext){0};
+}
+
 bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *result, bool *resized) {
     WINDOW *win = dialog_open(ui, folders_only ? "Choose destination directory" : "Choose source file or directory", LINES - 2, 86);
     if (!win) return false;
@@ -118,7 +138,7 @@ static void show_transfer_paths(UiContext *ui, const char *source, const char *b
     if (!win) return;
     char *name = core_path_name(source);
     const char *text[] = {"Source name:", name ? name : "", "Source path:", source,
-                          "Relative destination base:", base, "Final destination (entered path):", target};
+                          "Relative destination base:", base, "Final destination (resolved directory):", target};
     size_t top = 0;
     for (;;) {
         int h,w; getmaxyx(win,h,w); size_t rows = (size_t)(h - 4), line = 0;
@@ -152,21 +172,25 @@ void transfer_entry(UiContext *ui, bool move_it) {
     if(!ui_operation_allowed(ui,NULL,0)) return;
     if (ui_panel(ui)->app.marks_len > 1) { batch_entry(ui, move_it ? BATCH_MOVE : BATCH_COPY); return; }
     const FileInfo *initial=ui_panel(ui)->selected<ui_panel(ui)->app.files.len ? &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected] : NULL;
-    bool fixed_source=ui_panel(ui)->app.marks_len!=0;
-    if(fixed_source) for(size_t i=0;i<ui_panel(ui)->app.files.len;i++)
+    bool fixed_source=ui_panel(ui)->app.marks_len!=0 || ui->mode==UI_LIST_LIST;
+    if(ui_panel(ui)->app.marks_len) for(size_t i=0;i<ui_panel(ui)->app.files.len;i++)
         if(app_marked(&ui_panel(ui)->app,ui_panel(ui)->app.files.entries[i].name)) { initial=&ui_panel(ui)->app.files.entries[i]; break; }
 
+    UiTransferContext context;
+    if(!ui_transfer_context(ui,&context)) return;
     WINDOW *win = dialog_open(ui, move_it ? "Move" : "Copy", 13, 88);
-    if (!win) return;
+    if (!win) { ui_transfer_context_free(&context); return; }
     if (strlen(ui_panel(ui)->app.directory) >= UI_INPUT_CAP ||
+        strlen(context.destination) >= UI_INPUT_CAP ||
         (initial && strlen(initial->path) >= UI_INPUT_CAP)) {
-        dialog_close(ui,win); message(ui,"Path exceeds terminal input limit"); return;
+        dialog_close(ui,win); ui_transfer_context_free(&context); message(ui,"Path exceeds terminal input limit"); return;
     }
     /* The process cwd is not the browsed location. Keep this base even when a
        failed operation refreshes/replaces the main list while the form stays open. */
     char base[UI_INPUT_CAP], source[UI_INPUT_CAP] = "", warning[512] = "";
-    snprintf(base,sizeof base,"%s",ui_panel(ui)->app.directory);
-    UiField folder_field, name_field; field_init(&folder_field,""); field_init(&name_field,"");
+    snprintf(base,sizeof base,"%s",context.base);
+    UiField folder_field, name_field; field_init(&folder_field,context.dual ? context.destination : ""); field_init(&name_field,"");
+    if(context.destination_status.code!=RESULT_OK) snprintf(warning,sizeof warning,"Destination: %.450s",context.destination_status.detail);
     if (initial) {
         snprintf(source,sizeof source,"%s",initial->path);
         field_init(&name_field,initial->name);
@@ -193,7 +217,7 @@ void transfer_entry(UiContext *ui, bool move_it) {
         int cursor_y = 0, cursor_x = 0;
         for (int row = offset; row < 7 && row < offset + rows; row++) {
             int y = row - offset + 1;
-            if (row == 0) { draw_window_text(win,y,2,8,"Source:"); draw_window_text(win,y,10,w-12,source_name ? source_name : ""); }
+            if (row == 0) { draw_window_text(win,y,2,8,"Item 1:"); draw_window_text(win,y,10,w-12,source_name ? source_name : ""); }
             if (row == 1) draw_window_text(win,y,2,w-4,source);
             if (row == 2) { draw_window_text(win,y,2,6,"Base:"); draw_window_text(win,y,8,w-10,base); }
             if (row == 3 || row == 4) {
@@ -206,7 +230,7 @@ void transfer_entry(UiContext *ui, bool move_it) {
             if (row == 6) { draw_window_text(win,y,2,8,"Target:"); draw_window_text(win,y,10,w-12,target ? target : "Input too long / no memory"); }
         }
         wattron(win,COLOR_PAIR(*warning ? UI_SPECIAL : UI_MUTED));
-        draw_window_text(win,h-3,2,w-4,*warning ? warning : "To: blank=Base  Tab: focus  Esc: cancel");
+        draw_window_text(win,h-3,2,w-4,*warning ? warning : "To: relative/blank uses Base; Tab: focus");
         wattroff(win,COLOR_PAIR(*warning ? UI_SPECIAL : UI_MUTED));
         int cancel_x = 2 + (int)strlen(run_label) + 2;
         dialog_button(win,h-2,2,run_label,focus==RUN,true);
@@ -252,8 +276,10 @@ void transfer_entry(UiContext *ui, bool move_it) {
         int old_h=LINES,old_w=COLS; bool resized=false;
         if (action==BROWSE) {
             char *start=NULL; core_resolve_directory(base,*folder?folder:".",&start);
+            if(!start) start=*folder=='/'?text_copy(folder):core_path_join(base,*folder?folder:".");
             char picked[UI_INPUT_CAP];
-            if (pick_path(ui,true,start?start:base,picked,&resized)) field_init(&folder_field,picked);
+            if (start && pick_path(ui,true,start,picked,&resized)) { field_init(&folder_field,picked); warning[0]=0; context.destination_status=result_make(RESULT_OK,NULL); }
+            if(!start) snprintf(warning,sizeof warning,"Out of memory; destination unchanged");
             free(start);
         } else if (action==SOURCE && !fixed_source) {
             char picked[UI_INPUT_CAP];
@@ -263,10 +289,11 @@ void transfer_entry(UiContext *ui, bool move_it) {
                 snprintf(source,sizeof source,"%s",picked); free(old_name); free(new_name);
             }
         } else if (action==PATHS) {
-            char *dir=*folder=='/'?text_copy(folder):*folder?core_path_join(base,folder):text_copy(base);
+            char *dir=NULL;
+            Result path_result=core_resolve_directory(base,*folder?folder:".",&dir);
             char *full=dir?core_path_join(dir,name):NULL;
             if(full) show_transfer_paths(ui,source,base,full);
-            else snprintf(warning,sizeof warning,"Out of memory");
+            else snprintf(warning,sizeof warning,"Destination: %.450s",path_result.code==RESULT_OK?"Out of memory":path_result.detail);
             free(dir); free(full);
         } else if (action==RUN) {
             char *resolved=NULL;
@@ -278,5 +305,5 @@ void transfer_entry(UiContext *ui, bool move_it) {
         if(resized || old_h!=LINES || old_w!=COLS) break;
         touchwin(win);
     }
-    dialog_close(ui,win);
+    dialog_close(ui,win); ui_transfer_context_free(&context);
 }

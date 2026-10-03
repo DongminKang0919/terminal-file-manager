@@ -44,6 +44,8 @@ static unsigned denied_refresh;
 static bool denied_init;
 static const char *find_text;
 static size_t find_at;
+static const char *form_keys; static size_t form_at;
+static bool form_review;
 static bool inspect_results; static unsigned result_seen, result_at;
 Result __real_app_init(AppState *,const char *);
 Result __wrap_app_init(AppState *app,const char *p) {
@@ -70,9 +72,15 @@ int __wrap_input_wide(WINDOW *win,wint_t *key) {
         assert(!ui_activate_panel(current,active^1u) && current->active==active);
         return ERR;
     }
+    if(form_keys) {
+        unsigned active=current->active;
+        assert(!ui_activate_panel(current,active^1u));
+        assert(form_keys[form_at]); *key=(unsigned char)form_keys[form_at++]; return OK;
+    }
     assert(find_text); *key=(unsigned char)find_text[find_at++]; return OK;
 }
 int __wrap_input_key(WINDOW *win) {
+    if(form_review) { static bool tab; tab=!tab; return tab?'\t':'\n'; }
     if(inspect_results) {
         for(int y=1;y<getmaxy(win)-3;y++) {
             char text[160];mvwinnstr(win,y,2,text,sizeof text-1);
@@ -216,6 +224,47 @@ int main(void) {
         ok(core_delete(b));assert(!mkdir(b,0700));ok(core_create(b,"raw한글\xff\n",false));
         /* Restore fixture items removed by actual move/delete. */
         ok(core_create(a,"f03",false));ok(core_create(a,"f05",false));ok(core_create(a,"f07",false));ok(core_create(a,"f08",false));
+    }
+    /* Real forms use frozen opposite defaults in both directions, including
+       the hidden peer at 50x9; only the source marks are consumed. */
+    for(int size=0;size<3;size++) for(unsigned side=0;side<2;side++)
+    for(int move=0;move<2;move++) for(int batch=0;batch<2;batch++) {
+        resizeterm(size==0?9:24,size==0?50:size==1?80:160);
+        char l[300],r[300]; snprintf(l,sizeof l,"%s/form-left",root);snprintf(r,sizeof r,"%s/form-right",root);
+        assert(!mkdir(l,0700)&&!mkdir(r,0700));
+        const char *src=side?r:l,*dst=side?l:r;
+        ok(core_create(src,"first",false));if(batch) ok(core_create(src,"second",false));
+        ok(core_create(dst,"peer-mark",false));
+        UiContext ui; current=&ui;ok(ui_init(&ui,l));ok(ui_set_mode(&ui,UI_LIST_LIST));
+        assert(ui_activate_panel(&ui,1));assert(navigate(&ui,r,NULL));assert(ui_activate_panel(&ui,side));
+        select_name(&ui,"first");if(batch) ok(app_mark_all(&ui_panel(&ui)->app));
+        else if(move) ok(app_mark_toggle(&ui_panel(&ui)->app,"first"));
+        ok(app_mark_toggle(&ui.panels[side^1u].app,"peer-mark"));
+        UiTransferContext frozen;assert(ui_transfer_context(&ui,&frozen));
+        assert(frozen.source_panel==side&&frozen.dual&&!strcmp(frozen.base,src)&&!strcmp(frozen.destination,dst));
+        assert(frozen.destination!=ui.panels[side^1u].app.directory);ui_transfer_context_free(&frozen);
+        size_t mem=live,fd=fds();
+        for(size_t fault=1;fault<=2;fault++) {
+            calls=0;fail_at=fault;assert(!ui_transfer_context(&ui,&frozen));fail_at=0;
+            assert(live==mem&&fds()==fd);
+        }
+        for(int repeat=0;repeat<20;repeat++) {
+            form_keys="\033";form_at=0;transfer_entry(&ui,move);
+            assert(form_at==1&&live==mem&&fds()==fd&&ui.active==side&&!ui.modal_depth);
+        }
+        /* Old refresh failure is advisory: currently valid destination runs. */
+        ui.panels[side^1u].stale=true;
+        reset_refresh();form_keys=batch?"\n":"\n\n\n";form_at=0;form_review=batch;
+        transfer_entry(&ui,move);form_keys=NULL;form_review=false;
+        assert(ui.notice.operation.code==RESULT_OK&&ui.active==side);both_refreshed(&ui);
+        assert(!ui_panel(&ui)->app.marks_len&&app_marked(&ui.panels[side^1u].app,"peer-mark"));
+        assert(!strcmp(ui.panels[side^1u].app.directory,dst));
+        for(int item=0;item<=batch;item++) {
+            char *from=core_path_join(src,item?"second":"first"),*to=core_path_join(dst,item?"second":"first");
+            assert(!access(to,F_OK)&&(move?access(from,F_OK)!=0:access(from,F_OK)==0));free(from);free(to);
+        }
+        ui_free(&ui);assert(live==baseline&&fds()==initial_fds&&created==destroyed);
+        ok(core_delete(l));ok(core_delete(r));
     }
     /* Every second-panel allocation failure either commits a complete panel or
        preserves the first panel and releases all partial candidate ownership. */

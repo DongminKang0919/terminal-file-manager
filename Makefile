@@ -105,6 +105,7 @@ check: tests/panels_ui_test tests/tfile_batch tests/batch_ui_test tests/startup_
 	python3 tests/search_ui_pty.py
 	python3 tests/help_pty.py
 	python3 tests/panels_pty.py
+	python3 tests/dual_transfer_pty.py
 	python3 tests/batch_destination_pty.py
 	python3 tests/batch_pty.py
 	python3 tests/batch_progress_pty.py

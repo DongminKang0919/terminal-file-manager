@@ -22,7 +22,7 @@ static const HelpEntry entries[] = {
     {"Narrow screens", "Below 80 columns dual mode shows only the active list at full width. Left/Right and Tab: Other identify the second panel. Resizing retains both panels and all marks."},
     {"Single mode", "Explicitly hiding a panel clears its marks, but retains path/cursor/scroll/history. Showing it again refreshes once and reselects by original name. STALE lists block file changes until r or successful navigation loads a fresh list."},
     {"Enter on a file", "Dual mode becomes Files + Preview from the active list and focuses Preview; Esc returns to that list. Directory Enter opens only that panel."},
-    {"File operations", "Only active marks are targets. Destination input/Browse remain source-based; no automatic opposite destination. After execution the other dual panel refreshes once. Details retain both refresh results separately from the file outcome."},
+    {"File operations", "Only active marks are targets. Dual Copy/Move defaults to the opposite directory, even when narrow screens hide it. Relative/blank input uses the frozen source Base. Editing/Browse never navigates the peer. Destination errors retain input; opposite STALE is advisory and current paths are revalidated. After execution the other dual panel refreshes once. Details retain both refresh results separately from the file outcome."},
     {NULL, "MULTIPLE SELECTION"},
     {"Space in Files", "Toggle * on the cursor item without moving it. > is the cursor; * marks operation targets. Space in Preview or input does not change marks."},
     {"F9 menu", "Select all visible items or clear selection. Shown/Hidden/Sel summarize loaded items, visibility and marked count. Narrow guidance uses S/H/M (H:1 on, H:0 off)."},
