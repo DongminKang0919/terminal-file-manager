@@ -45,7 +45,8 @@ for width,height in [(50,9),(80,24),(160,32)]:
                          'never overwritten','Cancel is selected by default','cannot be undone',
                          'incomplete copies are kept','deleted items are not restored',
                          'Cancel/Esc/Enter keeps collected results','x or resize stops and closes',
-                         'Sorting preserves','Settings last for this session only',
+                         'Sorting preserves','Save startup defaults explicitly in Options;',
+                         'sort/hidden defaults come from the active panel.',
                          'Popup input cannot operate the background', 'SCREEN MODES AND FILE PANELS',
                          'Left + Right files', 'STALE lists block file changes', 'both refresh results separately']:
                 assert text in body,text

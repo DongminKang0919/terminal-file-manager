@@ -45,6 +45,8 @@ typedef struct {
 } UiFilePanel;
 typedef enum { UI_LIST_ONLY, UI_LIST_PREVIEW, UI_LIST_LIST } UiMode;
 typedef struct {
+    SettingsStore settings;
+    char settings_warning[256];
     UiFilePanel panels[2];
     bool second_initialized;
     unsigned active;

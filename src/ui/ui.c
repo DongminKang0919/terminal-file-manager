@@ -251,6 +251,7 @@ static void draw_screen(UiContext *ui, bool prepare) {
                  refresh_issue ? "refresh failed" : "detail", w>=90 ? ": " : "", w>=90 ? ui->notice.action : "");
     } else snprintf(alert, sizeof alert, "%s%s%s", ui->status[0] && ui->status_kind == NOTICE_INFO ? "Info" : "",
                     ui->status[0] && ui->status_kind == NOTICE_INFO ? ": " : "", ui->status);
+    if(ui->settings_warning[0]) snprintf(alert,sizeof alert,"%s",ui->settings_warning);
     draw_text(h - 2, x, w - x - 1, alert);
     attroff(COLOR_PAIR(UI_STATUS));
     attrset(ui_bar()); mvhline(h - 1, 0, ' ', w);

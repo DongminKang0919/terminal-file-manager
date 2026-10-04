@@ -302,7 +302,9 @@ void show_options(UiContext *ui) {
     WINDOW *win = dialog_open(ui, "Options", 10, 52);
     if (!win) return;
     int selected = 0, offset = 0;
-    char warning[sizeof ui->status] = "";
+    char warning[sizeof ui->status] = "Active panel sort/hidden saved as defaults";
+    if(ui->settings.load_result.code!=RESULT_OK) snprintf(warning,sizeof warning,"%s",ui->settings.load_result.detail);
+    bool replace=false;
     for (;;) {
         char hidden[64], preview_text[64], wheel[64], sort[64], direction[64], image[64];
         snprintf(hidden, sizeof hidden, "[%c] Show hidden files", ui_panel(ui)->app.show_hidden ? 'x' : ' ');
@@ -311,9 +313,23 @@ void show_options(UiContext *ui) {
         snprintf(sort, sizeof sort, "Sort by: %s (click to change)", sort_label(ui_panel(ui)->app.sort.key));
         snprintf(direction, sizeof direction, "Sort order: %s (click to change)", ui_panel(ui)->app.sort.descending ? "Descending" : "Ascending");
         snprintf(image,sizeof image,"Image preview: %s (click to change)",ui->image_auto ? "Auto" : "Off");
-        const char *labels[] = {hidden, preview_text, wheel, sort, direction, image, "Done (settings apply to this session)"};
-        int i = choice_dialog(win, "Options", labels, 7, &selected, &offset, warning);
-        if (i < 0 || i == 6) break;
+        const char *labels[] = {hidden, preview_text, wheel, sort, direction, image, replace ? "Confirm: replace existing settings file" : "Save current settings as startup defaults", "Done"};
+        int i = choice_dialog(win, "Options", labels, 8, &selected, &offset, warning);
+        if (i < 0 || i == 7) break;
+        if(i!=6) replace=false;
+        if(i==6) {
+            if(ui->settings.replace_required && !replace) {
+                replace=true;
+                snprintf(warning,sizeof warning,"Replace file using active panel sort/hidden?");
+                continue;
+            }
+            StartupSettings s={.mode=ui->mode,.wheel_step=ui->wheel_step,
+                .sort=ui_panel(ui)->app.sort,.show_hidden=ui_panel(ui)->app.show_hidden,.image_auto=ui->image_auto};
+            Result r=settings_save(&ui->settings,&s,replace);
+            replace=false;
+            snprintf(warning,sizeof warning,"%s",r.code==RESULT_OK ? "Saved startup defaults (active panel sort/hidden)" : r.detail);
+            if(r.code==RESULT_OK) ui->settings_warning[0]=0;
+        }
         if (i == 0) {
             ui_panel(ui)->app.show_hidden = !ui_panel(ui)->app.show_hidden;
             if (load_dir(ui, NULL).code != RESULT_OK) {

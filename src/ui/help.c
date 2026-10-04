@@ -65,7 +65,7 @@ static const HelpEntry entries[] = {
     {"", "Changing files resets scroll. Sorting preserves the selected file and preview. Refresh retries a read error. Directory and link details are shown without reading their contents."},
     {"", "Binary files have no text preview. Long lines are split, tabs become spaces, and unsafe characters are escaped. No file editing is provided."},
     {NULL, "OPTIONS"},
-    {"F7", "Change hidden-file display, preview visibility, wheel step (1/3/5), sort key and direction. Settings last for this session only."},
+    {"F7", "Change hidden-file display, preview visibility, wheel step (1/3/5), sort and image Auto/Off. Save startup defaults explicitly in Options; sort/hidden defaults come from the active panel."},
     {"Enter / click", "Apply the option immediately and keep its focus and scroll. Esc/Done closes without undoing changes. Read failures retain the old hidden setting and list."},
     {"Sorting", "Name, size, modified time or kind; ascending/descending. Compact + means ascending, - descending."},
     {"Wheel on list", "Move selection by the configured number of rows."},

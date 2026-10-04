@@ -77,7 +77,7 @@ tests/startup_ui_test: tests/startup_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCE
 tests/search_progress_ui_test: tests/search_progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/search_progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_monotonic_ms,--wrap=core_monotonic_ms,--wrap=input_key,--wrap=input_wide,--wrap=wrefresh
 
-check: tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/progress_ui_test tests/tfile_progress tests/preview_test tfile check-core tests/controller_test tests/text_test tests/text_window_test
+check-isolated: tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/progress_ui_test tests/tfile_progress tests/preview_test tfile check-core tests/controller_test tests/text_test tests/text_window_test
 	./tests/picker_test
 	python3 tests/media_tools.py
 	python3 tests/media_pty.py
@@ -116,7 +116,7 @@ check: tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch
 	python3 tests/batch_progress_pty.py
 
 clean:
-	rm -f tfile tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_test tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/ownership_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
+	rm -f tests/settings_sanitize tests/settings_core_test tests/settings_test tfile tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_test tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/ownership_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
 
 .PHONY: all clean check check-core
 
@@ -148,3 +148,25 @@ check-media: tests/media_test tests/picker_test tfile
 
 tests/picker_test: tests/picker_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/picker_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=input_key,--wrap=prompt_value_status
+
+tests/settings_test: tests/settings_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/settings_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=write,--wrap=close,--wrap=renameat,--wrap=openat,--wrap=fsync,--wrap=input_key
+
+check-isolated: check-settings
+check-settings: tests/settings_test tests/settings_core_test tfile
+	./tests/settings_core_test
+	./tests/settings_test
+	python3 tests/settings_pty.py
+.PHONY: check-settings
+
+check-settings-sanitize:
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) -O1 -g -Wall -Wextra -Wpedantic -std=c11 -fsanitize=address,undefined -fno-omit-frame-pointer -o tests/settings_sanitize tests/settings_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=write,--wrap=close,--wrap=renameat,--wrap=openat,--wrap=fsync,--wrap=input_key
+	ASAN_OPTIONS=$${ASAN_OPTIONS:-detect_leaks=0} UBSAN_OPTIONS=$${UBSAN_OPTIONS:-halt_on_error=1:print_stacktrace=1} ./tests/settings_sanitize
+.PHONY: check-settings-sanitize
+
+tests/settings_core_test: tests/settings_core_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/settings_core_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES)
+
+check:
+	+python3 tests/isolated_check.py $(MAKE) check-isolated
+.PHONY: check-isolated

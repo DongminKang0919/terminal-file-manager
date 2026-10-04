@@ -1,12 +1,26 @@
 #include "ui.h"
 
+static Result initialize_panel(AppState *app,const char *directory,const StartupSettings *s) {
+    if(s->show_hidden && s->sort.key==SORT_NAME && !s->sort.descending)
+        return app_init(app,directory);
+    return app_init_settings(app,directory,s);
+}
+
 Result ui_init(UiContext *ui,const char *directory) {
     *ui=(UiContext){.mode=UI_LIST_PREVIEW,.wheel_step=1,.image_auto=true};
-    return app_init(&ui_panel(ui)->app,directory);
+    settings_load(&ui->settings);
+    StartupSettings *s=&ui->settings.defaults;
+    ui->wheel_step=s->wheel_step; ui->image_auto=s->image_auto;
+    Result r=initialize_panel(&ui_panel(ui)->app,directory,s);
+    if(r.code==RESULT_OK) r=ui_set_mode(ui,(UiMode)s->mode);
+    if(ui->settings.load_result.code!=RESULT_OK)
+        snprintf(ui->settings_warning,sizeof ui->settings_warning,"Settings (F7): %.220s",ui->settings.load_result.detail);
+    return r;
 }
 void ui_free(UiContext *ui) {
     graphics_clear(ui); notice_clear(ui); preview_reset(ui); core_media_shutdown();
     for(unsigned i=0;i<2;i++) app_free(&ui->panels[i].app);
+    settings_free(&ui->settings);
     *ui=(UiContext){0};
 }
 Result ui_refresh_panel(UiContext *ui,unsigned index,const char *highlight,bool require_fresh) {
@@ -34,7 +48,7 @@ Result ui_set_mode(UiContext *ui,UiMode mode) {
     if(mode==UI_LIST_LIST) {
         if(!ui->second_initialized) {
             UiFilePanel candidate={0};
-            r=app_init(&candidate.app,ui_panel(ui)->app.directory);
+            r=initialize_panel(&candidate.app,ui_panel(ui)->app.directory,&ui->settings.defaults);
             if(r.code!=RESULT_OK) { app_free(&candidate.app); message(ui,r.detail); ui->status_kind=NOTICE_ERROR; ui->status_priority=true; return r; }
             ui->panels[other]=candidate; /* Move ownership only after full initialization. */
             ui->second_initialized=true;

@@ -10,6 +10,7 @@ void notice_clear(UiContext *ui) {
     ui->notice = (OperationNotice){0};
 }
 void notice_dismiss(UiContext *ui) {
+    ui->settings_warning[0]=0;
     ui->notice.visible = false;
     ui->status[0] = 0; ui->status_priority=false;
 }

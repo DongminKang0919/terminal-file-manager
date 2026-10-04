@@ -45,7 +45,8 @@ for copy, action, width, height in [(True,'esc',100,24),(True,'mouse',50,9),(Tru
                 send(b'\t\x1bOHcopy-\n'); pump_until(lambda:b'copy-source' in output)
                 send(b'\n')
             else: send(b'\x1b[19~\t\n')
-            pump_until(lambda:b'G\n' in events and b'Completed items:' in output)
+            # PTY reads may split a frame between the counter and footer.
+            pump_until(lambda:b'G\n' in events and b'Completed items:' in output and b'Cancel stops here' in output)
             assert b'Completed items:' in output and b'Cancel stops here' in output
             if copy: assert b'Copied bytes:' in output
             # None of these keys may be dispatched as main-window commands.
