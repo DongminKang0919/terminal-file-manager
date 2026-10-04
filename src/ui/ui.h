@@ -2,6 +2,7 @@
 #define TFILE_UI_H
 #include "../core/core.h"
 #include "text.h"
+#include "../core/terminal.h"
 #include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,6 +16,11 @@
 #define UI_INPUT_CAP 4096
 enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE, UI_RENAME, UI_QUICK_FIND, UI_RESULT, UI_SELECT_ALL, UI_CLEAR_SELECTION, UI_MODE_PREVIEW, UI_MODE_FILES, UI_MODE_DUAL };
 void input_init(void);
+void input_terminal_begin(TerminalReply *reply);
+void input_terminal_end(void);
+int terminal_input_wide(WINDOW *win,wint_t *key);
+void terminal_input_reset(void);
+bool terminal_input_armed(void);
 int input_key(WINDOW *win);
 int input_wide(WINDOW *win, wint_t *key);
 typedef struct { wchar_t value[UI_INPUT_CAP]; size_t len, cursor, start; } UiField;
@@ -64,6 +70,7 @@ typedef struct {
     uint64_t preview_checked;
     bool preview_ready, preview_directory_empty;
     bool image_auto, sixel_confirmed, graphics_visible;
+    enum { IMAGE_UNCONFIRMED, IMAGE_CHECKING, IMAGE_ENABLED, IMAGE_NO_RESPONSE, IMAGE_NO_CELLS } image_status;
     unsigned cell_width, cell_height, media_width, media_height;
     PreviewMediaKind media_kind;
     MediaPreview *media_job;
@@ -165,6 +172,8 @@ attr_t ui_bar(void);
 void init_theme(void);
 void show_help(UiContext *ui);
 void graphics_init(UiContext *ui);
+const char *image_status_label(const UiContext *ui);
+bool image_setup(UiContext *ui,char *result,size_t capacity);
 void graphics_clear(UiContext *ui);
 void graphics_present(UiContext *ui);
 bool graphics_validate(const char *data, size_t len, unsigned width, unsigned height);

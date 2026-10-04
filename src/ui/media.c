@@ -17,6 +17,7 @@ void graphics_init(UiContext *ui) {
     ui->sixel_confirmed=tty && confirmed && !strcmp(confirmed,"1") &&
         width>0 && width<=64 && height>0 && height<=128;
     ui->cell_width=width; ui->cell_height=height;
+    ui->image_status=ui->sixel_confirmed ? IMAGE_ENABLED : IMAGE_UNCONFIRMED;
 }
 void media_reset(UiContext *ui) {
     core_media_close(ui->media_job); ui->media_job=NULL;
@@ -111,7 +112,7 @@ void media_prepare(UiContext *ui,int rows,bool changed) {
         ui->media_width=width; ui->media_height=height;
     }
     const char *hint=!ui->image_auto?"Image preview off (F7: Auto)":!ui->sixel_confirmed?
-        "Sixel not confirmed; see README":!width||!height?"Panel too small for image preview":NULL;
+        "Image display unconfirmed; set up in F7":!width||!height?"Panel too small for image preview":NULL;
     snprintf(ui->media_hint,sizeof ui->media_hint,"%s",hint?hint:kind==PREVIEW_PDF?"PDF page 1":"Image preview");
     if(ui->media_fallback) snprintf(ui->media_hint,sizeof ui->media_hint,"%.127s",ui->media_fallback_detail);
     if(kind==PREVIEW_NOT_MEDIA || (hint && !text)) { ui->media_done=true; return; }

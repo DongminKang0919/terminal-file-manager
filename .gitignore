@@ -67,3 +67,6 @@ __pycache__/
 /tests/settings_test
 /tests/settings_core_test
 /tests/settings_sanitize
+
+/tests/terminal_test
+/tests/terminal_input_test

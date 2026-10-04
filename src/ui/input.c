@@ -5,6 +5,7 @@
    buttons remain distinct from wheel events, including in text-entry dialogs.
    Protocol: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html */
 void input_init(void) {
+    terminal_input_reset();
     mouseinterval(0);
     mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED | BUTTON1_CLICKED |
               BUTTON1_DOUBLE_CLICKED | BUTTON4_PRESSED | BUTTON5_PRESSED, NULL);
@@ -47,13 +48,25 @@ static int decode_mouse(WINDOW *win) {
 }
 int input_key(WINDOW *win) {
     if (core_media_shutdown_requested()) return KEY_RESIZE;
-    int key = wgetch(win);
+    int delay=wgetdelay(win);
+    if(terminal_input_armed() && core_media_cleanup_pending() && delay<0) wtimeout(win,40);
+    int key;
+    if(terminal_input_armed()) {
+        wint_t value; int kind=terminal_input_wide(win,&value);
+        key=kind==ERR ? ERR : kind==OK && value>127 ? 0 : (int)value;
+    } else key=wgetch(win);
+    wtimeout(win,delay);
+    if(terminal_input_armed()) core_media_reap();
     if (core_media_shutdown_requested()) return KEY_RESIZE;
     return key == UI_SGR_MOUSE ? decode_mouse(win) : key;
 }
 int input_wide(WINDOW *win, wint_t *key) {
     if (core_media_shutdown_requested()) { *key = KEY_RESIZE; return KEY_CODE_YES; }
-    int kind = wget_wch(win, key);
+    int delay=wgetdelay(win);
+    if(terminal_input_armed() && core_media_cleanup_pending() && delay<0) wtimeout(win,40);
+    int kind = terminal_input_armed() ? terminal_input_wide(win,key) : wget_wch(win, key);
+    wtimeout(win,delay);
+    if(terminal_input_armed()) core_media_reap();
     if (core_media_shutdown_requested()) { *key = KEY_RESIZE; return KEY_CODE_YES; }
     if (kind == KEY_CODE_YES && *key == UI_SGR_MOUSE) {
         *key = (wint_t)decode_mouse(win);

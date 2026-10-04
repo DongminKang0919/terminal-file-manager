@@ -306,16 +306,17 @@ void show_options(UiContext *ui) {
     if(ui->settings.load_result.code!=RESULT_OK) snprintf(warning,sizeof warning,"%s",ui->settings.load_result.detail);
     bool replace=false;
     for (;;) {
-        char hidden[64], preview_text[64], wheel[64], sort[64], direction[64], image[64];
+        char hidden[64], preview_text[64], wheel[64], sort[64], direction[64], image[64], setup[96];
         snprintf(hidden, sizeof hidden, "[%c] Show hidden files", ui_panel(ui)->app.show_hidden ? 'x' : ' ');
         snprintf(preview_text, sizeof preview_text, "[%c] Show preview panel", ui_preview_enabled(ui) ? 'x' : ' ');
         snprintf(wheel, sizeof wheel, "Wheel scroll: %d rows (click to change)", ui->wheel_step);
         snprintf(sort, sizeof sort, "Sort by: %s (click to change)", sort_label(ui_panel(ui)->app.sort.key));
         snprintf(direction, sizeof direction, "Sort order: %s (click to change)", ui_panel(ui)->app.sort.descending ? "Descending" : "Ascending");
         snprintf(image,sizeof image,"Image preview: %s (click to change)",ui->image_auto ? "Auto" : "Off");
-        const char *labels[] = {hidden, preview_text, wheel, sort, direction, image, replace ? "Confirm: replace existing settings file" : "Save current settings as startup defaults", "Done"};
-        int i = choice_dialog(win, "Options", labels, 8, &selected, &offset, warning);
-        if (i < 0 || i == 7) break;
+        snprintf(setup,sizeof setup,"Image display setup: %s",image_status_label(ui));
+        const char *labels[] = {hidden, preview_text, wheel, sort, direction, image, replace ? "Confirm: replace existing settings file" : "Save current settings as startup defaults", setup, "Done"};
+        int i = choice_dialog(win, "Options", labels, 9, &selected, &offset, warning);
+        if (i < 0 || i == 8) break;
         if(i!=6) replace=false;
         if(i==6) {
             if(ui->settings.replace_required && !replace) {
@@ -329,6 +330,9 @@ void show_options(UiContext *ui) {
             replace=false;
             snprintf(warning,sizeof warning,"%s",r.code==RESULT_OK ? "Saved startup defaults (active panel sort/hidden)" : r.detail);
             if(r.code==RESULT_OK) ui->settings_warning[0]=0;
+        }
+        if(i==7 && image_setup(ui,warning,sizeof warning)) {
+            message(ui,"F7: retry image check after resize"); break;
         }
         if (i == 0) {
             ui_panel(ui)->app.show_hidden = !ui_panel(ui)->app.show_hidden;
