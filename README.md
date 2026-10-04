@@ -51,7 +51,7 @@ sudo apt install imagemagick poppler-utils
 
 응답이 없거나 올바르지 않으면 **자동 확인을 못한 것**이며 “지원하지 않음”으로 단정하지 않습니다. 셀 크기를 추측하거나 10×20 같은 기본값을 사용하지 않습니다. 고급 수동 확인은 **M**에서 실제 측정한 `WIDTHxHEIGHT`(폭 1–64, 높이 1–128)를 입력합니다. 응답하지 않는 터미널도 수동 표시·지우기 검증을 시도할 수 있지만 같은 세 단계 확인을 통과해야 적용됩니다. 폰트·배율을 바꾸면 F7에서 다시 확인하세요.
 
-진단 질의 후 입력 필터는 실행 종료까지 유지됩니다. 7비트 CSI와 8비트 CSI 응답을 일반 UTF-8 문자와 구분합니다. 응답은 최대 128바이트, 각 숫자 5자리, DA 최대 32개 필드로 검증하며 부분 응답은 입력 호출·팝업 종료·타임아웃을 넘어 보관합니다. 정상 응답과 잘못된 보고서의 본문은 일반 단축키로 실행하지 않습니다. 늦은 완전한 응답도 소비하지만 진단 후보에는 적용하지 않습니다. 일반 키·Unicode·마우스는 프레임 밖에서 그대로 처리하고, 진단 중 일반 키는 그 모달에만 속합니다. 입력을 일괄 flush하거나 tty 모드를 바꾸지 않습니다. ESC 단독과 응답 시작의 구별에는 질의 중 최대 100 ms(그 밖에는 25 ms)의 대기 여유를 둡니다. ESC 하나만 아주 느리게 도착하면 취소로 처리될 수 있지만 뒤의 응답은 여전히 필터링합니다. 끝나지 않은 DA/셀 보고서는 종료 문자까지 보수적으로 격리하므로 그 본문과 구별할 수 없는 일반 문자가 소비될 수 있습니다. Esc·리사이즈·SIGINT 종료는 계속 처리합니다.
+진단 질의 후 입력 필터는 실행 종료까지 유지됩니다. 7비트 CSI와 8비트 CSI 응답을 일반 UTF-8 문자와 구분합니다. 응답은 최대 128바이트, 각 숫자 5자리, DA 최대 32개 필드로 검증하며 부분 응답은 입력 호출·팝업 종료·타임아웃을 넘어 보관합니다. 정상 응답과 잘못된 보고서의 본문은 일반 단축키로 실행하지 않습니다. 늦은 완전한 응답도 소비하지만 진단 후보에는 적용하지 않습니다. 일반 키·Unicode·마우스는 프레임 밖에서 그대로 처리하고, 진단 중 일반 키는 그 모달에만 속합니다. 입력을 일괄 flush하거나 tty 모드를 바꾸지 않습니다. ESC 단독과 응답 시작의 구별에는 질의 중 최대 100 ms(그 밖에는 25 ms)의 대기 여유를 둡니다. ESC 하나만 아주 느리게 도착하면 취소로 처리될 수 있지만 뒤의 응답은 여전히 필터링합니다. 완결된 미등록 CSI는 종료 문자에서 버리고 다음 일반 입력을 처리합니다. DA(`ESC[?`), 셀 보고서(`ESC[6;`), `?`가 누락된 흔한 DA 형태(`ESC[62;`)는 잘못된 본문도 해당 종료 문자(c/t)까지 격리합니다. 끝나지 않은 보고서는 Esc로 취소해도 본문을 재생하지 않으며, 종료 문자 또는 새 `ESC [`/`ESC O` 또는 8비트 CSI 프레임에서 복구합니다. 그 전에는 응답 꼬리와 구별할 수 없는 일반 문자가 소비될 수 있습니다. 그 밖의 표식 없는 잘못된 응답은 보고서로 추정하지 않습니다. Esc 전달 뒤 무입력 상태는 원래 blocking 대기로 돌아갑니다. Esc·리사이즈·SIGINT 종료는 계속 처리합니다.
 
 이 확인 결과와 셀 크기는 **현재 실행에만 유지**됩니다. 확인 성공만으로 설정 파일에 기록하지 않습니다. 일반 설정에는 기존처럼 사용자가 F7의 시작 기본값 저장을 선택했을 때 Auto/Off만 저장하며, 다음 실행의 터미널 지원까지 확정하지 않습니다. 터미널별 영구 프로필은 제공하지 않습니다.
 
@@ -119,7 +119,7 @@ TFILE_SIXEL=1 TFILE_CELL_PIXELS=8x16 ./tfile /path/to/files
 
 `F9` 메뉴의 **View: Files + Preview**, **View: Files only**, **View: Left + Right files**에서 모드를 선택합니다. 기존 F키는 그대로입니다. 이중 패널에서는 `Tab`/`Shift+Tab`이나 패널 내부 클릭으로 활성 패널을 바꾸며, `*` 제목·강조 테두리·`>` 커서로 구분합니다. 비활성 커서는 `:`이고 다중 선택 `*`는 유지됩니다. 경로·정렬·숨김 설정·목록 위치·다중 선택·방문 기록은 패널별이고, 휠 이동량·화면 모드·최근 결과는 공통입니다.
 
-첫 진입은 기존 목록 상태를 Left에 유지하고 Right를 같은 위치에서 이름 오름차순·숨김 표시 켜짐으로 독립 초기화합니다. 실패하면 기존 화면을 유지합니다. 단일 모드로 돌아갈 때는 활성 목록을 계속 쓰고 숨기는 패널의 선택 표시만 해제합니다. 숨겨둔 경로·커서·스크롤·이력은 보관하며 다시 표시할 때 목록을 한 번 갱신해 원본 이름으로 재선택합니다. 실패한 패널은 **STALE**로 안내하며 `r` 또는 정상적인 디렉터리 탐색으로 목록을 다시 읽기 전까지 파일 변경을 차단합니다.
+첫 진입은 기존 목록 상태를 Left에 유지하고 Right를 같은 위치에서 저장된 정렬·숨김 기본값으로 독립 초기화합니다. 저장 설정이 없으면 이름 오름차순·숨김 표시 켜짐을 사용합니다. 실패하면 기존 화면을 유지합니다. 단일 모드로 돌아갈 때는 활성 목록을 계속 쓰고 숨기는 패널의 선택 표시만 해제합니다. 숨겨둔 경로·커서·스크롤·이력은 보관하며 다시 표시할 때 목록을 한 번 갱신해 원본 이름으로 재선택합니다. 실패한 패널은 **STALE**로 안내하며 `r` 또는 정상적인 디렉터리 탐색으로 목록을 다시 읽기 전까지 파일 변경을 차단합니다.
 
 80열 이상에서는 좌우 목록을 함께 표시하고, 그보다 좁으면 활성 목록만 전체 폭으로 표시합니다. 하단 **Left / Right** 안내와 `Tab`으로 다른 목록에 접근할 수 있습니다. 리사이즈만으로 모드나 선택 표시를 바꾸지 않습니다. 이중 모드의 파일 `Enter`는 활성 목록을 원본으로 목록+미리보기로 전환하며, 미리보기 `Esc`는 그 목록으로 돌아옵니다.
 
@@ -179,7 +179,7 @@ image=1
 
 이미지 **Auto/Off는 사용자 선호**입니다. Auto 복원은 터미널의 Sixel 지원 확인을 뜻하지 않습니다. `TFILE_SIXEL`, `TFILE_CELL_PIXELS`와 기존 픽셀 크기 확인 정책은 그대로 유지합니다. 셀 크기는 일반 설정에 기록하지 않으며 10×20 같은 사용자별 값을 기본값으로 사용하지 않습니다. F7에서 명시적으로 현재 터미널을 확인할 수 있지만 자동 시작 진단이나 터미널별 영구 프로필 저장은 제공하지 않습니다.
 
-설정 회귀 검사는 `make check-settings`, ASan/UBSan 검사는 `make check-settings-sanitize`로 실행합니다. 실제 사용자 파일 대신 임시 HOME/XDG 경로를 사용합니다. LSan은 별도로 `ASAN_OPTIONS=detect_leaks=1 make check-settings-sanitize`로 확인할 수 있습니다. 실행 환경이 LSan을 막으면 누수 검사는 미완료입니다.
+일반 `make check`는 임시 HOME/XDG_CONFIG_HOME으로 전체 설정·터미널 검사를 격리합니다. 설정 회귀 검사는 `make check-settings`, ASan/UBSan 검사는 `make check-settings-sanitize`로 실행합니다. `check-settings-sanitize`는 `settings_test.c`만 실행하며 터미널 입력·진단 PTY 검사를 포함하지 않습니다. LSan은 별도로 `ASAN_OPTIONS=detect_leaks=1 make check-settings-sanitize`로 확인할 수 있습니다. 실행 환경이 LSan을 막으면 누수 검사는 미완료입니다.
 
 ## 안전 정책과 제한
 
@@ -206,7 +206,7 @@ flowchart LR
 | 경로 | 역할 |
 | --- | --- |
 | `src/ui/` | 패널, 입력, 팝업, 진행·결과 표시 |
-| `src/core/` | 탐색, 정렬, 선택, 검색, 미리보기, 단일·일괄 작업 |
+| `src/core/` | 탐색, 정렬, 선택, 검색, 미리보기, 단일·일괄 작업, UI와 독립적인 터미널 응답 검증 |
 | `src/platform/` | 운영체제별 파일시스템 처리 |
 | `src/model.h` | 공통 데이터 모델 |
 | `tests/` | core·platform·UI·PTY 회귀 검사와 계측 |
@@ -217,15 +217,20 @@ flowchart LR
 ```sh
 make check       # core, platform, UI 및 PTY 회귀 검사
 make check-core  # core와 platform 검사만 실행
+make check-terminal # 터미널 파서·입력 및 F7 진단 PTY 검사
 make check-media # 미디어 대역·프로토콜/수명주기 PTY와 비 root 목적지 선택창 검사
 python3 tests/media_real.py # 선택 의존성이 있으면 실제 변환 검사
 python3 tests/run_sanitizers.py --output-directory /tmp/tfile-sanitizers-manual
 python3 tests/run_media_sanitizers.py --output-directory /tmp/tfile-media-sanitizers-manual
+ASAN_OPTIONS=detect_leaks=1 make check-settings-sanitize
+python3 tests/run_terminal_sanitizers.py --output-directory /tmp/tfile-terminal-sanitizers-manual
 ```
 
-`run_sanitizers.py`의 기존 17개 native 검사는 미디어 전용 검사 완료를 뜻하지 않습니다. `run_media_sanitizers.py`는 별도로 media·preview·picker native와 media PTY를 실행합니다. 위 sanitizer 명령은 기본적으로 누수 검출을 요청합니다. 실행 환경 때문에 `--disable-leaks`를 명시해 수행한 ASan/UBSan 결과는 누수 검사 통과가 아닙니다. 자세한 실행 명령·로그 위치와 후속 수정 결과는 [미디어 검증 기록](docs/MEDIA_PREVIEW_VALIDATION.md#후속-정적-검토-수정)을 참고하세요.
+`run_sanitizers.py`의 기존 17개 native 검사는 미디어 전용 검사 완료를 뜻하지 않습니다. `run_media_sanitizers.py`는 별도로 media·preview·picker native와 media PTY를 실행합니다. `run_terminal_sanitizers.py`는 terminal_test·terminal_input_test와 sanitizer 앱의 terminal_pty.py를 실행하고 별도 로그를 남깁니다. 전용 스크립트는 기본적으로 누수 검출을 요청합니다. 실행 환경 때문에 `--disable-leaks`를 명시해 수행한 ASan/UBSan 결과는 누수 검사 통과가 아닙니다. 자세한 실행 명령·로그 위치와 후속 수정 결과는 [미디어 검증 기록](docs/MEDIA_PREVIEW_VALIDATION.md#후속-정적-검토-수정)을 참고하세요.
 
 기존 검증은 Unicode·안전한 표시, 작은 화면, 초점·방문 위치·빠른 찾기, 파일 작업 실패·취소, 다중 선택과 일괄 작업을 포함합니다. 이중 패널 검사는 상태 독립성·모드 전환·작업 대상과 양쪽 갱신·실패 주입·메모리/FD/창 정리도 확인합니다. 안정화 계측에서는 불필요한 목록 조회·정렬과 검색 화면 갱신 횟수도 확인합니다.
+
+과거 환경변수 방식의 육안 확인은 F7 내부 진단의 표시·지우기 및 입력 복원 검증과 구분합니다. PTY는 실제 픽셀 표시·잔상을 입증하지 않으므로 F7에서 별도 육안 확인이 필요합니다.
 
 이전 구현 검증의 실행 환경·결과와 미확인 항목은 아래 보고서에 기록되어 있습니다. ASan/UBSan 결과와 일반 성능 측정은 구분하며, ptrace 환경에서 실행되지 못한 LeakSanitizer 검사는 누수 없음으로 간주하지 않습니다.
 

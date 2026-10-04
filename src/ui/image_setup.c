@@ -73,7 +73,7 @@ bool image_setup(UiContext *ui,char *result,size_t capacity) {
         } else if(stage==4) page(win,"Did the image disappear completely?","Check the former image area for any pixels.","y: erase OK  n/Esc: cancel");
         else if(stage==5) page(win,"Enable image preview for this session?","Auto/Off defaults are saved separately in F7.","y: enable  n/Esc: keep previous");
         wtimeout(win,50);
-        int key=input_key(win);
+        int key=mouse_key(win,input_key(win));
         core_media_reap();
         if(key==ERR) { if(core_media_shutdown_requested()) break; continue; }
         if(key==KEY_RESIZE) { resized=true; snprintf(result,capacity,"Resized: image check stopped; retry in F7"); break; }
@@ -85,7 +85,7 @@ bool image_setup(UiContext *ui,char *result,size_t capacity) {
             page(win,"Checking: retiring current converter","No file operations run during this check.","Esc: cancel");
             uint64_t end=core_monotonic_ms()+1000;
             while(core_media_cleanup_pending() && core_monotonic_ms()<end) {
-                core_media_reap(); int k=input_key(win);
+                core_media_reap(); int k=mouse_key(win,input_key(win));
                 if(k==27||k==KEY_RESIZE) { resized=k==KEY_RESIZE; finished=true; break; }
             }
             if(finished) break;
@@ -97,7 +97,7 @@ bool image_setup(UiContext *ui,char *result,size_t capacity) {
                 if(r.code!=RESULT_OK) { snprintf(hint,sizeof hint,"%.159s",r.detail); input_terminal_end(); ui->image_status=previous_status; continue; }
                 end=core_monotonic_ms()+700;
                 while(core_monotonic_ms()<end) {
-                    int k=input_key(win);
+                    int k=mouse_key(win,input_key(win));
                     if(k==27||k==KEY_RESIZE) { resized=k==KEY_RESIZE; finished=true; break; }
                     /* Other keys belong to this modal and are never replayed as file commands. */
                 }

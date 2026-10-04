@@ -52,6 +52,23 @@ class SetupTerminal(Terminal):
         if sys.exc_info()[0] is not None:
             self.proc.kill();self.proc.wait();os.close(self.master);return
         super().close()
+    def idle(self):
+        self.read(.25)  # Let conversion and the last screen update settle.
+        before=(len(self.output),len(self.screen.images),self.screen.clears)
+        stat=Path(f'/proc/{self.proc.pid}/stat')
+        def ticks():
+            fields=stat.read_text().split(') ',1)[1].split()
+            return int(fields[11])+int(fields[12])
+        start=ticks(); self.read(1.2)
+        assert before==(len(self.output),len(self.screen.images),self.screen.clears), 'idle redraw/output'
+        assert ticks()-start<=2, 'idle CPU polling'
+    def click_close(self):
+        w=min(70,self.screen.width-4); h=min(18,self.screen.height-2)
+        x=(self.screen.width-w)//2+w-4; y=(self.screen.height-h)//2
+        self.send(f'\x1b[<0;{x+1};{y+1}M')
+        assert 'Image check cancelled; previous settings kept' in self.text(),self.text()
+        assert self.screen.image is None
+        assert 'Options' in self.text()
     def close_setup(self): self.send('\x1b')
 
 for width,height in [(50,9),(100,24)]:
@@ -77,6 +94,8 @@ for width,height in [(50,9),(100,24)]:
             if width>=80:
                 t.wait(lambda:t.screen.image is not None)
                 assert t.screen.image[2:]==(6,6) and t.records()
+            t.idle()
+            t.send(b'\x1b[999~');t.send(F7);assert 'Options' in t.text();t.send('\x1b');t.idle()
             t.setup(); t.query(b'\x9b?62;4c\x9b6;16;8t'); t.send('y');t.send('n')  # Failed erase confirmation.
             t.send('\n');assert 'Enabled (8x16)' in t.text();t.send('\x1b');t.close_setup()
             # Normal fields/Unicode/mouse still work after the raw response filter is armed.
@@ -126,6 +145,23 @@ with tempfile.TemporaryDirectory(prefix='tfile-terminal-extra-') as directory:
     finally:t.close()
     for tool in ['magick','pdftoppm','pdftotext']:
         p=tools/tool;p.write_text(STUB);p.chmod(0o755)
+    # Close from every confirmation and from the query loop; settings/focus survive.
+    t=SetupTerminal(root,tools,log)
+    try:
+        for stage in range(4):
+            t.setup()
+            if stage:
+                t.query()
+                for _ in range(stage-1): t.send('y')
+            t.click_close()
+            t.send('\n');assert 'Unconfirmed' in t.text()
+            t.click_close();t.close_setup()
+        t.setup();t.send('\n');t.click_close()
+        t.close_setup();t.idle()
+        t.send(b'\x1b[?62;qqF8c\x1b[6;16;8t')
+        assert t.proc.poll() is None
+        t.send(F7);assert 'Options' in t.text();t.send('\x1b')
+    finally:t.close()
     # ioctl cell geometry is useful, but cannot confirm Sixel by itself.
     t=SetupTerminal(root,tools,log,pixels=True)
     try:
@@ -172,3 +208,27 @@ with tempfile.TemporaryDirectory(prefix='tfile-terminal-extra-') as directory:
         t.setup();assert 'Unconfirmed' in t.text();t.send('\x1b');t.close_setup()
     finally:t.close()
 print('PASS: measured manual input, missing tools vs unknown cells, ioctl fallback, advanced environment preservation, active converter/FD/temp cleanup and resize abort')
+
+with tempfile.TemporaryDirectory(prefix='tfile-terminal-workflow-') as directory:
+    base=Path(directory);root=base/'files';root.mkdir();tools=base/'bin';tools.mkdir();log=base/'log'
+    os.environ.update(HOME=directory,XDG_CONFIG_HOME=str(base/'config'))
+    folder=root/'folder';folder.mkdir();(folder/'leaf.txt').write_text('after F7')
+    destination=base/'copies';destination.mkdir()
+    t=SetupTerminal(root,tools,log)
+    try:
+        t.setup();t.query();t.confirm();t.close_setup();t.idle()
+        t.send('\x06folder\n\n');assert str(folder) in t.text()
+        t.send('\x1bORleaf\n');t.send('\n');assert 'leaf.txt' in t.text()
+        t.send('\x1b[15~'+str(destination)+'\n')
+        assert not (destination/'leaf.txt').exists()
+        for y in range(t.screen.height):
+            row=t.screen.row(y)
+            if '[ Copy now ]' in row:
+                t.send(f'\x1b[<0;{row.index("[ Copy now ]")+3};{y+1}M');break
+        else:raise AssertionError(t.text())
+        assert (destination/'leaf.txt').read_text()=='after F7'
+        assert (folder/'leaf.txt').read_text()=='after F7'
+        t.send('\x1b[?62;qqF8c\x1b[6;16;8t');t.send(F7)
+        assert 'Options' in t.text();t.send('\x1b');t.idle()
+    finally:t.close()
+print('PASS: F7 verification followed by navigation, search, explicit mouse copy and late reply isolation')
