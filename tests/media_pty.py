@@ -138,7 +138,7 @@ if __name__ == '__main__':
             t.send('\x1b');t.send('\x1bOB')
             assert t.screen.image is None and 'text body' in t.text()
             t.send('\n');t.send('\x1b[6~'); assert 'Row ' in t.text();t.send('\x1b');t.send('\x1bOB')
-            t.wait(lambda:'Cannot display preview' in t.text())
+            t.wait(lambda:'Preview failed' in t.text())
             assert t.screen.image is None and b'\x1b[2J hostile' not in t.output
             t.send('\x1bOB');assert 'Empty file' in t.text()
             t.send('\x1bOB');assert 'ordinary text' in t.text()

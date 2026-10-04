@@ -90,7 +90,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-auto-success-') as d:
         t.send('\x1b[999~');t.send('\x1bOP');assert 'Help' in t.text();t.send('\x1b')
         t.resize_cells(80,20);assert t.queries()==(1,2) and t.screen.image is None
         t.reply(b'\x1b[6;20;10t');t.wait(lambda:t.screen.image is not None)
-        assert any('320x180' in ' '.join(e['args']) for e in t.records()),t.records()
+        assert any('320x138' in ' '.join(e['args']) for e in t.records()),t.records()
         t.idle()
         t.send(F7+DOWN*7);assert 'Enabled' in t.text() and t.screen.image is None
         t.send('\x1bOA'*2+'\n\x1b');t.idle();assert t.screen.image is None
@@ -122,7 +122,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-auto-ioctl-') as d:
         t.reply(DA);t.wait(lambda:t.screen.image is not None)
         t.resize_cells(80,20,9,18);t.wait(lambda:t.screen.image is not None)
         assert t.queries()==(1,1)
-        assert any('288x162' in ' '.join(e['args']) for e in t.records()),t.records()
+        assert any('288x126' in ' '.join(e['args']) for e in t.records()),t.records()
         t.idle()
     finally:t.close()
 

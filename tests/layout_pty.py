@@ -21,7 +21,7 @@ for width, height in [(50,9),(80,24),(100,24),(160,32)]:
             assert '[>]  Location:' in t.screen.row(1)
             assert t.screen.rows[first][1]=='>'
             assert 'a-dir' in t.screen.row(first) and 'Dir' in t.screen.row(first)
-            assert 'Directory' in t.screen.row(4)[split:] and '| -' not in t.screen.row(4)[split:]
+            if height>=12: assert 'Directory' in t.screen.row(4)[split:] and '| -' not in t.screen.row(4)[split:]
             if width>=100: assert 'Mode ' in t.screen.row(4)[split:]
             if height>=12: assert 'Modified:' in t.screen.row(5)[split:]
             if split>=48: assert t.screen.rows[first][split-21 if split>=72 else split-4]=='-'
@@ -37,22 +37,22 @@ for width, height in [(50,9),(80,24),(100,24),(160,32)]:
                 assert t.screen.rows[first+1][1]=='>'  # column header is not a row
             t.send('\x1bOH\x1bOB')
             if height>=12:
-                assert 'BODY' in t.screen.row(6)[split:]
+                assert 'BODY' in t.screen.row(8)[split:]
                 assert 'Row' not in t.screen.row(height-4)[split:]
                 assert str(root) not in '\n'.join(t.screen.row(y)[split:] for y in range(3,height-3))
             t.send('\x1bOB')
             t.send(f'\x1b[<65;{width-3};5M' * 90)
-            assert 'End' in t.screen.row(height-4)[split:]
-            assert 'LINE 069' in '\n'.join(t.screen.row(y)[split:] for y in range(3,height-4))
+            if height>=12: assert 'End' in t.screen.row(height-4)[split:]
+            assert 'LINE 069' in '\n'.join(t.screen.row(y)[split:] for y in range(3,height-(4 if height>=12 else 3)))
             t.send('\x1bOB')
-            if height>=12: assert 'Binary file' in t.screen.row(6)[split:]
+            if height>=12: assert 'Preview unavailable' in '\n'.join(t.screen.row(y)[split:] for y in range(8,height-4))
             t.send('\x1bOB')
-            if height>=12: assert 'Link target:' in t.screen.row(6)[split:]
+            if height>=12: assert 'Link target:' in t.screen.row(8)[split:]
             t.send('\x1bOB')
             if os.geteuid()!=0 and height>=12:
                 assert 'File' in t.screen.row(4)[split:]
                 assert 'Modified:' in t.screen.row(5)[split:]
-                assert 'Cannot verify' in t.screen.row(6)[split:]
+                assert 'Preview failed' in '\n'.join(t.screen.row(y)[split:] for y in range(8,height-4))
         finally: t.close(); (root/'f-error').chmod(0o600)
     with tempfile.TemporaryDirectory() as directory:
         t=Terminal(directory,width,height)

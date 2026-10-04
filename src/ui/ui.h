@@ -114,7 +114,7 @@ enum { UI_BASE = 1, UI_BORDER, UI_HEADER, UI_SELECTED, UI_DIR, UI_MUTED, UI_STAT
        UI_FILE, UI_LINK, UI_DIR_SELECTED, UI_FILE_SELECTED, UI_LINK_SELECTED,
        UI_EXEC, UI_HIDDEN, UI_SPECIAL, UI_EXEC_SELECTED, UI_HIDDEN_SELECTED, UI_SPECIAL_SELECTED,
        UI_INACTIVE, UI_POP_BODY, UI_POP_MUTED, UI_POP_BORDER, UI_POP_TITLE,
-       UI_POP_FOOTER, UI_POP_WARNING, UI_POP_FOOT_WARNING, UI_POP_DISABLED, UI_COLUMNS, UI_DISABLED };
+       UI_POP_FOOTER, UI_POP_WARNING, UI_POP_FOOT_WARNING, UI_POP_DISABLED, UI_COLUMNS, UI_DISABLED, UI_PREVIEW_WARNING };
 typedef enum { TYPE_DIR, TYPE_FILE, TYPE_EXEC, TYPE_HIDDEN, TYPE_LINK, TYPE_SPECIAL } FileType;
 void message(UiContext *ui, const char *text);
 Result load_dir(UiContext *ui, const char *highlight);
@@ -165,7 +165,7 @@ UiScreenLayout ui_screen_layout(const UiContext *ui, int width, int height);
 int ui_panel_at(const UiScreenLayout *layout, int x, int y);
 const char *ui_kind(const Item *it);
 void ui_size(const Item *it, char *out, size_t size);
-#define PREVIEW_METADATA_ROWS 3
+#define PREVIEW_METADATA_ROWS 5
 void draw(UiContext *ui);
 void draw_cached(UiContext *ui);
 void fit_selection(UiContext *ui, int rows);

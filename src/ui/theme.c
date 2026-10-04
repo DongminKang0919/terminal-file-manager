@@ -37,6 +37,7 @@ void init_theme(void) {
     if (!has_colors()) return;
     start_color();
     if (COLORS >= 256) {
+        init_pair(UI_PREVIEW_WARNING, 222, 235);
         init_pair(UI_BASE, 255, 235);
         init_pair(UI_BORDER, 242, 235);
         init_pair(UI_HEADER, 255, 237);
@@ -59,6 +60,7 @@ void init_theme(void) {
         init_pair(UI_HIDDEN_SELECTED, 225, 25);
         init_pair(UI_SPECIAL_SELECTED, 224, 25);
     } else {
+        init_pair(UI_PREVIEW_WARNING, COLOR_YELLOW, COLOR_BLACK);
         init_pair(UI_BASE, COLOR_WHITE, COLOR_BLACK);
         init_pair(UI_BORDER, COLOR_WHITE, COLOR_BLACK);
         init_pair(UI_HEADER, COLOR_BLACK, COLOR_WHITE);

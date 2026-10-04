@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
+#include <locale.h>
 static size_t reads, opens, live, bytes;
 static bool fail_read, fail_refresh, forbid_list;
 static size_t checks;
@@ -83,6 +84,7 @@ static void write_file(const char *p, size_t n) {
     assert(!fclose(f));
 }
 int main(void) {
+    assert(setlocale(LC_ALL,"C.UTF-8"));
     char dir[]="/tmp/tfile-preview-XXXXXX"; assert(mkdtemp(dir));
     char path[256], other[256]; snprintf(path,sizeof path,"%s/file",dir); snprintf(other,sizeof other,"%s/new",dir);
     write_file(path,10000); PreviewSession *s=NULL; PreviewText p;
@@ -314,14 +316,14 @@ int main(void) {
     if (geteuid()!=0) {
         preview_reset(&ui); preview_prepare(&ui,17); render_preview(&ui);
         assert(ui.preview_result.code==RESULT_ACCESS && !preview_has("Empty directory"));
-        assert(preview_has("Cannot verify contents") && preview_has("Permission denied"));
+        assert(preview_has("Preview failed") && preview_has("Permission denied"));
     }
     assert(!chmod(folder,0700));
     for(int i=0;i<2;i++) {
         directory_failure=i ? RESULT_IO : RESULT_ACCESS;
         preview_reset(&ui); preview_prepare(&ui,17); render_preview(&ui);
         assert(ui.preview_result.code==directory_failure && !ui.preview_directory_empty);
-        assert(preview_has("Cannot verify contents") && !preview_has("Empty directory"));
+        assert(preview_has("Preview failed") && !preview_has("Empty directory"));
         assert(preview_has(i ? "Injected directory read failure" : "Permission denied"));
         assert(preview_has("Directory") && preview_has("Modified:"));
         probes=directory_probes;
@@ -331,7 +333,7 @@ int main(void) {
     directory_failure=RESULT_OK;
     fail_directory_read=true; preview_reset(&ui); preview_prepare(&ui,17); render_preview(&ui);
     assert(ui.preview_result.code==RESULT_IO && !ui.preview_directory_empty);
-    assert(preview_has("Cannot verify contents") && !preview_has("Empty directory"));
+    assert(preview_has("Preview failed") && !preview_has("Empty directory"));
     fail_directory_read=false; preview_reset(&ui); preview_prepare(&ui,17);
     assert(ui.preview_result.code==RESULT_OK && ui.preview_directory_empty);
     assert(!rmdir(folder));
@@ -340,6 +342,30 @@ int main(void) {
     assert(ui.preview_page.empty && preview_has("Empty file") && preview_has("Modified:"));
     write_file(path,1); ui.preview_checked=0; preview_prepare(&ui,17); render_preview(&ui);
     assert(!ui.preview_page.empty && !preview_has("Empty file"));
+    /* Common status layout uses fixed metadata and clears the previous body. */
+    ui.preview_page.binary=true; render_preview(&ui);
+    assert(preview_has("[i] Preview unavailable") && !preview_has("line-000000"));
+    assert(mvinch(12,54)&A_BOLD);
+    ui.preview_page.binary=false;
+    ui.preview_result=result_make(RESULT_IO,"한글 읽기 실패: a very long error description that must wrap inside the preview panel without overwriting borders");
+    render_preview(&ui); assert(preview_has("[!] Preview failed"));
+    assert(preview_has("한글 읽기 실패") && preview_has("description"));
+    assert(preview_has("Modified:"));
+    ui.preview_result=result_make(RESULT_OK,NULL);
+    ui.media_kind=PREVIEW_PNG; ui.media_done=false;
+    snprintf(ui.media_hint,sizeof ui.media_hint,"Converting image.");
+    render_preview(&ui); assert(preview_has("[...] Loading preview"));
+    ui.media_done=true; ui.image_auto=false;
+    snprintf(ui.media_hint,sizeof ui.media_hint,"Image preview off (F7: Auto)");
+    render_preview(&ui); assert(preview_has("[i] Preview disabled"));
+    ui.media_kind=PREVIEW_NOT_MEDIA; ui.image_auto=true;
+    for (int width=20; width<=50; width+=10) {
+        for (int height=9; height<=20; height+=5) {
+            erase(); preview(&ui,50,2,width,height);
+            assert((mvinch(3,50+width-1)&A_CHARTEXT)==' ');
+            assert((mvinch(2+height-1,52)&A_CHARTEXT)==' ');
+        }
+    }
     ui_free(&ui); assert(live==0);
     endwin(); delscreen(screen); fclose(out); fclose(in);
     out=tmpfile(); in=tmpfile(); assert(out && in);
@@ -348,6 +374,9 @@ int main(void) {
     assert(ui_init(&ui,dir).code==RESULT_OK); ui_panel(&ui)->selected=0; ui_panel(&ui)->top=0;
     resizeterm(24,100); draw(&ui);
     assert((mvinch(5,1)&A_CHARTEXT)=='>'); assert(mvinch(5,3)&A_REVERSE);
+    assert(load_dir(&ui,"file").code==RESULT_OK); preview_prepare(&ui,17);
+    ui.preview_page.binary=true; render_preview(&ui);
+    assert(preview_has("[i] Preview unavailable") && (mvinch(12,54)&A_BOLD));
     ui_free(&ui); assert(live==0);
     endwin(); delscreen(screen); fclose(out); fclose(in);
     for(size_t i=0;i<40;i++) { assert(!unlink(extras[i])); free(extras[i]); }

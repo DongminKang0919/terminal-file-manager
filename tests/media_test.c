@@ -179,7 +179,7 @@ int main(int argc,char **argv) {
     for(int i=0;i<4;i++) {
         source(next,PREVIEW_PDF,i==0?"zero":i==1?"white":i==2?"ff":"indent");
         preview_reset(&ui); prepared(&ui); erase(); preview(&ui,55,2,45,20);
-        if(i<3) assert(contains_screen("No text on PDF page 1"));
+        if(i<3) assert(contains_screen("No text could be extracted"));
         else assert(contains_screen("  Indented") && contains_screen("Next line") && !contains_screen("\\x0C"));
     }
     for(int i=0;i<3;i++) {
@@ -187,7 +187,7 @@ int main(int argc,char **argv) {
         if(i==2) assert(!setenv("PATH","/nonexistent",1));
         if(i==1) {preview_prepare(&ui,17);clock_offset=9000;}
         prepared(&ui);erase();preview(&ui,55,2,45,20);
-        assert(contains_screen("Cannot display preview") && !contains_screen("No text on PDF page 1"));
+        assert(contains_screen(i==2 ? "Preview unavailable" : "Preview failed") && !contains_screen("No text could be extracted"));
         clock_offset=0;assert(!setenv("PATH",tools,1));
     }
     ui_set_mode(&ui,UI_LIST_ONLY); assert(!ui.media_job && !ui.media_data);
