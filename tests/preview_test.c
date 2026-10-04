@@ -348,11 +348,10 @@ int main(void) {
     assert(ui_init(&ui,dir).code==RESULT_OK); ui_panel(&ui)->selected=0; ui_panel(&ui)->top=0;
     resizeterm(24,100); draw(&ui);
     assert((mvinch(5,1)&A_CHARTEXT)=='>'); assert(mvinch(5,3)&A_REVERSE);
-    preview_reset(&ui); app_free(&ui_panel(&ui)->app);
+    ui_free(&ui); assert(live==0);
     endwin(); delscreen(screen); fclose(out); fclose(in);
     for(size_t i=0;i<40;i++) { assert(!unlink(extras[i])); free(extras[i]); }
     assert(!unlink(path)); assert(!rmdir(dir));
-    notice_clear(&ui);
     puts("PASS: empty file/directory, hidden-only directory, permission and directory read failures, cached directory probes, metadata retained");
     puts("PASS: 1000 sequential pages: 1 open, 1020 chunk reads, 12240 bytes; 100 unchanged redraws: 0 reads/opens; backward cache, EOF, changes, cleanup; sort preserves reader/page/selection without content or list I/O; refresh resets safely");
 }
