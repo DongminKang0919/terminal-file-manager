@@ -90,3 +90,53 @@ python3 tests/run_media_sanitizers.py --output-directory /tmp/tfile-media-saniti
 **미검증:** 실제 GUI 터미널의 standalone·ncurses 픽셀 표시·삭제·모달 잔상·리사이즈, 사용자의 WSL 터미널 호환성, 다양한 폰트/HiDPI/SSH/multiplexer, 직접 설치하지 않은 ImageMagick 7의 실제 실행, LSan. PTY 통과가 이 항목들을 대체하지 않는다.
 
 **범위 밖:** 다른 이미지 형식, PDF 페이지 이동·모든 페이지 변환·확대·애니메이션, terminal query 자동 탐지, tmux/screen passthrough, 영구 설정/디스크 캐시. 터미널 폰트 크기가 바뀌면 셀 값을 다시 확인하고 재시작해야 한다. 출력은 상한이 있는 동기 terminal write이므로 느린 원격 터미널의 전송/화면 지연까지 없애는 기능은 아니다.
+
+## 후속 정적 검토 수정
+
+최신 `d21d052` 기준에서 네 조건 모두 해당했다. UI → core → platform과 기존 파일 작업의 목적지 재검증·덮어쓰기/경로 교체 방어는 유지하고 다음 부분만 수정했다.
+
+수정·회귀 검사 로컬 커밋: `260ec6d`. 원격 푸시는 하지 않았다.
+
+| 지적 | 수정 전 확인·재현 | 수정과 회귀 검사 |
+| --- | --- | --- |
+| 최소 화면 미만의 변환 | 느린 PNG 대역 실행 중 49×8로 줄이면 `rows=0` 조기 반환 뒤 자식이 남았다. 새 PTY 검사의 자식 회수 대기가 실패했다 | `preview_prepare`가 표시 불가 시 media 상태를 폐기하고 기존 취소/비차단 회수 경로를 사용한다. active pending은 즉시 해제하고 retiring 동안만 polling한다. native 검사에서 pending/FD/temp/자식 정리와 복원·선택 교체를, PTY에서 변환 중 축소·유지(변환/출력/CPU tick 증가 없음)·복원·다른 파일 선택·작은 화면 종료를 검사한다 |
+| 목적지 읽기 실패 | 실제 uid 1000에서 chmod 000 디렉터리와 삭제된 경로를 열었다. 읽기 오류와 함께 기존 빈 상태 문구가 나타났고 Use가 허용됐다 | 목록 조회의 성공 여부를 별도 유지한다. 실패는 `Cannot inspect directory contents`와 `Cannot read directory: 원인`을 표시하고 Use를 차단한다. 실제 비 root native 검사에서 정상 빈 목적지/원본, 오류 상태의 Space 차단, 명시적 Enter path 및 Parent 복구를 확인한다. 경로 자동 대체와 후속 파일 작업 변경은 없다 |
+| ASan 컴파일러 감지 | 기존 소스는 GCC의 `__SANITIZE_ADDRESS__`만 검사했다. Clang은 설치되어 있지 않아 기존 Clang 실행 실패를 재현했다고 주장하지 않는다 | GCC 매크로 또는 Clang `__has_feature(address_sanitizer)`를 사용하고 feature query가 없는 컴파일러에는 0 fallback을 둔다. GCC 13.3 일반/ASan 빌드에서 exec된 대역이 직접 `getrlimit`으로 조회: 일반 AS=536870912, ASan AS=-1, 양쪽 CPU=5, PDF text FSIZE=65536, CORE=0. 환경변수 우회 기능은 없다. 기존 alarm/총 시간·stage별 파일 상한·ImageMagick 내부 제한은 유지한다 |
+| PDF 공백 출력 | pdftotext 대역의 공백·탭·개행·form feed만 있는 출력이 텍스트 없음 안내를 생략했다. native UI 검사가 실패했다 | 0바이트와 ASCII whitespace만 있으면 `No text on PDF page 1`. 표시할 때 form feed만 제거하며 나머지 들여쓰기/줄바꿈과 안전한 표시 경로·64 KiB/128행 제한은 유지한다. 대역 0바이트/공백/form feed/들여쓰기 있는 정상 텍스트와 오류/timeout/missing tools를 구분해 검사한다. 실제 Poppler의 빈 첫 페이지와 이미지 전용 첫 페이지도 검사한다 |
+
+재현 로그: `/tmp/tfile-review-repro-small.log`, `/tmp/tfile-review-repro-picker.log`, `/tmp/tfile-review-repro-text.log`. 이 로그들은 수정 전 실패를 기록한다.
+
+### 검사 범위와 실행 명령
+
+권한 검사는 **비 root**로 실행한다. 이 환경은 uid 1000, GCC 13.3, Ubuntu 24.04 / WSL2이며 실제 화면 터미널은 연결되지 않았다. Clang은 PATH 및 일반 설치 위치에 없었고 검사를 위해 설치하지 않았다. `tests/run_sanitizers.py`의 기존 17개 native 검사와 `tests/run_media_sanitizers.py`의 media/preview/picker native + media PTY 검사는 별개다.
+
+최종 결과: `make check`와 `make check-media` 종료 코드 0, 실제 ImageMagick/Poppler 변환 검사 통과, 기존 17개와 별도 미디어 4개 ASan/UBSan 검사 통과(누수 검출 제외). `git diff --check`, Python syntax, 의존 경계 검사도 통과했다. 새 검사 추가 후 일반 GCC 빌드의 제한값은 `check-media` 로그에서, GCC ASan 빌드의 제한값은 미디어 sanitizer의 `media.log`에서 직접 확인했다.
+
+아래는 이번 실행의 명령과 로그 위치다. sanitizer의 `--disable-leaks`는 명시적으로 ASan/UBSan만 실행하며 **누수 검사는 미완료**다. 기본 LSan 요청은 실제 실행했고 ptrace 제약으로 실패했다. 보안 설정은 바꾸지 않았다.
+
+```sh
+make check > /tmp/tfile-review-check.log 2>&1
+make check-media > /tmp/tfile-review-check-media.log 2>&1
+python3 tests/run_sanitizers.py --output-directory /tmp/tfile-sanitizers-review --disable-leaks > /tmp/tfile-review-existing-sanitizers.log 2>&1
+python3 tests/run_media_sanitizers.py --output-directory /tmp/tfile-media-sanitizers-review --disable-leaks > /tmp/tfile-review-media-sanitizers.log 2>&1
+# 기본 누수 검출 요청 (이번 ptrace 환경에서 실패):
+python3 tests/run_media_sanitizers.py --output-directory /tmp/tfile-media-sanitizers-review-lsan > /tmp/tfile-review-media-lsan.log 2>&1
+# 사용자가 선택 의존성을 설치한 환경:
+python3 tests/media_real.py > /tmp/tfile-review-media-real.log 2>&1
+```
+
+실제 변환 검사는 시스템 설치 대신 이전 검사에서 `/tmp`에 추출한 Poppler 24.02.0을 사용했다. 이번 실제 실행 명령은 다음과 같다.
+
+```sh
+PATH=/tmp/tfile-sixel-experiment/poppler/usr/bin:/usr/bin:/bin \
+LD_LIBRARY_PATH=/tmp/tfile-sixel-experiment/poppler/usr/lib/x86_64-linux-gnu \
+python3 tests/media_real.py > /tmp/tfile-review-media-real.log 2>&1
+```
+
+sanitizer 상세 로그는 기존 검사 `/tmp/tfile-sanitizers-review/*.run.log`, 미디어 검사 `/tmp/tfile-media-sanitizers-review/{media,preview,picker,media_pty}.log`, LSan 실패 `/tmp/tfile-media-sanitizers-review-lsan/*.log`다. `/tmp` 파일은 임시 검증 산출물이며 저장소에 포함하지 않는다. 사용자 환경에서 GCC/Clang이 모두 있으면 미디어 sanitizer 명령에 `CC=gcc` 또는 `CC=clang`을 붙여 별도 출력 디렉터리로 검사할 수 있다. 일반 빌드는 `make CC=gcc` 또는 `make CC=clang`으로 별도 checkout/clean 후 검사한다. 여기서는 **Clang 일반/ASan 빌드 미검증**이다.
+
+### 사용자 수동 확인과 남은 한계
+
+`python3 tools/sixel_probe.py`로 사용자 터미널의 단독 출력·지우기와 ncurses 패널·모달·리사이즈를 육안 확인한 뒤 출력된 실행 명령을 사용한다. 느린 대역의 수명주기는 `make check-media`로 확인할 수 있으며, 실제 앱에서는 이미지/PDF 변환 도중 49×8로 축소하고 유지·복원·종료를 확인한다. F5 Browse에서는 접근 불가 목적지가 빈 상태로 안내되지 않고 Parent/Enter path로 수정할 수 있는지 확인한다. 직접 경로 수정 없이 다른 목적지가 선택되면 안 된다.
+
+PTY는 프로토콜·ncurses cells·자식/입력 수명주기를 확인한다. **실제 터미널 픽셀 표시·삭제·모달 잔상은 여전히 미검증**이다. Clang 실행과 LSan도 미검증/미완료다. 기존 Sixel 전체 화면 지우기의 깜빡임 가능성, multiplexer/HiDPI 호환성, 급작스러운 SIGKILL 시 임시 디렉터리 잔존 가능성은 이번 수정 범위에서 해결하지 않았다.

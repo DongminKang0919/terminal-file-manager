@@ -39,3 +39,9 @@ README, REFERENCE, PANELS_VALIDATION, BATCH_VALIDATION과 UI/core/platform 및 �
 이 결과는 위 수동 실행에 포함된 17개 테스트와 실제 실행 경로에 한정한다. 프로젝트 전체, 모든 PTY 실행 또는 모든 사용 경로에 누수가 없다는 증명이 아니다. 자동 실행 환경의 미완료 기록은 별도로 유지한다. 수동 검토 로그 경로: `/tmp/tfile-sanitizers-manual/*.build.log`, `/tmp/tfile-sanitizers-manual/*.run.log`.
 
 입력 상한 4,095바이트, 작은 화면의 한 줄 생략/초점 기반 스크롤, 동기 호출과 개별 이동 중 취소 제한은 유지한다. 경로 고정은 파일시스템 스냅샷이 아니며 모든 외부 교체 경쟁을 재현하지 않았다. 실제 다른 파일시스템 사이 이동은 새로 실행하지 않고 기존 EXDEV 주입 검사를 유지했다. 모든 PTY를 sanitizer 바이너리로 실행한 것은 아니다.
+
+### 목적지 선택창의 읽기 실패 후속 수정
+
+목록 조회 실패와 정상 빈 상태를 구분하고, 실패 시 원인 표시와 Use 차단을 적용했다. Parent/Enter path 복구와 실제 파일 작업의 재검증은 유지한다. 새 `tests/picker_test.c`는 uid 1000에서 실제 권한 거부·삭제 경로·빈 디렉터리·Space 차단·경로 수정/Parent 복구를 확인하며 `make check`, `make check-media`, 미디어 전용 sanitizer에 포함된다.
+
+이번 명령·로그·미완료 LSan 기록은 [미디어 후속 검증](MEDIA_PREVIEW_VALIDATION.md#후속-정적-검토-수정)에 있다. 위의 과거 수동 17개 검사에서 확인한 누수 미검출 결과를 새 picker/media native 또는 media PTY 검사의 누수 검증으로 확대하지 않는다.
