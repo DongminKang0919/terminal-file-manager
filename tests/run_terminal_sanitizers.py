@@ -18,6 +18,7 @@ flags=[os.environ.get('CC','cc'),'-D_XOPEN_SOURCE=700','-std=c11','-O1','-g','-W
 for name,test,sources,extra in [
     ('terminal_test','tests/terminal_test.c',core,[]),
     ('terminal_input_test','tests/terminal_input_test.c',core+ui,['-lncursesw','-Wl,--wrap=core_monotonic_ms']),
+    ('graphics_probe_test','tests/graphics_probe_test.c',core+ui,['-lncursesw','-Wl,--wrap=core_monotonic_ms,--wrap=core_terminal_pixels,--wrap=terminal_query,--wrap=terminal_query_cells']),
     ('tfile','src/ui/main.c',core+ui,['-lncursesw'])]:
     subprocess.run(flags+['-o',str(out/name),test]+sources+extra,check=True)
 with tempfile.TemporaryDirectory(prefix='tfile-terminal-san-home-') as home:
@@ -25,7 +26,8 @@ with tempfile.TemporaryDirectory(prefix='tfile-terminal-san-home-') as home:
          'ASAN_OPTIONS':f'detect_leaks={int(not args.disable_leaks)}:halt_on_error=1',
          'UBSAN_OPTIONS':'halt_on_error=1:print_stacktrace=1','TFILE_BINARY':str(out/'tfile')}
     for name,command in [('terminal',[str(out/'terminal_test')]),('input',[str(out/'terminal_input_test')]),
-                         ('pty',['python3','tests/terminal_pty.py'])]:
+                         ('probe',[str(out/'graphics_probe_test')]),('pty',['python3','tests/terminal_pty.py']),
+                         ('auto_pty',['python3','tests/terminal_auto_pty.py'])]:
         with (out/(name+'.log')).open('w') as log:
             result=subprocess.run(command,env=env,stdout=log,stderr=subprocess.STDOUT)
         print(('PASS' if result.returncode==0 else 'FAIL')+f': {name}, {out/name}.log',flush=True)

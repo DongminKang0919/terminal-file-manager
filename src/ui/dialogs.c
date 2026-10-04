@@ -58,7 +58,7 @@ WINDOW *dialog_open(UiContext *ui, const char *title, int height, int width) {
     if (height > h - 2) height = h - 2;
     if (width > w - 4) width = w - 4;
     WINDOW *win = newwin(height, width, (h - height) / 2, (w - width) / 2);
-    if (win) { ui->modal_depth++; draw_cached(ui); keypad(win, TRUE); wbkgd(win, COLOR_PAIR(UI_BASE)); dialog_frame(win, title); }
+    if (win) { graphics_probe_cancel(ui); if(ui->media_job) media_reset(ui); ui->modal_depth++; draw_cached(ui); keypad(win, TRUE); wbkgd(win, COLOR_PAIR(UI_BASE)); dialog_frame(win, title); }
     return win;
 }
 bool dialog_closed(WINDOW *win, const MEVENT *e) {
@@ -345,7 +345,15 @@ void show_options(UiContext *ui) {
         if (i == 2) ui->wheel_step = ui->wheel_step == 1 ? 3 : ui->wheel_step == 3 ? 5 : 1;
         if (i == 3) change_sort(ui, (SortSettings){(ui_panel(ui)->app.sort.key + 1) % 4, ui_panel(ui)->app.sort.descending});
         if (i == 4) change_sort(ui, (SortSettings){ui_panel(ui)->app.sort.key, !ui_panel(ui)->app.sort.descending});
-        if (i == 5) { ui->image_auto = !ui->image_auto; media_reset(ui); }
+        if (i == 5) {
+            ui->image_auto = !ui->image_auto;
+            graphics_probe_cancel(ui);
+            if(ui->image_auto) {
+                if(!ui->sixel_confirmed) ui->image_probe=IMAGE_PROBE_IDLE;
+                else if(!ui->cell_width || !ui->cell_height) ui->image_cells_stale=true;
+            }
+            media_reset(ui);
+        }
         draw(ui);
     }
     dialog_close(ui, win);

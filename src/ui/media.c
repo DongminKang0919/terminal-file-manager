@@ -4,8 +4,8 @@
 static bool number(const char **p,const char *end,unsigned *out);
 
 void graphics_init(UiContext *ui) {
-    /* No terminal queries: capability is explicitly asserted by the user.
-       TERM and WSL never decide support, and no replies enter the key stream. */
+    /* Optional explicit override; otherwise detection is lazy, session-only.
+       TERM and the operating system never imply Sixel support. */
     const char *confirmed=getenv("TFILE_SIXEL"), *cells=getenv("TFILE_CELL_PIXELS");
     unsigned width=0,height=0;
     bool tty=core_terminal_pixels(&width,&height);
@@ -16,8 +16,12 @@ void graphics_init(UiContext *ui) {
     }
     ui->sixel_confirmed=tty && confirmed && !strcmp(confirmed,"1") &&
         width>0 && width<=64 && height>0 && height<=128;
-    ui->cell_width=width; ui->cell_height=height;
+    ui->cell_width=ui->sixel_confirmed ? width : 0;
+    ui->cell_height=ui->sixel_confirmed ? height : 0;
     ui->image_status=ui->sixel_confirmed ? IMAGE_ENABLED : IMAGE_UNCONFIRMED;
+    ui->image_probe=ui->sixel_confirmed ? IMAGE_PROBE_DONE : IMAGE_PROBE_IDLE;
+    ui->image_cells_fixed=ui->sixel_confirmed;
+    if(stdscr) getmaxyx(stdscr,ui->image_rows,ui->image_columns);
 }
 void media_reset(UiContext *ui) {
     core_media_close(ui->media_job); ui->media_job=NULL;
@@ -95,7 +99,7 @@ static void geometry(UiContext *ui,int rows,unsigned *width,unsigned *height) {
     int columns=w-layout.list_width-4;
     int image_rows=rows-PREVIEW_METADATA_ROWS-1;
     *width=*height=0;
-    if(columns<12 || image_rows<3 || !ui->sixel_confirmed) return;
+    if(columns<12 || image_rows<3 || !ui->sixel_confirmed || !ui->cell_width || !ui->cell_height) return;
     unsigned px=(unsigned)columns*ui->cell_width,py=(unsigned)image_rows*ui->cell_height;
     *width=px<PREVIEW_PIXEL_WIDTH?px:PREVIEW_PIXEL_WIDTH;
     *height=py<PREVIEW_PIXEL_HEIGHT?py:PREVIEW_PIXEL_HEIGHT;
@@ -104,6 +108,7 @@ static void geometry(UiContext *ui,int rows,unsigned *width,unsigned *height) {
 void media_prepare(UiContext *ui,int rows,bool changed) {
     core_media_reap();
     PreviewMediaKind kind=preview_session_media(ui->preview_session);
+    if(kind!=PREVIEW_NOT_MEDIA) graphics_probe_prepare(ui,rows);
     unsigned width,height; geometry(ui,rows,&width,&height);
     bool text=kind==PREVIEW_PDF && (ui->media_fallback || !ui->image_auto || !ui->sixel_confirmed || !width || !height);
     if(changed || kind!=ui->media_kind || width!=ui->media_width || height!=ui->media_height || text!=ui->media_text) {
@@ -111,12 +116,26 @@ void media_prepare(UiContext *ui,int rows,bool changed) {
         ui->media_kind=kind; ui->media_text=text;
         ui->media_width=width; ui->media_height=height;
     }
+    if(ui->image_probe==IMAGE_PROBE_WAITING) {
+        snprintf(ui->media_hint,sizeof ui->media_hint,"Checking terminal image support...");
+        ui->media_done=false; return; /* No converter until capability/geometry is known. */
+    }
+    const char *failure=ui->image_status==IMAGE_UNSUPPORTED ? "Terminal has no Sixel; F7: image setup" :
+        ui->image_status==IMAGE_NO_CELLS ? "Cell pixels unknown; F7: image setup" :
+        ui->image_status==IMAGE_CANCELLED ? "Image query cancelled; F7: image setup" :
+        ui->image_status==IMAGE_QUERY_FAILED ? "Terminal query failed; F7: image setup" :
+        ui->image_status==IMAGE_NO_RESPONSE ? "No terminal reply; F7: image setup" :
+        "Image display unconfirmed; set up in F7";
     const char *hint=!ui->image_auto?"Image preview off (F7: Auto)":!ui->sixel_confirmed?
-        "Image display unconfirmed; set up in F7":!width||!height?"Panel too small for image preview":NULL;
+        failure:!ui->cell_width||!ui->cell_height?failure:!width||!height?"Panel too small for image preview":NULL;
     snprintf(ui->media_hint,sizeof ui->media_hint,"%s",hint?hint:kind==PREVIEW_PDF?"PDF page 1":"Image preview");
     if(ui->media_fallback) snprintf(ui->media_hint,sizeof ui->media_hint,"%.127s",ui->media_fallback_detail);
-    if(kind==PREVIEW_NOT_MEDIA || (hint && !text)) { ui->media_done=true; return; }
-    if(ui->media_done) return;
+    if(kind==PREVIEW_NOT_MEDIA || (hint && !text)) {
+        if(kind!=PREVIEW_NOT_MEDIA && ui->image_auto && !ui->media_done && !terminal_tools().image)
+            ui->media_result=result_make(RESULT_UNSUPPORTED,"Missing ImageMagick; install ImageMagick");
+        ui->media_done=true; return;
+    }
+    if(ui->media_done || ui->modal_depth) return;
     const Item *it=&ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
     if(!ui->media_job) {
         ui->media_result=core_media_open(it->path,kind,text,width,height,&ui->media_job);
@@ -145,7 +164,7 @@ void media_prepare(UiContext *ui,int rows,bool changed) {
     }
 }
 bool media_pending(const UiContext *ui) {
-    return ui->media_kind!=PREVIEW_NOT_MEDIA && !ui->media_done;
+    return ui->image_probe==IMAGE_PROBE_WAITING || (ui->media_kind!=PREVIEW_NOT_MEDIA && !ui->media_done);
 }
 /* Every main/cached frame uses the same ordering: erase previous graphics,
    force curses repaint, refresh cells, then emit graphics. ED2 is intentionally
@@ -157,11 +176,14 @@ void graphics_clear(UiContext *ui) {
     ui->graphics_visible=false;
 }
 void graphics_present(UiContext *ui) {
-    if(ui->modal_depth || !ui_preview_enabled(ui) || !ui->image_auto || !ui->sixel_confirmed ||
+    if(ui->image_probe==IMAGE_PROBE_WAITING || ui->modal_depth || !ui_preview_enabled(ui) || !ui->image_auto || !ui->sixel_confirmed ||
        !ui->media_done || ui->media_text || !ui->media_data || ui->media_result.code!=RESULT_OK || ui->preview_offset) return;
     if(!ui->preview_path || ui_panel(ui)->selected>=ui_panel(ui)->app.files.len ||
        strcmp(ui->preview_path,ui_panel(ui)->app.files.entries[ui_panel(ui)->selected].path)) return;
     int h,w; getmaxyx(stdscr,h,w);
+    /* Cached modal restoration must wait for the resize preparation pass,
+       even when both old/new pixel limits happen to hit the same caps. */
+    if(ui->image_columns && (w!=ui->image_columns || h!=ui->image_rows)) return;
     unsigned width,height; geometry(ui,h-7,&width,&height);
     if(!width||!height||width!=ui->media_width||height!=ui->media_height) return;
     int x=ui_layout(w,h,true).list_width+2,y=3+PREVIEW_METADATA_ROWS+1;

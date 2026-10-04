@@ -81,7 +81,7 @@ for width,height in [(50,9),(100,24)]:
         (root/'image').write_bytes(b'\x89PNG\r\n\x1a\nok')
         t=SetupTerminal(root,tools,log,width,height)
         try:
-            assert 'set up in F7' in t.text() or width==50
+            assert 'Checking terminal image support' in t.text() or width==50
             assert not t.screen.images and not log.exists()
             t.setup(); t.query()
             assert t.screen.images[-1][2:]==(24,12)
@@ -105,7 +105,7 @@ for width,height in [(50,9),(100,24)]:
         t=SetupTerminal(root,tools,log,width,height)
         try:
             assert not t.screen.images
-            t.setup();assert 'Unconfirmed' in t.text()
+            t.setup();assert 'Enabled' not in t.text()
             # No reply does not assert "unsupported"; keys during query remain modal.
             t.send('\n');t.send('qqcn123');t.wait(lambda:'Auto check inconclusive' in t.text())
             assert t.proc.poll() is None and len(list(root.iterdir()))==1
@@ -154,7 +154,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-terminal-extra-') as directory:
                 t.query()
                 for _ in range(stage-1): t.send('y')
             t.click_close()
-            t.send('\n');assert 'Unconfirmed' in t.text()
+            t.send('\n');assert 'Enabled' not in t.text()
             t.click_close();t.close_setup()
         t.setup();t.send('\n');t.click_close()
         t.close_setup();t.idle()
@@ -205,7 +205,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-terminal-extra-') as directory:
         t.setup();t.send('\n');t.send(b'\x1b[6;');t.resize(80,20)
         assert 'Image display setup' not in t.text() and not t.screen.images
         t.send(b'16;8t\x1b[?62;4c');assert t.proc.poll() is None
-        t.setup();assert 'Unconfirmed' in t.text();t.send('\x1b');t.close_setup()
+        t.setup();assert 'Enabled' not in t.text();t.send('\x1b');t.close_setup()
     finally:t.close()
 print('PASS: measured manual input, missing tools vs unknown cells, ioctl fallback, advanced environment preservation, active converter/FD/temp cleanup and resize abort')
 

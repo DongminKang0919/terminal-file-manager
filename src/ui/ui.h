@@ -17,6 +17,7 @@
 enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE, UI_RENAME, UI_QUICK_FIND, UI_RESULT, UI_SELECT_ALL, UI_CLEAR_SELECTION, UI_MODE_PREVIEW, UI_MODE_FILES, UI_MODE_DUAL };
 void input_init(void);
 void input_terminal_begin(TerminalReply *reply);
+void input_terminal_begin_timed(TerminalReply *reply,uint64_t deadline);
 void input_terminal_end(void);
 int terminal_input_wide(WINDOW *win,wint_t *key);
 void terminal_input_reset(void);
@@ -70,7 +71,13 @@ typedef struct {
     uint64_t preview_checked;
     bool preview_ready, preview_directory_empty;
     bool image_auto, sixel_confirmed, graphics_visible;
-    enum { IMAGE_UNCONFIRMED, IMAGE_CHECKING, IMAGE_ENABLED, IMAGE_NO_RESPONSE, IMAGE_NO_CELLS } image_status;
+    enum { IMAGE_UNCONFIRMED, IMAGE_CHECKING, IMAGE_ENABLED, IMAGE_NO_RESPONSE, IMAGE_NO_CELLS, IMAGE_UNSUPPORTED, IMAGE_QUERY_FAILED, IMAGE_CANCELLED } image_status;
+    /* Capability belongs to this process/terminal, never to a selected file or settings. */
+    enum { IMAGE_PROBE_IDLE, IMAGE_PROBE_WAITING, IMAGE_PROBE_DONE } image_probe;
+    TerminalReply image_reply;
+    uint64_t image_deadline;
+    bool image_probe_cells_only, image_cells_fixed, image_cells_stale;
+    int image_columns, image_rows;
     unsigned cell_width, cell_height, media_width, media_height;
     PreviewMediaKind media_kind;
     MediaPreview *media_job;
@@ -172,6 +179,9 @@ attr_t ui_bar(void);
 void init_theme(void);
 void show_help(UiContext *ui);
 void graphics_init(UiContext *ui);
+void graphics_probe_poll(UiContext *ui);
+void graphics_probe_prepare(UiContext *ui, int rows);
+void graphics_probe_cancel(UiContext *ui);
 const char *image_status_label(const UiContext *ui);
 bool image_setup(UiContext *ui,char *result,size_t capacity);
 void graphics_clear(UiContext *ui);

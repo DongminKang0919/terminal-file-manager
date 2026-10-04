@@ -3,9 +3,12 @@
 const char *image_status_label(const UiContext *ui) {
     if(ui->image_status==IMAGE_CHECKING) return "Checking";
     if(!ui->image_auto) return "Off";
-    if(ui->sixel_confirmed) return "Enabled";
+    if(ui->sixel_confirmed && ui->cell_width && ui->cell_height) return "Enabled";
     if(ui->image_status==IMAGE_NO_RESPONSE) return "No support response";
     if(ui->image_status==IMAGE_NO_CELLS) return "Cell size unknown";
+    if(ui->image_status==IMAGE_UNSUPPORTED) return "No Sixel support";
+    if(ui->image_status==IMAGE_QUERY_FAILED) return "Query failed";
+    if(ui->image_status==IMAGE_CANCELLED) return "Query cancelled";
     return "Unconfirmed";
 }
 static void page(WINDOW *win,const char *question,const char *detail,const char *help) {
@@ -41,7 +44,7 @@ bool image_setup(UiContext *ui,char *result,size_t capacity) {
         if(stage==0) {
             snprintf(detail,sizeof detail,"Image tool: %s",tools.image==1?"magick (found, not tested)":tools.image==2?"convert (found, not tested)":"missing; install ImageMagick");
             char title[100]; snprintf(title,sizeof title,"Image display: %s",image_status_label(ui));
-            if(ui->sixel_confirmed) snprintf(title,sizeof title,"Image display: %s (%ux%u)",image_status_label(ui),ui->cell_width,ui->cell_height);
+            if(ui->sixel_confirmed && ui->cell_width && ui->cell_height) snprintf(title,sizeof title,"Image display: %s (%ux%u)",image_status_label(ui),ui->cell_width,ui->cell_height);
             page(win,title,detail,"Enter: query  M: manual  Esc: back");
             snprintf(detail,sizeof detail,"pdftoppm: %s | pdftotext: %s",tools.pdf_image?"found":"missing",tools.pdf_text?"found":"missing");
             draw_window_text(win,3,2,w-4,detail);
@@ -136,7 +139,8 @@ bool image_setup(UiContext *ui,char *result,size_t capacity) {
         if(stage==4 && key=='y') { stage=5; continue; }
         if(stage==5 && key=='y') {
             ui->sixel_confirmed=true; ui->cell_width=candidate.width; ui->cell_height=candidate.height;
-            ui->image_auto=true; ui->image_status=IMAGE_ENABLED; media_reset(ui);
+            ui->image_auto=true; ui->image_status=IMAGE_ENABLED;
+            ui->image_probe=IMAGE_PROBE_DONE; ui->image_cells_fixed=true; ui->image_cells_stale=false; media_reset(ui);
             snprintf(result,capacity,"Image display enabled for this session"); finished=true; break;
         }
     }

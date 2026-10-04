@@ -1,6 +1,6 @@
 #include "ui.h"
 
-/* After an explicit query, read escape frames before ncurses' key decoder.
+/* After a terminal query, read escape frames before ncurses' key decoder.
    Fragments survive timeouts/modal closure: a late report body never becomes
    shortcut keys. Ordinary Unicode and decoded keys are delivered individually.
    No input flush or tty mode changes. */
@@ -8,7 +8,7 @@ static bool armed, esc_delivered, overflow, report_escape;
 static char frame[129];
 static size_t used;
 static TerminalReply *capture;
-static uint64_t escape_started;
+static uint64_t escape_started,capture_deadline;
 static wint_t queued;
 static bool has_queued;
 static unsigned utf_remaining;
@@ -34,15 +34,22 @@ static int raw_wide(WINDOW *win,wint_t *out) {
     if(utf_value<utf_minimum||utf_value>0x10ffff||(utf_value>=0xd800&&utf_value<=0xdfff)) return 4;
     *out=(wint_t)utf_value;return OK;
 }
-void terminal_input_reset(void) { armed=false; capture=NULL; used=0; has_queued=false; overflow=false; esc_delivered=false; utf_remaining=0; byte_queued=-1; report_escape=false; }
+void terminal_input_reset(void) { armed=false; capture=NULL; capture_deadline=0; used=0; has_queued=false; overflow=false; esc_delivered=false; utf_remaining=0; byte_queued=-1; report_escape=false; }
 bool terminal_input_armed(void) { return armed; }
-void input_terminal_begin(TerminalReply *reply) { armed=true; capture=reply; *reply=(TerminalReply){0}; }
-void input_terminal_end(void) { capture=NULL; }
+void input_terminal_begin(TerminalReply *reply) { armed=true; capture=reply; capture_deadline=0; *reply=(TerminalReply){0}; }
+void input_terminal_begin_timed(TerminalReply *reply,uint64_t deadline) { input_terminal_begin(reply); capture_deadline=deadline; }
+void input_terminal_end(void) { capture=NULL; capture_deadline=0; }
 static bool report_frame(void) {
     /* Keep the historically guarded missing-? type-62 DA reply isolated too.
        Other unknown CSI frames end at their ordinary final byte. */
     return used>=3 && frame[1]=='[' && (frame[2]=='?' || (used>=4 && frame[2]=='6' && frame[3]==';') ||
         (used>=5 && frame[2]=='6' && frame[3]=='2' && frame[4]==';'));
+}
+static bool numeric_frame(void) {
+    if(overflow) return false;
+    for(size_t n=frame[2]=='?'?3:2;n<used;n++)
+        if((frame[n]<'0'||frame[n]>'9') && frame[n]!=';') return false;
+    return true;
 }
 static bool mouse_number(const char **p,unsigned *value) {
     *value=0; bool digit=false;
@@ -56,7 +63,7 @@ static int sequence_key(WINDOW *win) {
     if(overflow) return 0;
     frame[used]=0;
     if(frame[1]=='[' && used>=3 && (frame[used-1]=='c'||frame[used-1]=='t')) {
-        if(capture) terminal_report(frame,used,capture);
+        if(capture && (!capture_deadline || core_monotonic_ms()<capture_deadline)) terminal_report(frame,used,capture);
         return 0;
     }
     if(used>4 && frame[1]=='[' && frame[2]=='<') {
@@ -97,9 +104,9 @@ int terminal_input_wide(WINDOW *win,wint_t *key) {
         wint_t c=0; int kind;
         if(has_queued) { c=queued; has_queued=false; kind=OK; }
         else {
-            /* Only an undecided Esc or incomplete UTF-8 needs a timer.
+            /* Only an undecided Esc needs a timer.
                A retained late-reply guard must not wake an idle UI. */
-            if((used==1 && !esc_delivered)||utf_remaining) {
+            if((used==1 || report_escape) && !esc_delivered) {
                 uint64_t now=core_monotonic_ms();
                 unsigned remaining=now<deadline?(unsigned)(deadline-now):0;
                 wtimeout(win,remaining<25 ? (int)remaining : 25);
@@ -112,7 +119,7 @@ int terminal_input_wide(WINDOW *win,wint_t *key) {
         if(kind==KEY_CODE_YES) { *key=c; keypad(win,TRUE); return kind; }
         if(kind==ERR) {
             keypad(win,TRUE);
-            if(used==1 && !esc_delivered && core_monotonic_ms()-escape_started>=(capture?100u:25u)) { esc_delivered=true; *key=27; return OK; }
+            if((used==1 || report_escape) && !esc_delivered && core_monotonic_ms()-escape_started>=(capture?100u:25u)) { esc_delivered=true; *key=27; return OK; }
             return ERR;
         }
         if(!used) {
@@ -127,19 +134,27 @@ int terminal_input_wide(WINDOW *win,wint_t *key) {
             queued=c; has_queued=true; *key=27; keypad(win,TRUE); return OK;
         }
         if(report_escape) {
-            if(c==27) continue; /* Repeated Esc keeps the recovery prefix. */
+            if(c==27) { escape_started=core_monotonic_ms(); esc_delivered=false; continue; }
             report_escape=false;
             if(c=='['||c=='O') {
                 frame[0]=27; frame[1]=(char)c; used=2; overflow=false;
                 continue; /* A fresh framed sequence is an explicit recovery boundary. */
             }
+            if(!esc_delivered) {
+                esc_delivered=true; queued=c; has_queued=true;
+                *key=27; keypad(win,TRUE); return OK; /* Preserve the quarantined body. */
+            }
         }
         bool report=report_frame();
         if(c==27) {
-            if(report||frame[1]=='[') { overflow=true; report_escape=true; *key=27; keypad(win,TRUE); return OK; }
+            if(report||frame[1]=='[') {
+                overflow=true; report_escape=true; escape_started=core_monotonic_ms(); esc_delivered=false;
+                continue; /* Distinguish cancellation from a new key/mouse/report frame. */
+            }
             frame[0]=27; used=1; escape_started=core_monotonic_ms(); esc_delivered=false; overflow=false; report_escape=false; continue;
         }
-        bool final=report ? c==((frame[2]=='?' || (used>=5 && frame[3]=='2'))?'c':'t') : c>=0x40&&c<=0x7e;
+        bool final=report ? c==((frame[2]=='?' || (used>=5 && frame[3]=='2'))?'c':'t') ||
+            (c=='~' && numeric_frame()) : c>=0x40&&c<=0x7e;
         if(used<128 && c<128) frame[used++]=(char)c; else overflow=true;
         if(!final) continue;
         int decoded=sequence_key(win);

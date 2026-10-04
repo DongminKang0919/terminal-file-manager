@@ -19,7 +19,8 @@ void preview_scroll(UiContext *ui, bool down) {
    a latched error. Directory checks stop at the first actual entry. */
 void preview_prepare(UiContext *ui, int rows) {
     core_media_reap();
-    if (rows < 1) { media_reset(ui); ui->preview_ready = false; return; }
+    graphics_probe_poll(ui);
+    if (rows < 1) { graphics_probe_cancel(ui); media_reset(ui); ui->preview_ready = false; return; }
     if (!ui_preview_enabled(ui) || ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) { preview_reset(ui); return; }
     const Item *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
     bool fresh = !ui->preview_path || strcmp(ui->preview_path, it->path);

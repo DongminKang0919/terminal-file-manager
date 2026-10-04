@@ -31,4 +31,5 @@ bool terminal_report(const char *s,size_t n,TerminalReply *reply) {
     return false;
 }
 Result terminal_query(void) { return platform_terminal_query(); }
+Result terminal_query_cells(void) { return platform_terminal_query_cells(); }
 TerminalTools terminal_tools(void) { return platform_terminal_tools(); }

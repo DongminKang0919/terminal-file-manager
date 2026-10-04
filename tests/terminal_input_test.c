@@ -15,6 +15,11 @@ int main(void) {
     assert(r.sixel&&r.width==8&&r.height==16);
     feed("\033[999~"); assert(input_key(stdscr)==ERR);
     feed("q"); assert(input_key(stdscr)=='q');
+    input_terminal_begin_timed(&r,tick+100);
+    feed("\033[?62;"); assert(input_key(stdscr)==ERR); tick+=101;
+    feed("4c\033[6;16;8t"); assert(input_key(stdscr)==ERR);
+    assert(!r.da_received&&!r.cells_received); input_terminal_end();
+    feed("q"); assert(input_key(stdscr)=='q');
     input_terminal_begin(&r);
     feed("?62;4c"); assert(ungetch(0x9b)==OK); assert(input_key(stdscr)==ERR); assert(r.da_received&&r.sixel);
     feed("6;16;8t"); assert(ungetch(0x9b)==OK); assert(input_key(stdscr)==ERR); assert(r.width==8&&r.height==16);
@@ -24,7 +29,7 @@ int main(void) {
     feed("\033[?62;qqF8;999999999999c"); assert(input_key(stdscr)==ERR);
     feed("\033[62;qqqF8c"); assert(input_key(stdscr)==ERR);
     feed("\033["); assert(input_key(stdscr)==ERR);
-    feed("\033"); assert(input_key(stdscr)==27);
+    escape();
     feed("?62;4c"); assert(input_key(stdscr)==ERR);
     feed("\033[6;"); assert(input_key(stdscr)==ERR);
     assert(ungetch(KEY_RESIZE)==OK); assert(input_key(stdscr)==KEY_RESIZE);
@@ -33,16 +38,21 @@ int main(void) {
     feed("[?62;4c"); assert(input_key(stdscr)==ERR);
     escape();
     feed("\033[18~"); assert(input_key(stdscr)==KEY_F(7));
+    feed("\033[?999~q"); assert(input_key(stdscr)=='q');
+    feed("\033[6;999~q"); assert(input_key(stdscr)=='q');
+    feed("\033[999zq"); assert(input_key(stdscr)=='q');
     feed("\033[999~q"); assert(input_key(stdscr)=='q');
     feed("\033[999~\033OP"); assert(input_key(stdscr)==KEY_F(1));
     feed("\033[999~\033[A"); assert(input_key(stdscr)==KEY_UP);
     feed("\033[999~text"); for(const char *p="text";*p;p++) assert(input_key(stdscr)==*p);
     /* Cancel a malformed report, discard its tail, then recover at a new frame. */
-    feed("\033[?62;qq\033"); assert(input_key(stdscr)==27);
+    feed("\033[?62;qq"); assert(input_key(stdscr)==ERR); escape();
     feed("qqF8c"); assert(input_key(stdscr)==ERR);
     feed("q"); assert(input_key(stdscr)=='q');
-    feed("\033[6;bad\033"); assert(input_key(stdscr)==27);
+    feed("\033[6;bad"); assert(input_key(stdscr)==ERR); escape();
     feed("\033[18~"); assert(input_key(stdscr)==KEY_F(7));
+    feed("\033[?62;broken\033OA"); assert(input_key(stdscr)==KEY_UP);
+    feed("plain"); for(const char *p="plain";*p;p++) assert(input_key(stdscr)==*p);
     feed("\033OA"); assert(input_key(stdscr)==KEY_UP);
     feed("\033[1;3D"); assert(input_key(stdscr)==UI_BACK);
     feed("\033[<0;4;5M"); assert(input_key(stdscr)==KEY_MOUSE); MEVENT e; assert(getmouse(&e)==OK&&e.x==3&&e.y==4);

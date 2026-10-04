@@ -285,18 +285,19 @@ finish:
     m->done=*done=true; return m->result;
 }
 
-Result platform_terminal_query(void) {
+static Result query_terminal(const char *query) {
     if(!isatty(STDIN_FILENO)||!isatty(STDOUT_FILENO)) return result_make(RESULT_UNSUPPORTED,"Interactive terminal required");
-    const char query[]="\033[c\033[16t";
-    size_t at=0;
-    while(at<sizeof query-1) {
-        ssize_t n=write(STDOUT_FILENO,query+at,sizeof query-1-at);
+    size_t at=0, length=strlen(query);
+    while(at<length) {
+        ssize_t n=write(STDOUT_FILENO,query+at,length-at);
         if(n<0&&errno==EINTR) continue;
         if(n<=0) return result_make(RESULT_IO,"Cannot write terminal query");
         at+=(size_t)n;
     }
     return result_make(RESULT_OK,NULL);
 }
+Result platform_terminal_query(void) { return query_terminal("\033[c\033[16t"); }
+Result platform_terminal_query_cells(void) { return query_terminal("\033[16t"); }
 TerminalTools platform_terminal_tools(void) {
     TerminalTools tools={0};
     char *p=find_tool("magick"); if(p) tools.image=1;

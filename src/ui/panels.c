@@ -18,7 +18,7 @@ Result ui_init(UiContext *ui,const char *directory) {
     return r;
 }
 void ui_free(UiContext *ui) {
-    graphics_clear(ui); notice_clear(ui); preview_reset(ui); core_media_shutdown();
+    graphics_probe_cancel(ui); graphics_clear(ui); notice_clear(ui); preview_reset(ui); core_media_shutdown();
     for(unsigned i=0;i<2;i++) app_free(&ui->panels[i].app);
     settings_free(&ui->settings);
     *ui=(UiContext){0};
@@ -59,7 +59,7 @@ Result ui_set_mode(UiContext *ui,UiMode mode) {
         app_marks_clear(&ui->panels[other].app);
     }
     ui->mode=mode;
-    if(mode!=UI_LIST_PREVIEW) { preview_reset(ui); ui->focus=UI_FOCUS_FILES; }
+    if(mode!=UI_LIST_PREVIEW) { graphics_probe_cancel(ui); preview_reset(ui); ui->focus=UI_FOCUS_FILES; }
     if(r.code!=RESULT_OK) {
         ui->status_kind=NOTICE_WARNING; ui->status_priority=true;
         snprintf(ui->status,sizeof ui->status,"%s panel stale; refresh with r before file operations: %.220s",other?"Right":"Left",r.detail);

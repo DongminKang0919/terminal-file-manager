@@ -173,7 +173,7 @@ int main(int argc,char **argv) {
     ui.modal_depth=1; draw_cached(&ui); assert(!ui.graphics_visible && ui.media_data==cache);
     ui.modal_depth=0; /* Suppress actual stdout graphics in this cell test. */
     ui.sixel_confirmed=false; media_reset(&ui); preview_prepare(&ui,17); erase(); preview(&ui,55,2,45,20);
-    assert(contains_screen("Image display unconfirmed") && !ui.media_data);
+    assert(contains_screen("Terminal query failed") && !ui.media_data);
     select_name(&ui,"next"); prepared(&ui); assert(ui.media_text && ui.media_data);
     ui.image_auto=false; media_reset(&ui); prepared(&ui); assert(ui.media_text && ui.media_data);
     for(int i=0;i<4;i++) {
