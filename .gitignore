@@ -61,3 +61,5 @@ __pycache__/
 /tests/panels_ui_test
 
 /tests/media_test
+
+/tests/picker_test

@@ -104,6 +104,21 @@ int main(int argc,char **argv) {
     }
     source(path,PREVIEW_PDF,"ok"); assert(opened(path,PREVIEW_PDF,true,&job).code==RESULT_OK);
     assert(completed(job,&data,&len).code==RESULT_OK && strstr(data,"First page text")); free(data); core_media_close(job);
+    source(path,PREVIEW_PDF,"limits"); assert(opened(path,PREVIEW_PDF,true,&job).code==RESULT_OK);
+    assert(completed(job,&data,&len).code==RESULT_OK);
+    long long address,cpu,size,core;
+    assert(sscanf(data,"%lld;%lld;%lld;%lld",&address,&cpu,&size,&core)==4);
+#ifndef __has_feature
+#define __has_feature(feature) 0
+#endif
+#if defined(__SANITIZE_ADDRESS__) || __has_feature(address_sanitizer)
+    assert(address!=512LL*1024*1024);
+#else
+    assert(address==512LL*1024*1024);
+#endif
+    assert(cpu==5 && size==PREVIEW_PDF_TEXT_BYTES && core==0);
+    printf("Child soft limits: AS=%lld CPU=%lld FSIZE=%lld CORE=%lld\n",address,cpu,size,core);
+    free(data);core_media_close(job);
     for(int i=0;i<4;i++) {
         source(path,PREVIEW_PNG,i==0?"fail":i==1?"huge":i==2?"bad":"overflow");
         assert(opened(path,PREVIEW_PNG,false,&job).code==RESULT_OK);
@@ -143,6 +158,15 @@ int main(int argc,char **argv) {
     ui.sixel_confirmed=true; ui.cell_width=8; ui.cell_height=16;
     select_name(&ui,"- 한글 'quote\" [0].png"); prepared(&ui);
     assert(ui.media_done && !ui.media_text && ui.media_data && ui.media_result.code==RESULT_OK);
+    source(path,PREVIEW_PNG,"slow");preview_reset(&ui);preview_prepare(&ui,17);
+    assert(ui.media_job && media_pending(&ui));
+    preview_prepare(&ui,0);assert(!ui.media_job && !media_pending(&ui));
+    for(int i=0;i<300 && core_media_cleanup_pending();i++) {preview_prepare(&ui,0);pause_tick();}
+    assert(!core_media_cleanup_pending());
+    for(int i=0;i<100;i++) {preview_prepare(&ui,0);assert(!media_pending(&ui));}
+    preview_prepare(&ui,17);assert(ui.media_job && media_pending(&ui));
+    select_name(&ui,"next");prepared(&ui);assert(ui.media_kind==PREVIEW_PDF);
+    source(path,PREVIEW_PNG,"ok");select_name(&ui,"- 한글 'quote\" [0].png");prepared(&ui);
     char *cache=ui.media_data;
     for(int i=0;i<100;i++) { preview_prepare(&ui,17); assert(ui.media_data==cache && !ui.media_job); }
     ui.focus=UI_FOCUS_PREVIEW; preview_prepare(&ui,17); assert(ui.media_data==cache);
@@ -152,6 +176,20 @@ int main(int argc,char **argv) {
     assert(contains_screen("Sixel not confirmed") && !ui.media_data);
     select_name(&ui,"next"); prepared(&ui); assert(ui.media_text && ui.media_data);
     ui.image_auto=false; media_reset(&ui); prepared(&ui); assert(ui.media_text && ui.media_data);
+    for(int i=0;i<4;i++) {
+        source(next,PREVIEW_PDF,i==0?"zero":i==1?"white":i==2?"ff":"indent");
+        preview_reset(&ui); prepared(&ui); erase(); preview(&ui,55,2,45,20);
+        if(i<3) assert(contains_screen("No text on PDF page 1"));
+        else assert(contains_screen("  Indented") && contains_screen("Next line") && !contains_screen("\\x0C"));
+    }
+    for(int i=0;i<3;i++) {
+        source(next,PREVIEW_PDF,i==0?"fail":i==1?"slow":"ok");preview_reset(&ui);
+        if(i==2) assert(!setenv("PATH","/nonexistent",1));
+        if(i==1) {preview_prepare(&ui,17);clock_offset=9000;}
+        prepared(&ui);erase();preview(&ui,55,2,45,20);
+        assert(contains_screen("Cannot display preview") && !contains_screen("No text on PDF page 1"));
+        clock_offset=0;assert(!setenv("PATH",tools,1));
+    }
     ui_set_mode(&ui,UI_LIST_ONLY); assert(!ui.media_job && !ui.media_data);
     ui_free(&ui); endwin(); delscreen(screen); fclose(out); fclose(in);
     core_media_shutdown(); assert(!unlink(path) && !unlink(next) && !rmdir(dir));

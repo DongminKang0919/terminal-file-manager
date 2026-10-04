@@ -15,6 +15,7 @@ flags=[os.environ.get('CC','cc'),'-D_XOPEN_SOURCE=700','-std=c11','-g','-O1','-W
        '-fsanitize=address,undefined','-fno-omit-frame-pointer']
 wraps='platform_reader_open,platform_reader_line,platform_reader_close,platform_reader_changed,readdir,platform_directory_empty,platform_directory_open,platform_info,app_refresh'
 for target,test,extra in [('media_test','tests/media_test.c',['-Wl,--wrap=platform_monotonic_ms']),
+                          ('picker_test','tests/picker_test.c',['-Wl,--wrap=input_key,--wrap=prompt_value_status']),
                           ('preview_test','tests/preview_test.c',['-Wl,'+','.join('--wrap='+x for x in wraps.split(','))]),
                           ('tfile','src/ui/main.c',[])]:
     subprocess.run(flags+['-o',str(out/target),test]+sources+['-lncursesw']+extra,check=True)
@@ -23,6 +24,7 @@ env={**os.environ,'ASAN_OPTIONS':f'detect_leaks={int(not args.disable_leaks)}:ha
 failed=[]
 for name,command in [('media',[os.environ.get('PYTHON','python3'),'tests/media_tools.py']),
                      ('preview',[str(out/'preview_test')]),
+                     ('picker',[str(out/'picker_test')]),
                      ('media_pty',[os.environ.get('PYTHON','python3'),'tests/media_pty.py'])]:
     with (out/f'{name}.log').open('w') as log:
         result=subprocess.run(command,env=env,stdout=log,stderr=subprocess.STDOUT)

@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 
 STUB = r'''#!/usr/bin/python3
-import json, os, sys, time
+import json, os, sys, time, resource
 from pathlib import Path
 name=Path(sys.argv[0]).name
 args=sys.argv[1:]
@@ -29,6 +29,12 @@ if name=='pdftoppm':
     Path(args[-1]+'.png').write_bytes(b'\x89PNG\r\n\x1a\nok');sys.exit(0)
 if name=='pdftotext':
     assert args[:4]==['-f','1','-l','1']
+    if mode==b'limits':
+        print(';'.join(str(resource.getrlimit(k)[0]) for k in [resource.RLIMIT_AS,resource.RLIMIT_CPU,resource.RLIMIT_FSIZE,resource.RLIMIT_CORE]));sys.exit(0)
+    if mode==b'zero':sys.exit(0)
+    if mode==b'white':sys.stdout.write(' \t\n\r\f');sys.exit(0)
+    if mode==b'ff':sys.stdout.write('\f');sys.exit(0)
+    if mode==b'indent':sys.stdout.write('  Indented\n\tNext line\n\f');sys.exit(0)
     print('First page text\nSafe \x1b[2J text');sys.exit(0)
 if mode==b'bad': sys.stdout.buffer.write(b'\x1b]52;c;bad\x07');sys.exit(0)
 if mode==b'overflow': sys.stdout.buffer.write(b'\x1bPq"1;1;6;6!9999~\x1b\\');sys.exit(0)

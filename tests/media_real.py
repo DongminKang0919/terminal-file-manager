@@ -20,7 +20,7 @@ def rc4(key,data):
         out.append(b^s[(s[i]+s[j])%256])
     return bytes(out)
 
-def pdf(path,password=False):
+def pdf(path,password=False,first_kind=None):
     # Tiny two-page fixture, with optional standard PDF R2 password encryption.
     padding=bytes.fromhex('28bf4e5e4e758a4164004e56fffa01082e2e00b6d0683e802f0ca9fe6453697a')
     ident=hashlib.md5(b'tfile fixture').digest()
@@ -33,6 +33,8 @@ def pdf(path,password=False):
         extra=b' /Encrypt 8 0 R /ID [<'+ident.hex().encode()+b'><'+ident.hex().encode()+b'>]'
     def stream(n,text):
         b=f'1 0 0 rg 10 10 80 40 re f BT /F1 16 Tf 20 160 Td ({text}) Tj ET'.encode()
+        if n==4 and first_kind=='blank':b=b''
+        if n==4 and first_kind=='scan':b=b'q 80 0 0 40 10 10 cm BI /W 1 /H 1 /CS /RGB /BPC 8 ID \xff\0\0\nEI Q'
         if key:b=rc4(hashlib.md5(key+n.to_bytes(3,'little')+b'\0\0').digest()[:10],b)
         return b'<< /Length '+str(len(b)).encode()+b' >>\nstream\n'+b+b'\nendstream'
     objects=[b'<< /Type /Catalog /Pages 2 0 R >>',
@@ -84,6 +86,12 @@ def main():
             assert render(doc)==(384,384)
             render(doc,text=True);text=out.read_text()
             assert 'FIRST PAGE ONLY' in text and 'SECOND PAGE EXCLUDED' not in text
+            for kind in ['blank','scan']:
+                no_text=root/f'{kind}.pdf';pdf(no_text,first_kind=kind)
+                render(no_text,text=True)
+                assert not out.read_bytes().strip(b' \t\r\n\v\f'),(kind,out.read_bytes())
+                render(no_text)
+            print('PASS: real blank and image-only first pages have whitespace-only text, no second-page text')
             locked=root/'encrypted.pdf';pdf(locked,password=True)
             # Prove the encrypted fixture is valid, and readable with its password.
             valid=subprocess.run(['pdftotext','-upw','secret',str(locked),'-'],capture_output=True,text=True,check=True)

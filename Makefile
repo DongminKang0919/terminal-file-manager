@@ -77,7 +77,8 @@ tests/startup_ui_test: tests/startup_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCE
 tests/search_progress_ui_test: tests/search_progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/search_progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_monotonic_ms,--wrap=core_monotonic_ms,--wrap=input_key,--wrap=input_wide,--wrap=wrefresh
 
-check: tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/progress_ui_test tests/tfile_progress tests/preview_test tfile check-core tests/controller_test tests/text_test tests/text_window_test
+check: tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/progress_ui_test tests/tfile_progress tests/preview_test tfile check-core tests/controller_test tests/text_test tests/text_window_test
+	./tests/picker_test
 	python3 tests/media_tools.py
 	python3 tests/media_pty.py
 	./tests/panels_ui_test
@@ -115,7 +116,7 @@ check: tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_ui_te
 	python3 tests/batch_progress_pty.py
 
 clean:
-	rm -f tfile tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_test tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/ownership_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
+	rm -f tfile tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_test tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/ownership_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
 
 .PHONY: all clean check check-core
 
@@ -138,8 +139,12 @@ tests/panels_ui_test: tests/panels_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES)
 tests/media_test: tests/media_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/media_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_monotonic_ms
 
-check-media: tests/media_test tfile
+check-media: tests/media_test tests/picker_test tfile
+	./tests/picker_test
 	python3 tests/media_tools.py
 	python3 tests/media_pty.py
 
 .PHONY: check-media
+
+tests/picker_test: tests/picker_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/picker_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=input_key,--wrap=prompt_value_status

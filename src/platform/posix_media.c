@@ -14,6 +14,16 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+/* GCC advertises ASan directly; Clang uses a feature query. */
+#ifndef __has_feature
+#define __has_feature(feature) 0
+#endif
+#if defined(__SANITIZE_ADDRESS__) || __has_feature(address_sanitizer)
+#define TFILE_ADDRESS_SANITIZER 1
+#else
+#define TFILE_ADDRESS_SANITIZER 0
+#endif
+
 /* A single converter at a time, including children being cancelled. */
 struct PlatformMedia {
     pid_t pid;
@@ -145,7 +155,7 @@ static Result launch(PlatformMedia *m) {
         /* ASan reserves terabytes of virtual shadow space before fork. Limiting
            that inherited address space prevents its exec interceptor from
            running. The normal binary always enforces the converter limit. */
-#if !defined(__SANITIZE_ADDRESS__)
+#if !TFILE_ADDRESS_SANITIZER
         child_limit(RLIMIT_AS,512u*1024u*1024u);
 #endif
         child_limit(RLIMIT_CPU,5);

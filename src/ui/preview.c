@@ -19,6 +19,7 @@ void preview_scroll(UiContext *ui, bool down) {
    a latched error. Directory checks stop at the first actual entry. */
 void preview_prepare(UiContext *ui, int rows) {
     core_media_reap();
+    if (rows < 1) { media_reset(ui); ui->preview_ready = false; return; }
     if (!ui_preview_enabled(ui) || ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) { preview_reset(ui); return; }
     const Item *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
     bool fresh = !ui->preview_path || strcmp(ui->preview_path, it->path);
@@ -100,6 +101,13 @@ static void preview_line(UiContext *ui, View *view, const char *text, int color)
     }
     view->line++;
 }
+static bool pdf_has_text(const char *data, size_t len) {
+    for (size_t i=0; i<len; i++) {
+        unsigned char c=(unsigned char)data[i];
+        if (c!=' ' && c!='\t' && c!='\n' && c!='\r' && c!='\f' && c!='\v') return true;
+    }
+    return false;
+}
 static void preview_content(UiContext *ui, View *v, const Item *it) {
     char text[UI_INPUT_CAP + 80];
     attron(A_BOLD);
@@ -143,15 +151,17 @@ static void preview_content(UiContext *ui, View *v, const Item *it) {
             preview_line(ui, v, ui->media_result.detail, UI_SPECIAL);
             preview_line(ui, v, "Refresh to retry", UI_MUTED); return;
         }
-        if (ui->media_text && ui->media_data) {
+        if (ui->media_text) {
             preview_line(ui, v, "PDF page 1 (text, up to 64 KiB / 128 lines)", UI_MUTED);
-            if (!ui->media_len) { preview_line(ui,v,"No text on PDF page 1",UI_MUTED); return; }
+            if (!pdf_has_text(ui->media_data,ui->media_len)) { preview_line(ui,v,"No text on PDF page 1",UI_MUTED); return; }
             const char *p=ui->media_data,*end=p+ui->media_len;
             for (size_t i=0; i<128 && p<end; i++) {
                 const char *nl=memchr(p, '\n', (size_t)(end-p));
                 size_t len=nl ? (size_t)(nl-p) : (size_t)(end-p);
-                if (len>=sizeof text) len=sizeof text-1;
-                memcpy(text,p,len); text[len]=0;
+                size_t used=0;
+                for (size_t j=0; j<len && used<sizeof text-1; j++)
+                    if (p[j]!='\f') text[used++]=p[j];
+                text[used]=0;
                 preview_line(ui,v,text,UI_BASE);
                 p=nl ? nl+1 : end;
             }

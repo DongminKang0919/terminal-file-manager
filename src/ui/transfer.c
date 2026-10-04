@@ -28,7 +28,7 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
     snprintf(folder, sizeof folder, "%s", initial);
     FileInfo *entries = NULL;
     size_t picker_count = 0, choice = 0, offset = 0;
-    bool reload = true, accepted = false;
+    bool reload = true, accepted = false, readable = false;
     size_t last_choice = SIZE_MAX;
     uint64_t last_click = 0;
     for (;;) {
@@ -37,6 +37,8 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
             FileList list;
             Result read_result = core_list(folder, true, folders_only, &list);
             entries = list.entries; picker_count = list.len;
+            readable = read_result.code == RESULT_OK;
+            warning[0] = 0;
             if (read_result.code != RESULT_OK) snprintf(warning, sizeof warning, "Cannot read directory: %.220s", read_result.detail);
             reload = false; last_choice = SIZE_MAX;
         }
@@ -56,11 +58,12 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
             draw_window_text(win, i + 3, 13, w - 15, it->name);
             wattroff(win, (active ? ui_selection() : COLOR_PAIR(it->directory_target ? UI_DIR : UI_FILE)));
         }
-        if (!picker_count) draw_window_text(win, 3, 2, w - 4, folders_only ? "No subdirectories. You can use this directory." : "This directory is empty.");
+        if (!readable) draw_window_text(win, 3, 2, w - 4, "Cannot inspect directory contents");
+        else if (!picker_count) draw_window_text(win, 3, 2, w - 4, folders_only ? "No subdirectories. You can use this directory." : "This directory is empty.");
         draw_window_text(win, h - 3, 2, w - 4, *warning ? warning : "Double-click/Enter: open   Space: use   p: path");
         const char *use_label = folders_only ? "[ Use directory ]" : "[ Use selected ]";
         int open_x = 2 + (int)strlen(use_label) + 2, cancel_x = open_x + 8 + 2;
-        dialog_button(win, h - 2, 2, use_label, false, folders_only || picker_count);
+        dialog_button(win, h - 2, 2, use_label, false, readable && (folders_only || picker_count));
         dialog_button(win, h - 2, open_x, "[ Open ]", false, picker_count != 0);
         dialog_button(win, h - 2, cancel_x, "[ Cancel ]", false, true);
         dialog_refresh(win);
@@ -116,6 +119,7 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
             if (path_resized || old_h != LINES || old_w != COLS) { if(resized) *resized=true; break; }
             touchwin(win);
         } else if (use || open) {
+            if (!readable) continue;
             if (use && folders_only) { snprintf(result, UI_INPUT_CAP, "%s", folder); accepted = true; break; }
             if (!picker_count) continue;
             char full[UI_INPUT_CAP];

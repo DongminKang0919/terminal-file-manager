@@ -145,6 +145,28 @@ with tempfile.TemporaryDirectory(prefix='tfile-media-pty-') as directory:
         assert {x.name for x in Path('/tmp').glob('tfile-media-*')}==before
     finally:
         if t is not None:t.close()
+    # Shrink while the converter is still running, not after it completed.
+    for exit_small in [False, True]:
+        log.write_text('')
+        t=Terminal(root,tools,log)
+        try:
+            t.wait(lambda:len(t.records())>=1)
+            pid=t.records()[0]['pid']
+            t.resize(49,8)
+            t.wait(lambda:not Path(f'/proc/{pid}').exists())
+            t.read(.25)
+            start=len(t.output); ticks=Path(f'/proc/{t.proc.pid}/stat').read_text().split()[13:15]
+            t.read(.4)
+            assert len(t.records())==1 and len(t.output)==start
+            assert Path(f'/proc/{t.proc.pid}/stat').read_text().split()[13:15]==ticks
+            assert {x.name for x in Path('/tmp').glob('tfile-media-*')}==before
+            if not exit_small:
+                t.resize(100,24);t.wait(lambda:len(t.records())==2)
+                assert t.records()[-1]['mode']=='slow'
+                t.send('\x1bOB');t.wait(lambda:t.screen.image is not None)
+                assert t.records()[-1]['mode']=='ok'
+        finally:t.close()
+        assert {x.name for x in Path('/tmp').glob('tfile-media-*')}==before
     # Wall-clock deadline is enforced without a keypress, while input stays live.
     log.write_text('')
     t=Terminal(root,tools,log)
