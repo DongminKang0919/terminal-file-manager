@@ -29,7 +29,7 @@ def query():
     finally:termios.tcsetattr(fd,termios.TCSANOW,old)
     da=re.search(rb'\x1b\[\?([0-9;]+)c',data)
     cells=re.search(rb'\x1b\[6;(\d+);(\d+)t',data)
-    supported=bool(da and 4 in [int(x) for x in da[1].split(b';')])
+    supported=bool(da and 4 in [int(x) for x in da[1].split(b';')][1:])
     pixels=(int(cells[2]),int(cells[1])) if cells else None
     rest=re.sub(rb'\x1b\[(?:\?[0-9;]+c|6;\d+;\d+t)',b'',data)
     print('DA:',repr(da[0] if da else b'no response'))

@@ -284,3 +284,24 @@ Result platform_media_poll(PlatformMedia *m,bool *done,char **data,size_t *len) 
 finish:
     m->done=*done=true; return m->result;
 }
+
+Result platform_terminal_query(void) {
+    if(!isatty(STDIN_FILENO)||!isatty(STDOUT_FILENO)) return result_make(RESULT_UNSUPPORTED,"Interactive terminal required");
+    const char query[]="\033[c\033[16t";
+    size_t at=0;
+    while(at<sizeof query-1) {
+        ssize_t n=write(STDOUT_FILENO,query+at,sizeof query-1-at);
+        if(n<0&&errno==EINTR) continue;
+        if(n<=0) return result_make(RESULT_IO,"Cannot write terminal query");
+        at+=(size_t)n;
+    }
+    return result_make(RESULT_OK,NULL);
+}
+TerminalTools platform_terminal_tools(void) {
+    TerminalTools tools={0};
+    char *p=find_tool("magick"); if(p) tools.image=1;
+    else { p=find_tool("convert"); if(p) tools.image=2; }
+    free(p); p=find_tool("pdftoppm"); tools.pdf_image=p!=NULL; free(p);
+    p=find_tool("pdftotext"); tools.pdf_text=p!=NULL; free(p);
+    return tools;
+}

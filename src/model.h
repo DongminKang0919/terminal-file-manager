@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+typedef struct { int image; bool pdf_image, pdf_text; } TerminalTools; /* image: 0/magick=1/convert=2 */
+
 typedef enum { PREVIEW_NOT_MEDIA, PREVIEW_PNG, PREVIEW_JPEG, PREVIEW_PDF } PreviewMediaKind;
 #define PREVIEW_SIXEL_BYTES (256u * 1024u)
 #define PREVIEW_PDF_TEXT_BYTES (64u * 1024u)

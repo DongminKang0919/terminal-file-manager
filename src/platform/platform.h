@@ -49,5 +49,7 @@ void platform_media_shutdown(void);
 bool platform_media_cleanup_pending(void);
 void platform_media_install_signals(void);
 bool platform_media_shutdown_requested(void);
+Result platform_terminal_query(void);
+TerminalTools platform_terminal_tools(void);
 bool platform_terminal_pixels(unsigned *width, unsigned *height);
 #endif
