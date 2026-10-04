@@ -1,5 +1,51 @@
 # 이미지·PDF 미리보기 1단계 검증 (2026-10-04)
 
+## F7 내부 터미널 확인 추가 (2026-10-04)
+
+이 절은 최신 구현이다. 아래 이전 1단계·후속 사용자 실험 기록의 “앱이 질의하지 않음”은 당시 구현 설명이며 현재 F7 명시적 진단에는 해당하지 않는다. 최신 사용자 흐름과 설정 구분은 [README](../README.md#이미지pdf-미리보기)를 참고한다.
+
+- 최신 설정 저장(`94b696a`, `3d4c92c`), graphics_init, ncurses 입력, 미디어 변환·취소/회수, tools/sixel_probe.py와 기존 media/native/PTY 검사를 먼저 확인했다.
+- F7 Image display setup은 현재 상태와 ImageMagick/Poppler 실행 파일 발견 여부를 따로 표시한다. 명시적 Enter 질의 또는 실제 측정한 M 수동 입력만 진단을 시작한다. 자동 시작 질의·테스트 출력·설정 저장·패키지 설치는 없다.
+- core/terminal 모듈은 파일 작업과 분리된 순수 DA/셀 응답 검증과 platform 호출을 담당한다. native tty/query/ioctl/PATH 접근은 platform, ncurses 입력 프레임 구분과 육안 질문은 UI에 있다. Python은 제품 의존성이 아니다.
+- DA `CSI ? class ; features c`의 기능 번호 4를 확인한다. 첫 필드는 terminal class이므로 단독 `?4c`를 Sixel로 해석하지 않는다. 셀 응답은 `CSI 6 ; height ; width t`이고 현재 ioctl 정보도 유효 범위 안에서 사용한다. 128바이트, 숫자 5자리, DA 32필드, 폭 1–64/높이 1–128 제한을 검사한다. 후보에 완전한 유효 응답만 반영한다. 규약은 [xterm control sequences](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html)를 확인했다.
+- 질의는 700 ms, 기존 변환기 회수 대기는 1초로 제한하고 입력 호출의 시간·처리량도 제한한다. 응답 없음/잘못된 응답은 자동 확인 미완료로 안내한다. 이후 명시적 수동 측정으로 같은 표시·지우기 검증을 시도할 수 있다.
+- 고정 24×12 빨강/파랑 Sixel은 ImageMagick/Poppler 없이 출력하며 기존 graphics_validate로 검증한다. 표시 영역의 `|` 표식, 별도의 지우기 질문, 마지막 세션 활성화 질문을 각각 확인해야 지원·셀 크기·Auto가 적용된다. Esc/n/리사이즈/실패는 이전 유효 값을 보존한다. 리사이즈는 픽셀을 지우고 자식·부모의 오래된 팝업을 닫는다.
+- 응답 필터는 최초 명시적 확인 후 종료까지 유지되며 임시 후보 포인터는 질의 종료 때 해제한다. 부분 프레임과 overflow는 팝업·타임아웃을 넘어 보관하고 늦은 응답은 단축키로 실행하지 않는다. 7비트/8비트 CSI를 바이트 단위로 구분하고 UTF-8로 입력한 일반 문자와 혼동하지 않는다. 일반 Unicode/키/SGR 마우스는 프레임 밖에서 전달한다. 일괄 flush나 새 termios 모드 변경으로 응답 혼입을 숨기지 않는다.
+- ESC 자체와 느린 응답의 첫 바이트는 근본적으로 모호하므로 질의 중 100 ms, 그 밖에는 25 ms 여유 후 취소 키를 전달하면서 프레임 시작은 계속 기억한다. 끝나지 않은 DA/셀 보고서 본문과 구별할 수 없는 일반 문자는 종료 문자까지 격리한다. Esc/리사이즈/신호 종료는 유지한다. 매우 느린 단독 ESC 분할은 진단을 취소할 수 있으나 나머지는 실행하지 않는다.
+- 커서·Sixel scrolling mode를 저장/복원하고 기존 ED2 → curses 강제 재그리기 순서로 지운다. F7 모달 깊이·초점·목록 선택은 유지한다. 변환기는 기존 비차단 취소·회수 경로로 닫으며, 회수가 남으면 입력에서 짧게 poll해 FD·임시 파일 정리를 진행한다.
+- 일반 설정 파일에는 Auto/Off만 저장한다. 진단 성공은 파일 쓰기를 하지 않으며 셀·터미널 확인 상태는 새 실행에서 초기화된다. 기존 환경변수 선언은 고급 방식으로 유지하고 F7 재확인으로 현재 실행 값을 갱신할 수 있다. 폰트·배율 변경 뒤에는 재확인이 필요하다.
+
+### 자동 검사와 보장 범위
+
+최종 `make -j4 check` 전체와 terminal/media ASan·UBSan 검사 모두 통과했다. 최종 diff 및 `git diff --check`도 확인했다. 구현은 `0ed1844`(core/platform), `cc83f25`(F7 UI·입력 보호·검사)로 로컬 기록했으며 원격 푸시는 하지 않았다.
+
+`make check-terminal`은 다음을 검사한다. `make check`에도 포함되고 기존 설정 저장·파일 작업·캐시·상한·취소·회수 회귀는 그대로 실행한다.
+
+| 검사 | 확인한 범위 |
+| --- | --- |
+| terminal_test | ncurses 없는 DA/셀 형식·숫자·길이·불완전 prefix·잘못된 값 및 원자적 후보 갱신 |
+| terminal_input_test | 통제된 시간의 분할/늦은/잘못된 프레임, 종료 후 격리, Esc·KEY_RESIZE, 일반 문자·Unicode·방향키/F7/Alt키·SGR 마우스 보존 |
+| terminal_pty | 50×9/100×24 실 프로세스의 정상/무/잘못된/분할/늦은 응답, 질의 중 일반 키·Esc·리사이즈, 표시·지우기 확인 실패·재확인·세션 활성화, F7 초점 복원, 수동 측정, ioctl, 도구 누락 구분 |
+| terminal_pty 수명주기 | 환경변수 없는 PNG/JPEG/PDF 표시, 다음 실행의 확인 초기화, 진단 중 변환 PID 종료·FD·전용 임시 파일 정리, 기존 환경변수 값 보존, 자동 설정 저장 없음 |
+| 기존 media 검사 | 기존 Sixel validator·변환 크기/시간/출력 상한·실패/대체·캐시·선택/모달/최소 크기 취소·FD/자식/임시 파일 정리 |
+
+관련 ASan/UBSan 명령은 `python3 tests/run_terminal_sanitizers.py --disable-leaks`와 `python3 tests/run_media_sanitizers.py --disable-leaks`이다. LSan은 실제 시도에서 ptrace 환경 제한으로 fatal error가 나므로 **미완료**다. 사용자 환경에서 디버거/추적기 없이 `python3 tests/run_terminal_sanitizers.py` 및 `python3 tests/run_media_sanitizers.py`를 실행하면 누수 검사를 포함한다. 로그는 각 `/tmp/tfile-terminal-sanitizers`, `/tmp/tfile-media-sanitizers`에 저장한다.
+
+### 실제 터미널에서의 확인 절차 (자동 PTY와 별도)
+
+이 실행 환경에서는 실제 픽셀 표시·삭제·모달 잔상을 직접 확인하지 못했다. 아래 절차는 아직 사용자 육안 확인이 필요하다.
+
+1. 환경변수 없이 `./tfile`을 열고 F7 → Image display setup → Enter를 선택한다. 자동 확인이 안 되면 실제 측정한 셀 크기로 M을 사용한다.
+2. 빨강/파랑 이미지가 `|` 표시 안에 보일 때만 표시 질문에 y, 실제 지워졌을 때만 지우기 질문에 y를 선택한다. 마지막 활성화에서 y를 선택한다. 한 단계라도 실패하면 n으로 이전 상태를 유지한다.
+3. PNG/JPEG/PDF를 선택해 실제 표시·파일 정보·경계·지우기를 확인하고 F1/F7의 잔상·초점 복원을 확인한다. 폰트/배율을 변경한 뒤 F7에서 재확인한다. 테스트 이미지 중 리사이즈하면 중단·지우기·부모 팝업 종료를 확인한다.
+4. 종료 후 다른 터미널 조건으로 다시 실행해 확인 상태와 셀 크기가 자동 재사용되지 않는지 확인한다. Auto/Off 저장은 별도의 F7 저장 동작이다.
+
+남은 한계는 Sixel만 지원, 터미널 자체의 DA/셀 응답 품질, 매우 느린 ESC/불완전 보고서의 입력 모호성, ED2 지우기의 실제 호환성·깜빡임, multiplexer/HiDPI 차이와 기존 SIGKILL 임시 디렉터리 가능성이다. 터미널별 영구 프로필·자동 시작 감지·패키지 설치는 제공하지 않는다.
+
+---
+
+아래는 이전 구현과 후속 실험의 원래 기록이다.
+
 ## 선택한 구성과 사전 실험
 
 출력은 UI가 관리하는 Sixel이고, ImageMagick의 외부 `magick`/`convert`가 이미지 디코딩·축소·64색 양자화·Sixel 인코딩을 담당한다. PDF는 Poppler `pdftoppm -f 1 -l 1 -singlefile -scale-to … -png`로 첫 페이지만 만든 뒤 같은 이미지 경로로 인코딩한다. 대체 텍스트는 `pdftotext -f 1 -l 1 -layout`이다. 새 이미지 디코더나 PDF 렌더러, Windows 전용 API/도구를 구현하지 않았다.
