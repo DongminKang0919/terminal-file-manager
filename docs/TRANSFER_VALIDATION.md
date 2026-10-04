@@ -45,3 +45,6 @@ README, REFERENCE, PANELS_VALIDATION, BATCH_VALIDATION과 UI/core/platform 및 �
 목록 조회 실패와 정상 빈 상태를 구분하고, 실패 시 원인 표시와 Use 차단을 적용했다. Parent/Enter path 복구와 실제 파일 작업의 재검증은 유지한다. 새 `tests/picker_test.c`는 uid 1000에서 실제 권한 거부·삭제 경로·빈 디렉터리·Space 차단·경로 수정/Parent 복구를 확인하며 `make check`, `make check-media`, 미디어 전용 sanitizer에 포함된다.
 
 이번 명령·로그·미완료 LSan 기록은 [미디어 후속 검증](MEDIA_PREVIEW_VALIDATION.md#후속-정적-검토-수정)에 있다. 위의 과거 수동 17개 검사에서 확인한 누수 미검출 결과를 새 picker/media native 또는 media PTY 검사의 누수 검증으로 확대하지 않는다.
+
+
+수정 후 별도 사용자 WSL 실행의 `/tmp/tfile-sanitizers-fixes-manual/` 17개 실행/빌드 로그와 `/tmp/tfile-media-sanitizers-fixes-manual/`의 media/preview/picker/media_pty 로그를 재실행 없이 검토했다. 모두 PASS이며 ptrace 오류·검사 생략·sanitizer 오류·누수 보고가 없다. 사용자는 두 명령을 `--disable-leaks` 없이 실행하고 누수 검출 요청/활성화 메시지를 확인했다고 보고했으며, 스크립트의 `detect_leaks=1` 설정과 바이너리의 libasan 연결도 확인했다. 이번 새 picker/media 실행 경로의 제한된 누수 미검출 결과는 [수동 검토 기록](MEDIA_PREVIEW_VALIDATION.md#수정-후-사용자-wsl-터미널의-수동-sanitizer-결과-검토)에 별도로 기록한다. 기존 자동 환경의 LSan 미완료 기록은 유지하며 외부 변환 도구 내부나 프로젝트 전체로 확대하지 않는다.

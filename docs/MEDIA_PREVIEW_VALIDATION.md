@@ -139,4 +139,23 @@ sanitizer 상세 로그는 기존 검사 `/tmp/tfile-sanitizers-review/*.run.log
 
 `python3 tools/sixel_probe.py`로 사용자 터미널의 단독 출력·지우기와 ncurses 패널·모달·리사이즈를 육안 확인한 뒤 출력된 실행 명령을 사용한다. 느린 대역의 수명주기는 `make check-media`로 확인할 수 있으며, 실제 앱에서는 이미지/PDF 변환 도중 49×8로 축소하고 유지·복원·종료를 확인한다. F5 Browse에서는 접근 불가 목적지가 빈 상태로 안내되지 않고 Parent/Enter path로 수정할 수 있는지 확인한다. 직접 경로 수정 없이 다른 목적지가 선택되면 안 된다.
 
-PTY는 프로토콜·ncurses cells·자식/입력 수명주기를 확인한다. **실제 터미널 픽셀 표시·삭제·모달 잔상은 여전히 미검증**이다. Clang 실행과 LSan도 미검증/미완료다. 기존 Sixel 전체 화면 지우기의 깜빡임 가능성, multiplexer/HiDPI 호환성, 급작스러운 SIGKILL 시 임시 디렉터리 잔존 가능성은 이번 수정 범위에서 해결하지 않았다.
+PTY는 프로토콜·ncurses cells·자식/입력 수명주기를 확인한다. **실제 터미널 픽셀 표시·삭제·모달 잔상은 여전히 미검증**이다. Clang 실행은 미검증이며 자동 실행 환경의 LSan은 미완료다. 이후 별도 사용자 WSL 실행의 제한된 성공 범위는 아래 기록으로 구분한다. 기존 Sixel 전체 화면 지우기의 깜빡임 가능성, multiplexer/HiDPI 호환성, 급작스러운 SIGKILL 시 임시 디렉터리 잔존 가능성은 이번 수정 범위에서 해결하지 않았다.
+
+
+### 수정 후 사용자 WSL 터미널의 수동 sanitizer 결과 검토
+
+사용자가 별도 WSL 터미널에서 아래 두 명령을 `--disable-leaks` 없이 실행했다고 보고했다. 기존 17개는 모두 PASS(exit 0)와 누수 검출 활성화 종료 메시지, 미디어의 media/preview/picker/media_pty는 모두 PASS와 `Leak detection requested`를 확인했다. 이 검토에서는 테스트를 재실행하지 않고 기존 산출물을 읽었으며 수동 로그를 덮어쓰지 않았다.
+
+```sh
+python3 tests/run_sanitizers.py --output-directory /tmp/tfile-sanitizers-fixes-manual
+python3 tests/run_media_sanitizers.py --output-directory /tmp/tfile-media-sanitizers-fixes-manual
+```
+
+- `/tmp/tfile-sanitizers-fixes-manual/`: 상세 실행 로그 17개가 모두 PASS이며 빌드 로그 17개는 비어 있다.
+- `/tmp/tfile-media-sanitizers-fixes-manual/`: `media.log`, `preview.log`, `picker.log`, `media_pty.log` 모두 PASS다. media 로그의 실제 자식 제한값은 AS=-1, CPU=5, FSIZE=65536, CORE=0이다.
+- 전체 상세 로그에서 ptrace/LeakSanitizer fatal error, 검사 생략·누수 검출 비활성화 안내, ASan/UBSan 오류 또는 누수 보고가 발견되지 않았다. PASS 설명의 정상적인 오류/취소 대역 검사는 sanitizer 오류나 검사 실패가 아니다.
+- 두 스크립트는 `--disable-leaks`가 없을 때 `ASAN_OPTIONS=detect_leaks=1:halt_on_error=1`과 UBSan 중단 설정을 적용한다. 하위 대역/PTY 실행도 이 환경을 상속한다. 확인한 17개 기존 바이너리와 미디어 디렉터리의 4개 바이너리는 모두 `libasan`에 연결되어 있다. 소스와 실행 스크립트에서 LSan 비활성화/기본 옵션·suppression 훅을 발견하지 않았다.
+
+상위 명령의 exit 값·종료 메시지·옵션은 사용자 보고를 근거로 하며, 디렉터리의 상세 로그와 스크립트 설정은 직접 검토한 근거다. 이 범위에서 **수정 후 사용자 수동 실행의 ASan/UBSan/LSan 검사 완료 및 누수 미검출**을 확인했다. 이는 해당 17개 native 검사와 별도 media/preview/picker native·media PTY의 실제 실행 경로에 한정한다. 외부 ImageMagick/Poppler 내부, 프로젝트 전체 또는 모든 사용 경로의 누수 부재를 의미하지 않는다. 미디어 수명주기는 변환 도구 대역으로 검사하며 실제 터미널 픽셀 표시·삭제·모달 잔상 검증을 대체하지 않는다.
+
+이전 자동 환경의 `/tmp/tfile-media-sanitizers-review-lsan/` ptrace 실패와 `--disable-leaks` 검사 기록은 그대로 유지한다. 이번 수동 성공이 그 자동 실행을 성공으로 바꾸지는 않는다. Clang 실행 및 실제 그래픽 육안 검증의 미확인 상태도 유지한다.
