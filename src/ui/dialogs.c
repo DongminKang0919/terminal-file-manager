@@ -304,15 +304,16 @@ void show_options(UiContext *ui) {
     int selected = 0, offset = 0;
     char warning[sizeof ui->status] = "";
     for (;;) {
-        char hidden[64], preview_text[64], wheel[64], sort[64], direction[64];
+        char hidden[64], preview_text[64], wheel[64], sort[64], direction[64], image[64];
         snprintf(hidden, sizeof hidden, "[%c] Show hidden files", ui_panel(ui)->app.show_hidden ? 'x' : ' ');
         snprintf(preview_text, sizeof preview_text, "[%c] Show preview panel", ui_preview_enabled(ui) ? 'x' : ' ');
         snprintf(wheel, sizeof wheel, "Wheel scroll: %d rows (click to change)", ui->wheel_step);
         snprintf(sort, sizeof sort, "Sort by: %s (click to change)", sort_label(ui_panel(ui)->app.sort.key));
         snprintf(direction, sizeof direction, "Sort order: %s (click to change)", ui_panel(ui)->app.sort.descending ? "Descending" : "Ascending");
-        const char *labels[] = {hidden, preview_text, wheel, sort, direction, "Done (settings apply to this session)"};
-        int i = choice_dialog(win, "Options", labels, 6, &selected, &offset, warning);
-        if (i < 0 || i == 5) break;
+        snprintf(image,sizeof image,"Image preview: %s (click to change)",ui->image_auto ? "Auto" : "Off");
+        const char *labels[] = {hidden, preview_text, wheel, sort, direction, image, "Done (settings apply to this session)"};
+        int i = choice_dialog(win, "Options", labels, 7, &selected, &offset, warning);
+        if (i < 0 || i == 6) break;
         if (i == 0) {
             ui_panel(ui)->app.show_hidden = !ui_panel(ui)->app.show_hidden;
             if (load_dir(ui, NULL).code != RESULT_OK) {
@@ -324,6 +325,7 @@ void show_options(UiContext *ui) {
         if (i == 2) ui->wheel_step = ui->wheel_step == 1 ? 3 : ui->wheel_step == 3 ? 5 : 1;
         if (i == 3) change_sort(ui, (SortSettings){(ui_panel(ui)->app.sort.key + 1) % 4, ui_panel(ui)->app.sort.descending});
         if (i == 4) change_sort(ui, (SortSettings){ui_panel(ui)->app.sort.key, !ui_panel(ui)->app.sort.descending});
+        if (i == 5) { ui->image_auto = !ui->image_auto; media_reset(ui); }
         draw(ui);
     }
     dialog_close(ui, win);

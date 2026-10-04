@@ -61,6 +61,15 @@ typedef struct {
     size_t preview_start, preview_limit;
     uint64_t preview_checked;
     bool preview_ready, preview_directory_empty;
+    bool image_auto, sixel_confirmed, graphics_visible;
+    unsigned cell_width, cell_height, media_width, media_height;
+    PreviewMediaKind media_kind;
+    MediaPreview *media_job;
+    bool media_done, media_text, media_fallback;
+    char *media_data;
+    size_t media_len;
+    Result media_result;
+    char media_hint[128], media_fallback_detail[256];
     char status[512]; /* Routine/transient guidance, separate from the retained result. */
     NoticeKind status_kind;
     bool status_priority; /* New navigation/search issues can override a retained result display. */
@@ -153,6 +162,13 @@ attr_t ui_selection(void);
 attr_t ui_bar(void);
 void init_theme(void);
 void show_help(UiContext *ui);
+void graphics_init(UiContext *ui);
+void graphics_clear(UiContext *ui);
+void graphics_present(UiContext *ui);
+bool graphics_validate(const char *data, size_t len, unsigned width, unsigned height);
+void media_reset(UiContext *ui);
+void media_prepare(UiContext *ui, int rows, bool changed);
+bool media_pending(const UiContext *ui);
 void preview_prepare(UiContext *ui, int rows);
 void preview_reset(UiContext *ui);
 void preview_scroll(UiContext *ui, bool down);

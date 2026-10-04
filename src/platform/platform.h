@@ -37,4 +37,14 @@ Result platform_reader_peek(PlatformReader *reader, unsigned char *buffer, size_
 Result platform_reader_line(PlatformReader *reader, char *buffer, size_t size, bool *end);
 void platform_reader_close(PlatformReader *reader);
 uint64_t platform_monotonic_ms(void);
+typedef struct PlatformMedia PlatformMedia;
+Result platform_media_open(const char *path, PreviewMediaKind kind, bool text, unsigned width, unsigned height, PlatformMedia **out);
+Result platform_media_poll(PlatformMedia *media, bool *done, char **data, size_t *len);
+void platform_media_close(PlatformMedia *media);
+void platform_media_reap(void);
+void platform_media_shutdown(void);
+bool platform_media_cleanup_pending(void);
+void platform_media_install_signals(void);
+bool platform_media_shutdown_requested(void);
+bool platform_terminal_pixels(unsigned *width, unsigned *height);
 #endif

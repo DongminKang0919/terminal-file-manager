@@ -195,6 +195,7 @@ static void draw_location(UiFilePanel *p,int x,int w,bool dual) {
 
 static void draw_screen(UiContext *ui, bool prepare) {
     if (!ui_preview_enabled(ui)) ui->focus = UI_FOCUS_FILES;
+    graphics_clear(ui);
     erase(); int h, w; getmaxyx(stdscr, h, w);
     if (prepare) preview_prepare(ui, h >= 9 && w >= 50 ? h - 7 : 0);
     if (h < 9 || w < 50) { mvaddstr(0, 0, "Terminal too small (minimum 50x9)"); refresh(); return; }
@@ -276,7 +277,7 @@ static void draw_screen(UiContext *ui, bool prepare) {
             mvchgat(y, x, 1, (attr & A_ALTCHARSET) | A_DIM, has_colors() ? UI_INACTIVE : 0, NULL);
         }
     }
-    refresh();
+    refresh(); graphics_present(ui);
 }
 
 /* Modal focus changes consume prepared data only: no metadata poll or reader I/O. */

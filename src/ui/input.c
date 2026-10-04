@@ -46,11 +46,15 @@ static int decode_mouse(WINDOW *win) {
     return result;
 }
 int input_key(WINDOW *win) {
+    if (core_media_shutdown_requested()) return KEY_RESIZE;
     int key = wgetch(win);
+    if (core_media_shutdown_requested()) return KEY_RESIZE;
     return key == UI_SGR_MOUSE ? decode_mouse(win) : key;
 }
 int input_wide(WINDOW *win, wint_t *key) {
+    if (core_media_shutdown_requested()) { *key = KEY_RESIZE; return KEY_CODE_YES; }
     int kind = wget_wch(win, key);
+    if (core_media_shutdown_requested()) { *key = KEY_RESIZE; return KEY_CODE_YES; }
     if (kind == KEY_CODE_YES && *key == UI_SGR_MOUSE) {
         *key = (wint_t)decode_mouse(win);
         return KEY_CODE_YES;

@@ -8,7 +8,7 @@ int main(int argc, char **argv) {
     if (initialized.code != RESULT_OK) { fprintf(stderr, "%s\n", initialized.detail); ui_free(ui); return 1; }
 
     initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0); init_theme();
-    input_init();
+    input_init(); graphics_init(ui); core_media_install_signals();
     set_escdelay(25);
     uint64_t last_click = 0;
     size_t last_index = SIZE_MAX;
@@ -16,7 +16,12 @@ int main(int argc, char **argv) {
     /* app_init already loaded and sorted this directory. */
     int key;
     for (;;) {
-        draw(ui); key = input_key(stdscr);
+        if (core_media_shutdown_requested()) break;
+        draw(ui);
+        wtimeout(stdscr, (media_pending(ui) || core_media_cleanup_pending()) ? 40 : -1);
+        key = input_key(stdscr);
+        wtimeout(stdscr, -1); /* Forms and inline find retain their blocking input policy. */
+        if (key == ERR) continue;
         int h, w; getmaxyx(stdscr, h, w); UiScreenLayout screen=ui_screen_layout(ui,w,h); UiLayout layout=screen.list; int rows = layout.list_rows; if (rows < 1) rows = 1;
         if (key == KEY_MOUSE) {
             MEVENT event;
@@ -119,5 +124,5 @@ int main(int argc, char **argv) {
             case KEY_RESIZE: break;
         }
     }
-    endwin(); ui_free(ui); return 0;
+    graphics_clear(ui); endwin(); ui_free(ui); return 0;
 }

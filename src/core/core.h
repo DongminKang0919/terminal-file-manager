@@ -122,4 +122,18 @@ void preview_session_close(PreviewSession *session);
 Result preview_session_check(PreviewSession *session, bool *changed);
 Result preview_session_page(PreviewSession *session, size_t start, size_t limit, PreviewText *out);
 void preview_text_free(PreviewText *text);
+PreviewMediaKind preview_session_media(const PreviewSession *session);
+/* Single asynchronous converter; CANCELLED means its predecessor is retiring.
+   Poll transfers owned output bytes once on completion; close cancels/reaps.
+   The caller caches one selected file/size/page result and discards it on refresh. */
+typedef struct MediaPreview MediaPreview;
+Result core_media_open(const char *path, PreviewMediaKind kind, bool text, unsigned width, unsigned height, MediaPreview **out);
+Result core_media_poll(MediaPreview *media, bool *done, char **data, size_t *len);
+void core_media_close(MediaPreview *media);
+void core_media_reap(void);
+void core_media_shutdown(void);
+bool core_media_cleanup_pending(void);
+void core_media_install_signals(void);
+bool core_media_shutdown_requested(void);
+bool core_terminal_pixels(unsigned *width, unsigned *height);
 #endif

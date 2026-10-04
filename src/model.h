@@ -4,6 +4,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+typedef enum { PREVIEW_NOT_MEDIA, PREVIEW_PNG, PREVIEW_JPEG, PREVIEW_PDF } PreviewMediaKind;
+#define PREVIEW_SIXEL_BYTES (256u * 1024u)
+#define PREVIEW_PDF_TEXT_BYTES (64u * 1024u)
+#define PREVIEW_PIXEL_WIDTH 512u
+#define PREVIEW_PIXEL_HEIGHT 384u
+#define PREVIEW_CONVERSION_MS 8000u
+
 typedef enum { FILE_REGULAR, FILE_DIRECTORY, FILE_LINK, FILE_OTHER } FileKind;
 typedef struct {
     char *name, *path; /* Owned strings; release through file_list_free. */

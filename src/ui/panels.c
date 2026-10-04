@@ -1,11 +1,11 @@
 #include "ui.h"
 
 Result ui_init(UiContext *ui,const char *directory) {
-    *ui=(UiContext){.mode=UI_LIST_PREVIEW,.wheel_step=1};
+    *ui=(UiContext){.mode=UI_LIST_PREVIEW,.wheel_step=1,.image_auto=true};
     return app_init(&ui_panel(ui)->app,directory);
 }
 void ui_free(UiContext *ui) {
-    notice_clear(ui); preview_reset(ui);
+    graphics_clear(ui); notice_clear(ui); preview_reset(ui); core_media_shutdown();
     for(unsigned i=0;i<2;i++) app_free(&ui->panels[i].app);
     *ui=(UiContext){0};
 }

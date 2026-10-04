@@ -59,3 +59,5 @@ __pycache__/
 /tests/tfile_batch
 
 /tests/panels_ui_test
+
+/tests/media_test

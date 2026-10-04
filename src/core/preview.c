@@ -49,11 +49,13 @@ struct PreviewSession {
     char *path, *lines[CACHE_ROWS];
     size_t first, next;
     bool eof, binary, empty;
+    PreviewMediaKind kind;
     Result error;
 };
 static void session_clear(PreviewSession *s) {
     platform_reader_close(s->reader); s->reader = NULL;
     for (size_t i = 0; i < CACHE_ROWS; i++) { free(s->lines[i]); s->lines[i] = NULL; }
+    s->kind = PREVIEW_NOT_MEDIA;
     s->first = s->next = 0; s->eof = s->binary = s->empty = false;
 }
 static Result session_start(PreviewSession *s) {
@@ -62,6 +64,11 @@ static Result session_start(PreviewSession *s) {
     if (s->error.code == RESULT_OK) {
         unsigned char sample[4096]; size_t n = 0;
         s->error = platform_reader_peek(s->reader, sample, sizeof sample, &n);
+        if (s->error.code == RESULT_OK) {
+            if (n >= 8 && !memcmp(sample, "\211PNG\r\n\032\n", 8)) s->kind = PREVIEW_PNG;
+            else if (n >= 3 && sample[0] == 255 && sample[1] == 216 && sample[2] == 255) s->kind = PREVIEW_JPEG;
+            else if (n >= 5 && !memcmp(sample, "%PDF-", 5)) s->kind = PREVIEW_PDF;
+        }
         s->empty = s->error.code == RESULT_OK && n == 0;
         s->binary = s->error.code == RESULT_OK && memchr(sample, 0, n) != NULL;
     }
@@ -126,4 +133,8 @@ fail:
     /* calloc initializes unfilled page slots, so partial allocation is safe. */
     if (out->lines) preview_text_free(out); else *out = (PreviewText){0};
     session_clear(s); return s->error;
+}
+
+PreviewMediaKind preview_session_media(const PreviewSession *s) {
+    return s ? s->kind : PREVIEW_NOT_MEDIA;
 }

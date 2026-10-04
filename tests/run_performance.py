@@ -53,7 +53,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-perf-build-') as build:
     obj=Path(build)/'main.o'; binary=Path(build)/'measure'
     start=time.monotonic()
     subprocess.run(['cc',*flags,'-Dmain=tfile_main','-c',str(source/'src/ui/main.c'),'-o',str(obj)],check=True)
-    sources=[source/'src/model.c',*sorted((source/'src/core').glob('*.c')),source/'src/platform/posix.c',
+    sources=[source/'src/model.c',*sorted((source/'src/core').glob('*.c')),*sorted((source/'src/platform').glob('posix*.c')),
              *sorted(x for x in (source/'src/ui').glob('*.c') if x.name!='main.c')]
     includes=[f'-I{source}/src/{part}' for part in ['ui','platform']]
     subprocess.run(['cc',*flags,*includes,str(harness),*map(str,sources),str(obj),'-lncursesw',

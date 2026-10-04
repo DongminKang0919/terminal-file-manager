@@ -13,7 +13,7 @@ a=p.parse_args()
 assert str(a.output_directory.resolve()).startswith('/tmp/tfile-sanitizers-')
 a.output_directory.mkdir(exist_ok=True)
 root=Path(__file__).resolve().parents[1]
-core=[root/'src/model.c',*sorted((root/'src/core').glob('*.c')),root/'src/platform/posix.c']
+core=[root/'src/model.c',*sorted((root/'src/core').glob('*.c')),*sorted((root/'src/platform').glob('posix*.c'))]
 ui=[*core,*sorted(x for x in (root/'src/ui').glob('*.c') if x.name!='main.c')]
 flags=['-D_XOPEN_SOURCE=700','-O1','-g','-Wall','-Wextra','-Wpedantic','-std=c11',
        '-fno-omit-frame-pointer','-fsanitize=address,undefined','-fno-pie','-no-pie']
@@ -29,7 +29,7 @@ targets={
  'popup_style_test':([],ui),
  'progress_ui_test':(['core_monotonic_ms','input_wide','wrefresh'],ui),
  'preview_test':(['platform_reader_open','platform_reader_line','platform_reader_close',
-                 'platform_reader_changed','platform_directory_open','platform_info','app_refresh'],ui),
+                 'platform_reader_changed','readdir','platform_directory_empty','platform_directory_open','platform_info','app_refresh'],ui),
  'text_test':([],[root/'src/ui/text.c']),
  'text_window_test':([],[root/'src/ui/text.c',root/'src/ui/text_window.c']),
 }

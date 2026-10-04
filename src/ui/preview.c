@@ -2,6 +2,7 @@
 
 
 void preview_reset(UiContext *ui) {
+    media_reset(ui);
     preview_session_close(ui->preview_session); ui->preview_session = NULL;
     preview_text_free(&ui->preview_page); free(ui->preview_link); ui->preview_link = NULL;
     ui->preview_ready = false; ui->preview_directory_empty = false; ui->preview_result = result_make(RESULT_OK, NULL);
@@ -17,6 +18,7 @@ void preview_scroll(UiContext *ui, bool down) {
    changes or the next redraw after one second. Explicit refresh resets even
    a latched error. Directory checks stop at the first actual entry. */
 void preview_prepare(UiContext *ui, int rows) {
+    core_media_reap();
     if (!ui_preview_enabled(ui) || ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) { preview_reset(ui); return; }
     const Item *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
     bool fresh = !ui->preview_path || strcmp(ui->preview_path, it->path);
@@ -56,9 +58,16 @@ void preview_prepare(UiContext *ui, int rows) {
         ui->preview_checked = now;
     }
     if (changed) {
+        media_reset(ui);
         ui->preview_offset = 0; ui->preview_ready = false;
         start = 0; limit = (size_t)rows + 1 > content ? (size_t)rows + 1 - content : 0;
     }
+    if (ui->preview_result.code == RESULT_OK && preview_session_media(ui->preview_session) != PREVIEW_NOT_MEDIA) {
+        media_prepare(ui, rows, changed);
+        ui->preview_ready=true; ui->preview_start=start; ui->preview_limit=limit;
+        return;
+    }
+    if (ui->media_kind != PREVIEW_NOT_MEDIA) media_reset(ui);
     if (ui->preview_result.code == RESULT_OK && ui->preview_session && (viewport || changed)) {
         preview_text_free(&ui->preview_page);
         ui->preview_result = preview_session_page(ui->preview_session, start, limit, &ui->preview_page);
@@ -126,6 +135,29 @@ static void preview_content(UiContext *ui, View *v, const Item *it) {
         preview_line(ui, v, "Double-click or use Open to enter", UI_MUTED); return;
     }
     if (!(it->kind == FILE_REGULAR)) return;
+    if (ui->media_kind != PREVIEW_NOT_MEDIA) {
+        preview_line(ui, v, ui->media_hint, UI_MUTED);
+        if (!ui->media_done) { preview_line(ui, v, "Loading preview...", UI_MUTED); return; }
+        if (ui->media_result.code != RESULT_OK) {
+            preview_line(ui, v, "Cannot display preview", UI_SPECIAL);
+            preview_line(ui, v, ui->media_result.detail, UI_SPECIAL);
+            preview_line(ui, v, "Refresh to retry", UI_MUTED); return;
+        }
+        if (ui->media_text && ui->media_data) {
+            preview_line(ui, v, "PDF page 1 (text, up to 64 KiB / 128 lines)", UI_MUTED);
+            if (!ui->media_len) { preview_line(ui,v,"No text on PDF page 1",UI_MUTED); return; }
+            const char *p=ui->media_data,*end=p+ui->media_len;
+            for (size_t i=0; i<128 && p<end; i++) {
+                const char *nl=memchr(p, '\n', (size_t)(end-p));
+                size_t len=nl ? (size_t)(nl-p) : (size_t)(end-p);
+                if (len>=sizeof text) len=sizeof text-1;
+                memcpy(text,p,len); text[len]=0;
+                preview_line(ui,v,text,UI_BASE);
+                p=nl ? nl+1 : end;
+            }
+        }
+        return;
+    }
     const PreviewText *page = &ui->preview_page;
     if (page->empty) { preview_line(ui, v, "Empty file", UI_MUTED); return; }
     if (page->binary) { preview_line(ui, v, "Binary file - no text preview", UI_MUTED); return; }
