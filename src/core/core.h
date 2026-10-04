@@ -4,6 +4,24 @@
 
 typedef enum { SORT_NAME, SORT_SIZE, SORT_MODIFIED, SORT_KIND } SortKey;
 typedef struct { SortKey key; bool descending; } SortSettings;
+/* Values match the UI screen modes, without depending on curses. */
+typedef struct {
+    int mode, wheel_step;
+    SortSettings sort;
+    bool show_hidden, image_auto;
+} StartupSettings;
+typedef struct {
+    StartupSettings defaults;
+    char *path;
+    bool replace_required;
+    Result load_result;
+} SettingsStore;
+StartupSettings settings_defaults(void);
+Result settings_parse(const char *data, size_t len, StartupSettings *out);
+void settings_load(SettingsStore *store);
+Result settings_save(SettingsStore *store, const StartupSettings *settings, bool replace);
+void settings_free(SettingsStore *store);
+
 /* Owned history data; positions are logical list ordinals, never terminal coordinates. */
 typedef struct { char *directory, *selected_name; size_t selected, top; } HistoryEntry;
 typedef struct { char *name; bool seen; } SelectionName;
@@ -28,6 +46,8 @@ void app_unmark(AppState *app, const char *name);
 void app_marks_clear(AppState *app);
 void app_marks_reconcile(AppState *app);
 Result app_init(AppState *app, const char *directory);
+/* Applies validated startup settings before the first directory load. */
+Result app_init_settings(AppState *app, const char *directory, const StartupSettings *settings);
 void app_free(AppState *app);
 Result app_navigate(AppState *app, const char *directory);
 Result app_refresh(AppState *app);

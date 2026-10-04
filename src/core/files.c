@@ -108,8 +108,12 @@ static Result navigate_to(AppState *app, const char *directory, bool record, boo
 }
 Result app_navigate(AppState *app, const char *directory) { return navigate_to(app, directory, true, app->show_hidden, NULL, NULL); }
 Result app_init(AppState *app, const char *directory) {
-    *app = (AppState){ .show_hidden = true };
-    return app_navigate(app, directory ? directory : ".");
+    StartupSettings defaults=settings_defaults();
+    return app_init_settings(app,directory,&defaults);
+}
+Result app_init_settings(AppState *app, const char *directory, const StartupSettings *settings) {
+    *app=(AppState){.show_hidden=settings->show_hidden,.sort=settings->sort};
+    return app_navigate(app,directory ? directory : ".");
 }
 void app_free(AppState *app) {
     app_marks_clear(app);

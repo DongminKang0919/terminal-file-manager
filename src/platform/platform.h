@@ -3,6 +3,9 @@
 #include "../model.h"
 /* Only this backend knows native paths, filesystem handles and error numbers.
    Output strings are owned by the caller. On failure pointer outputs stay NULL. */
+Result platform_settings_path(char **out);
+Result platform_settings_read(const char *path, char *data, size_t cap, size_t *len);
+Result platform_settings_write(const char *path, const char *data, size_t len);
 char *platform_path_join(const char *directory, const char *name);
 char *platform_path_parent(const char *path);
 char *platform_path_name(const char *path);

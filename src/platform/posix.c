@@ -500,3 +500,91 @@ uint64_t platform_monotonic_ms(void) {
     struct timespec now; clock_gettime(CLOCK_MONOTONIC, &now);
     return (uint64_t)now.tv_sec * 1000 + (uint64_t)now.tv_nsec / 1000000;
 }
+
+Result platform_settings_path(char **out) {
+    *out=NULL;
+    const char *xdg=getenv("XDG_CONFIG_HOME"), *home=getenv("HOME");
+    char *base=NULL;
+    if(xdg && xdg[0]=='/') base=text_copy(xdg);
+    else if(home && home[0]=='/') base=platform_path_join(home,".config");
+    else return result_make(RESULT_ACCESS,"No absolute XDG_CONFIG_HOME or HOME; settings unavailable");
+    if(!base) return oom();
+    *out=platform_path_join(base,"tfile/settings.conf"); free(base);
+    return *out ? result_make(RESULT_OK,NULL) : oom();
+}
+/* Pin each directory; never traverse symlinks. Existing modes are untouched. */
+static int settings_directory(const char *path,bool create) {
+    char *parent=platform_path_parent(path);
+    if(!parent) { errno=ENOMEM; return -1; }
+    int fd=open("/",O_RDONLY|O_DIRECTORY|O_CLOEXEC);
+    char *save=NULL;
+    for(char *part=strtok_r(parent,"/",&save);fd>=0 && part;part=strtok_r(NULL,"/",&save)) {
+        if(!strcmp(part,"..")) { close(fd); fd=-1; errno=EINVAL; break; }
+        int next=openat(fd,part,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+        if(next<0 && errno==ENOENT && create) {
+            if(mkdirat(fd,part,0700)<0 && errno!=EEXIST) { int e=errno; close(fd); fd=-1; errno=e; break; }
+            next=openat(fd,part,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+        }
+        int e=errno; close(fd); fd=next; errno=e;
+    }
+    free(parent); return fd;
+}
+Result platform_settings_read(const char *path,char *data,size_t cap,size_t *len) {
+    *len=0;
+    int dir=settings_directory(path,false);
+    if(dir<0) return failure();
+    int fd=openat(dir,"settings.conf",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+    int e=errno; close(dir); errno=e;
+    if(fd<0) return failure();
+    struct stat st;
+    Result r=result_make(RESULT_OK,NULL);
+    if(fstat(fd,&st)<0) r=failure();
+    else if(!S_ISREG(st.st_mode)) r=result_make(RESULT_UNSUPPORTED,"Settings must be a regular file");
+    else if(st.st_size>4096) r=result_make(RESULT_IO,"Settings file exceeds 4096 bytes");
+    while(r.code==RESULT_OK && *len<cap) {
+        ssize_t n=read(fd,data+*len,cap-*len);
+        if(n<0 && errno==EINTR) continue;
+        if(n<0) { r=failure(); break; }
+        if(!n) break;
+        *len+=(size_t)n;
+    }
+    if(r.code==RESULT_OK && *len>4096) r=result_make(RESULT_IO,"Settings file exceeds 4096 bytes");
+    if(close(fd)<0 && r.code==RESULT_OK) r=failure();
+    return r;
+}
+static Result settings_target(int dir) {
+    struct stat st;
+    if(fstatat(dir,"settings.conf",&st,AT_SYMLINK_NOFOLLOW)<0)
+        return errno==ENOENT ? result_make(RESULT_OK,NULL) : failure();
+    return S_ISREG(st.st_mode) ? result_make(RESULT_OK,NULL) : result_make(RESULT_UNSUPPORTED,"Refusing symlink or special settings file");
+}
+Result platform_settings_write(const char *path,const char *data,size_t len) {
+    int dir=settings_directory(path,true);
+    if(dir<0) return failure();
+    Result r=settings_target(dir);
+    char temp[80]=""; int fd=-1;
+    static unsigned sequence;
+    if(r.code==RESULT_OK) {
+        for(unsigned attempt=0;attempt<100;attempt++) {
+            snprintf(temp,sizeof temp,".settings-%ld-%u.tmp",(long)getpid(),++sequence);
+            fd=openat(dir,temp,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0600);
+            if(fd>=0 || errno!=EEXIST) break;
+        }
+        if(fd<0) { temp[0]=0; r=failure(); }
+    }
+    size_t at=0;
+    while(r.code==RESULT_OK && at<len) {
+        ssize_t n=write(fd,data+at,len-at);
+        if(n<0 && errno==EINTR) continue;
+        if(n<=0) { if(!n) errno=EIO; r=failure(); break; }
+        at+=(size_t)n;
+    }
+    if(fd>=0) {
+        if(r.code==RESULT_OK && fsync(fd)<0) r=failure();
+        if(close(fd)<0 && r.code==RESULT_OK) r=failure();
+    }
+    if(r.code==RESULT_OK) r=settings_target(dir);
+    if(r.code==RESULT_OK && renameat(dir,temp,dir,"settings.conf")<0) r=failure();
+    if(r.code!=RESULT_OK && temp[0]) unlinkat(dir,temp,0);
+    close(dir); return r;
+}
