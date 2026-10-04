@@ -45,7 +45,7 @@ static bool denied_init;
 static const char *find_text;
 static size_t find_at;
 static const char *form_keys; static size_t form_at;
-static bool form_review;
+static bool form_review, path_resize;
 static bool inspect_results; static unsigned result_seen, result_at;
 Result __real_app_init(AppState *,const char *);
 Result __wrap_app_init(AppState *app,const char *p) {
@@ -80,6 +80,7 @@ int __wrap_input_wide(WINDOW *win,wint_t *key) {
     assert(find_text); *key=(unsigned char)find_text[find_at++]; return OK;
 }
 int __wrap_input_key(WINDOW *win) {
+    if(path_resize) return KEY_RESIZE;
     if(form_review) { static bool tab; tab=!tab; return tab?'\t':'\n'; }
     if(inspect_results) {
         for(int y=1;y<getmaxy(win)-3;y++) {
@@ -197,6 +198,9 @@ int main(void) {
             FileInfo *old0=ui.panels[0].app.files.entries,*old1=ui.panels[1].app.files.entries;
             assert(create_named_entry(&ui,false,name,warning,sizeof warning));both_refreshed(&ui);
             assert(ui.notice.operation.code==RESULT_OK&&ui.notice.refresh.code==((mask&1)?RESULT_ACCESS:RESULT_OK)&&ui.notice.peer_refresh.code==((mask&2)?RESULT_ACCESS:RESULT_OK));
+            resizeterm(size==0?9:24,size==0?50:size==1?80:160);
+            draw_cached(&ui);char refresh_status[512];mvinnstr(LINES-2,0,refresh_status,sizeof refresh_status-1);
+            assert(strstr(refresh_status,"refresh failed"));
             assert(ui.panels[0].stale==((mask&1)!=0)&&ui.panels[1].stale==((mask&2)!=0));
             if(mask&1) assert(ui.panels[0].app.files.entries==old0);
             if(mask&2) assert(ui.panels[1].app.files.entries==old1);
@@ -262,6 +266,17 @@ int main(void) {
         for(int item=0;item<=batch;item++) {
             char *from=core_path_join(src,item?"second":"first"),*to=core_path_join(dst,item?"second":"first");
             assert(!access(to,F_OK)&&(move?access(from,F_OK)!=0:access(from,F_OK)==0));free(from);free(to);
+        }
+        if(!move) {
+            /* Same-size resize events from the nested Paths popup must cancel
+               the owning form, release all ownership and leave notices/marks. */
+            size_t before=live,fd_before=fds(),selected=ui_panel(&ui)->selected,top=ui_panel(&ui)->top;
+            BatchTarget *retained=ui.notice.batch.targets;
+            form_keys="\t\t\t\n";form_at=0;path_resize=true;reset_refresh();
+            transfer_entry(&ui,false);form_keys=NULL;path_resize=false;
+            assert(form_at==4&&!ui.modal_depth&&live==before&&fds()==fd_before);
+            assert(!refreshes[0]&&!refreshes[1]&&ui.notice.batch.targets==retained);
+            assert(ui_panel(&ui)->selected==selected&&ui_panel(&ui)->top==top&&app_marked(&ui.panels[side^1u].app,"peer-mark"));
         }
         ui_free(&ui);assert(live==baseline&&fds()==initial_fds&&created==destroyed);
         ok(core_delete(l));ok(core_delete(r));

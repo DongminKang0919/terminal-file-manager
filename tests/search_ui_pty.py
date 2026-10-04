@@ -109,6 +109,9 @@ for width,height in [(50,9),(100,24)]:
             t=GatedTerminal(directory,width,height)
             rw=min(90,width-8);rx=(width-rw)//2
             try:
+                if action in ('x','resize'):
+                    t.send('\x1bOQmatch-created\n')
+                    assert '[Success]' in t.screen.row(height-2)
                 t.send(F3+'match\n');t.event(b'G\n')
                 t.frame(rx,1,rw,height-2)
                 assert 'Searching' in t.screen.row(3)
@@ -135,6 +138,7 @@ for width,height in [(50,9),(100,24)]:
                     actual_h=10 if action=='resize' else height
                     assert 'Search cancelled: 64 found' in t.screen.row(actual_h-2)
                     assert 'Enter: Open' in t.screen.row(actual_h-1)
-                assert len(list(Path(directory).iterdir()))==130
+                    t.send('!');assert 'File operation: Success' in '\n'.join(t.screen.row(y) for y in range(actual_h));t.send('\x1b')
+                assert len(list(Path(directory).iterdir()))==130+(action in ('x','resize'))
             finally:t.close()
 print('PASS: search input/result geometry, unicode edit, focus flow, buttons/gaps, restore, resize; gated Cancel/Esc/Enter keeps 64 results, x/resize closes, background blocked')

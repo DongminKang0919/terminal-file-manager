@@ -63,7 +63,7 @@ typedef struct {
     bool preview_ready;
     char status[512]; /* Routine/transient guidance, separate from the retained result. */
     NoticeKind status_kind;
-    bool status_priority; /* Panel errors are visible without replacing the retained result. */
+    bool status_priority; /* New navigation/search issues can override a retained result display. */
     OperationNotice notice;
 } UiContext;
 static inline UiFilePanel *ui_panel(UiContext *ui) { return &ui->panels[ui->active]; }

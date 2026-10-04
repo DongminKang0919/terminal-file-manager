@@ -75,4 +75,7 @@ void refresh_operation_lists(UiContext *ui,const char *highlight) {
     ui->notice.refresh=load_dir(ui,highlight);
     ui->notice.refresh_attempted=true;
     refresh_peer_after_operation(ui);
+    /* Both refresh outcomes belong to this operation's retained notice. Show
+       its outcome plus refresh failure, rather than a transient load error. */
+    ui->status_priority=false;
 }

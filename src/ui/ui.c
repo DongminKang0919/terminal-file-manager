@@ -220,6 +220,9 @@ static void draw_screen(UiContext *ui, bool prepare) {
         draw_box(mid,2,w-mid,panel_h," Preview ",ui->focus==UI_FOCUS_PREVIEW);
         preview(ui,mid,2,w-mid,panel_h);
     }
+    bool refresh_issue=ui->notice.present &&
+        ((ui->notice.refresh_attempted && ui->notice.refresh.code!=RESULT_OK) ||
+         (ui->notice.peer_refresh_attempted && ui->notice.peer_refresh.code!=RESULT_OK));
     char summary[96];
     snprintf(summary,sizeof summary,"Shown: %zu | Hidden: %s Sel:%zu",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden ? "on" : "off",ui_panel(ui)->app.marks_len);
     if(w>=90 && ui_panel(ui)->app.marks_len)
@@ -232,14 +235,19 @@ static void draw_screen(UiContext *ui, bool prepare) {
        strlen(ui->status)+(ui->status_kind==NOTICE_INFO?6u:0u) > (size_t)(w-(int)strlen(summary)-4))
         snprintf(summary,sizeof summary,"S:%zu H:%d M:%zu",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden,ui_panel(ui)->app.marks_len);
     if(ui->mode==UI_LIST_LIST) snprintf(summary,sizeof summary,"%s* / %s  S:%zu H:%d M:%zu",ui->active?"Right":"Left",ui->active?"Left":"Right",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden,ui_panel(ui)->app.marks_len);
+    if(w<90 && (ui->status_priority || (refresh_issue && ui->notice.visible))) {
+        if(ui->mode==UI_LIST_LIST)
+            snprintf(summary,sizeof summary,"%s* S:%zu H:%d M:%zu",ui->active?"Right":"Left",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden,ui_panel(ui)->app.marks_len);
+        else snprintf(summary,sizeof summary,"S:%zu H:%d M:%zu",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden,ui_panel(ui)->app.marks_len);
+    }
     attron(COLOR_PAIR(UI_STATUS)); mvhline(h - 2, 0, ' ', w);
     int summary_width = (int)strlen(summary);
     draw_text(h - 2, 1, summary_width, summary);
     int x = summary_width + 3;
     char alert[600];
     if (ui->notice.present && ui->notice.visible && !ui->status_priority) {
-        snprintf(alert, sizeof alert, "[%s] ! detail%s%s", notice_label(ui->notice.kind),
-                 w >= 90 ? (((ui->notice.refresh_attempted && ui->notice.refresh.code != RESULT_OK) || (ui->notice.peer_refresh_attempted && ui->notice.peer_refresh.code != RESULT_OK)) ? ": refresh failed; " : ": ") : "", w >= 90 ? ui->notice.action : "");
+        snprintf(alert, sizeof alert, "[%s] ! %s%s%s", notice_label(ui->notice.kind),
+                 refresh_issue ? "refresh failed" : "detail", w>=90 ? ": " : "", w>=90 ? ui->notice.action : "");
     } else snprintf(alert, sizeof alert, "%s%s%s", ui->status[0] && ui->status_kind == NOTICE_INFO ? "Info" : "",
                     ui->status[0] && ui->status_kind == NOTICE_INFO ? ": " : "", ui->status);
     draw_text(h - 2, x, w - x - 1, alert);

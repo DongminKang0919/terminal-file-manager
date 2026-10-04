@@ -133,7 +133,7 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
     FileList old = {entries, picker_count}; file_list_free(&old); dialog_close(ui, win); return accepted;
 }
 
-static void show_transfer_paths(UiContext *ui, const char *source, const char *base, const char *target) {
+static void show_transfer_paths(UiContext *ui, const char *source, const char *base, const char *target, bool *resized) {
     WINDOW *win = dialog_open(ui, "Transfer paths", LINES - 2, 88);
     if (!win) return;
     char *name = core_path_name(source);
@@ -157,7 +157,8 @@ static void show_transfer_paths(UiContext *ui, const char *source, const char *b
         draw_window_text(win,h-3,2,w-4,hint);
         draw_window_text(win,h-2,2,w-4,"Up/Down PgUp/PgDn  Enter/Esc: back"); dialog_refresh(win);
         int key = mouse_key(win,input_key(win));
-        if (key == 27 || key == KEY_RESIZE || key == '\n' || key == KEY_ENTER) break;
+        if (key == KEY_RESIZE) { *resized=true; break; }
+        if (key == 27 || key == '\n' || key == KEY_ENTER) break;
         if (key == KEY_UP && top) top--;
         if (key == KEY_DOWN && top + rows < line) top++;
         if (key == KEY_PPAGE) top = top > rows ? top - rows : 0;
@@ -176,6 +177,9 @@ void transfer_entry(UiContext *ui, bool move_it) {
     if(ui_panel(ui)->app.marks_len) for(size_t i=0;i<ui_panel(ui)->app.files.len;i++)
         if(app_marked(&ui_panel(ui)->app,ui_panel(ui)->app.files.entries[i].name)) { initial=&ui_panel(ui)->app.files.entries[i]; break; }
 
+    if(!initial && ui->mode==UI_LIST_LIST) {
+        message(ui,"No transfer targets in active panel"); ui->status_priority=true; return;
+    }
     UiTransferContext context;
     if(!ui_transfer_context(ui,&context)) return;
     WINDOW *win = dialog_open(ui, move_it ? "Move" : "Copy", 13, 88);
@@ -292,7 +296,7 @@ void transfer_entry(UiContext *ui, bool move_it) {
             char *dir=NULL;
             Result path_result=core_resolve_directory(base,*folder?folder:".",&dir);
             char *full=dir?core_path_join(dir,name):NULL;
-            if(full) show_transfer_paths(ui,source,base,full);
+            if(full) show_transfer_paths(ui,source,base,full,&resized);
             else snprintf(warning,sizeof warning,"Destination: %.450s",path_result.code==RESULT_OK?"Out of memory":path_result.detail);
             free(dir); free(full);
         } else if (action==RUN) {

@@ -4,6 +4,7 @@ void message(UiContext *ui, const char *text) {
     ui->status_priority=false;
     ui->status_kind = NOTICE_INFO; snprintf(ui->status, sizeof ui->status, "%s", text); }
 static void show_failure(UiContext *ui, const char *action, Result r) {
+    ui->status_priority = true;
     ui->status_kind = r.code == RESULT_CANCELLED ? NOTICE_CANCELLED : NOTICE_ERROR;
     snprintf(ui->status, sizeof ui->status, "%s: %.450s", action, r.detail);
 }

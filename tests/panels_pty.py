@@ -20,7 +20,7 @@ for width,height in [(50,9),(80,24),(160,32)]:
         w,h=width,height
         def body(): return '\n'.join(t.screen.row(y) for y in range(h))
         def menu(index): t.send(F9+HOME+DOWN*index+'\n')
-        def active(side): assert f'{side}* /' in t.screen.row(h-2),body()
+        def active(side): assert f'{side}* ' in t.screen.row(h-2),body()
         def marked(n): assert f'M:{n}' in t.screen.row(h-2),body()
         def button(label):
             for y in range(h):
