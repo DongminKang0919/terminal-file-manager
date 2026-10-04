@@ -17,6 +17,8 @@ Result platform_directory_open(const char *path, PlatformDirectory **out);
    reports why; hard failures are returned normally. All outputs are initialized. */
 Result platform_directory_next(PlatformDirectory *dir, FileInfo *out, bool *end, Result *metadata_error);
 void platform_directory_close(PlatformDirectory *dir);
+/* Stops at the first entry other than dot entries; includes hidden names. */
+Result platform_directory_empty(const char *path, bool *empty);
 Result platform_create(const char *path, bool directory);
 /* Poll before traversal/mutation and between read/write chunks. Cleanup never
    invokes callbacks; false preserves prior changes and returns CANCELLED. */

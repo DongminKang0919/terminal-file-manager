@@ -60,7 +60,7 @@ typedef struct {
     Result preview_result;
     size_t preview_start, preview_limit;
     uint64_t preview_checked;
-    bool preview_ready;
+    bool preview_ready, preview_directory_empty;
     char status[512]; /* Routine/transient guidance, separate from the retained result. */
     NoticeKind status_kind;
     bool status_priority; /* New navigation/search issues can override a retained result display. */

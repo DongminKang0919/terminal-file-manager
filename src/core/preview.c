@@ -2,6 +2,9 @@
 #include "../platform/platform.h"
 #include <stdlib.h>
 #include <string.h>
+Result core_preview_directory_empty(const char *path, bool *empty) {
+    return platform_directory_empty(path, empty);
+}
 void preview_text_free(PreviewText *text) {
     for (size_t i = 0; i < text->len; i++) free(text->lines[i]);
     free(text->lines); *text = (PreviewText){0};
@@ -12,6 +15,7 @@ Result core_preview_text(const char *path, size_t start, size_t limit, PreviewTe
     if (r.code != RESULT_OK) return r;
     unsigned char sample[4096]; size_t sampled = 0;
     r = platform_reader_peek(reader, sample, sizeof sample, &sampled);
+    out->empty = r.code == RESULT_OK && sampled == 0;
     out->binary = r.code == RESULT_OK && memchr(sample, 0, sampled) != NULL;
     if (r.code != RESULT_OK || out->binary) { platform_reader_close(reader); return r; }
     if (limit > SIZE_MAX / sizeof *out->lines) { platform_reader_close(reader); return result_make(RESULT_NO_MEMORY, "Preview page too large"); }
@@ -44,13 +48,13 @@ struct PreviewSession {
     PlatformReader *reader;
     char *path, *lines[CACHE_ROWS];
     size_t first, next;
-    bool eof, binary;
+    bool eof, binary, empty;
     Result error;
 };
 static void session_clear(PreviewSession *s) {
     platform_reader_close(s->reader); s->reader = NULL;
     for (size_t i = 0; i < CACHE_ROWS; i++) { free(s->lines[i]); s->lines[i] = NULL; }
-    s->first = s->next = 0; s->eof = s->binary = false;
+    s->first = s->next = 0; s->eof = s->binary = s->empty = false;
 }
 static Result session_start(PreviewSession *s) {
     session_clear(s);
@@ -58,6 +62,7 @@ static Result session_start(PreviewSession *s) {
     if (s->error.code == RESULT_OK) {
         unsigned char sample[4096]; size_t n = 0;
         s->error = platform_reader_peek(s->reader, sample, sizeof sample, &n);
+        s->empty = s->error.code == RESULT_OK && n == 0;
         s->binary = s->error.code == RESULT_OK && memchr(sample, 0, n) != NULL;
     }
     if (s->error.code != RESULT_OK) session_clear(s);
@@ -90,7 +95,7 @@ Result preview_session_page(PreviewSession *s, size_t start, size_t limit, Previ
     if (limit > PREVIEW_PAGE_MAX || start > SIZE_MAX - limit - 1)
         return result_make(RESULT_INVALID_NAME, "Preview page exceeds bounded capacity");
     if (start < s->first && session_start(s).code != RESULT_OK) return s->error;
-    out->binary = s->binary;
+    out->binary = s->binary; out->empty = s->empty;
     if (s->binary) return result_make(RESULT_OK, NULL);
     size_t target = start + limit + 1;
     while (!s->eof && s->next < target) {

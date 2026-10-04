@@ -4,7 +4,7 @@
 void preview_reset(UiContext *ui) {
     preview_session_close(ui->preview_session); ui->preview_session = NULL;
     preview_text_free(&ui->preview_page); free(ui->preview_link); ui->preview_link = NULL;
-    ui->preview_ready = false; ui->preview_result = result_make(RESULT_OK, NULL);
+    ui->preview_ready = false; ui->preview_directory_empty = false; ui->preview_result = result_make(RESULT_OK, NULL);
     ui->preview_offset = 0; ui->preview_more = false; free(ui->preview_path); ui->preview_path = NULL;
 }
 void preview_scroll(UiContext *ui, bool down) {
@@ -13,8 +13,9 @@ void preview_scroll(UiContext *ui, bool down) {
 }
 
 /* Preparation owns all I/O; rendering below only consumes the prepared page.
-   No idle timer: metadata is checked on viewport changes or the next redraw
-   after one second. Explicit refresh resets even a latched error. */
+   No idle timer: file metadata or directory emptiness is checked on viewport
+   changes or the next redraw after one second. Explicit refresh resets even
+   a latched error. Directory checks stop at the first actual entry. */
 void preview_prepare(UiContext *ui, int rows) {
     if (!ui_preview_enabled(ui) || ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) { preview_reset(ui); return; }
     const Item *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
@@ -26,6 +27,20 @@ void preview_prepare(UiContext *ui, int rows) {
             ui->preview_result = preview_session_open(it->path, &ui->preview_session);
         if (it->valid && it->kind == FILE_LINK)
             ui->preview_result = core_link_target(it->path, &ui->preview_link);
+    }
+    if (it->valid && it->kind == FILE_DIRECTORY) {
+        uint64_t now = core_monotonic_ms();
+        bool viewport = !ui->preview_ready || ui->preview_limit != (size_t)(rows > 0 ? rows : 0) ||
+            ui->preview_start != ui->preview_offset;
+        if (ui->preview_result.code == RESULT_OK &&
+            (viewport || now - ui->preview_checked >= 1000)) {
+            ui->preview_result = core_preview_directory_empty(it->path, &ui->preview_directory_empty);
+            ui->preview_checked = now;
+            ui->preview_ready = true;
+            ui->preview_limit = (size_t)(rows > 0 ? rows : 0);
+            ui->preview_start = ui->preview_offset;
+        }
+        return;
     }
     if (rows < 1 || it->kind != FILE_REGULAR || !it->valid) return;
     if (rows > PREVIEW_PAGE_MAX - 1) rows = PREVIEW_PAGE_MAX - 1;
@@ -48,7 +63,8 @@ void preview_prepare(UiContext *ui, int rows) {
         preview_text_free(&ui->preview_page);
         ui->preview_result = preview_session_page(ui->preview_session, start, limit, &ui->preview_page);
         if (ui->preview_result.code == RESULT_OK && !ui->preview_page.more && !ui->preview_page.binary) {
-            size_t total = content + ui->preview_page.skipped + ui->preview_page.len;
+            size_t total = content + ui->preview_page.skipped + ui->preview_page.len +
+                (ui->preview_page.empty ? 1 : 0);
             size_t max = total > (size_t)rows ? total - (size_t)rows : 0;
             if (ui->preview_offset > max) {
                 ui->preview_offset = max; start = max > content ? max - content : 0;
@@ -59,7 +75,8 @@ void preview_prepare(UiContext *ui, int rows) {
         }
         ui->preview_start = start; ui->preview_limit = limit; ui->preview_ready = true;
     }
-    if (ui->preview_result.code != RESULT_OK) {
+    if (ui->preview_result.code != RESULT_OK &&
+        (ui->preview_session || ui->preview_page.lines)) {
         preview_session_close(ui->preview_session); ui->preview_session = NULL;
         preview_text_free(&ui->preview_page); ui->preview_offset = 0;
     }
@@ -79,12 +96,7 @@ static void preview_content(UiContext *ui, View *v, const Item *it) {
     attron(A_BOLD);
     preview_line(ui, v, it->name, UI_BASE);
     attroff(A_BOLD);
-    if (ui->preview_result.code != RESULT_OK) {
-        preview_line(ui, v, "Error: preview unavailable", UI_SPECIAL);
-        preview_line(ui, v, ui->preview_result.detail, UI_SPECIAL);
-        preview_line(ui, v, "Refresh to retry", UI_MUTED); return;
-    }
-    if (!it->valid) { preview_line(ui, v, "Error: cannot read metadata", UI_SPECIAL); return; }
+    if (!it->valid) { preview_line(ui, v, "Cannot verify contents: cannot read metadata", UI_SPECIAL); return; }
     char size[32]; ui_size(it, size, sizeof size);
     const char *kind = it->kind == FILE_DIRECTORY ? "Directory" : ui_kind(it);
     if (it->kind == FILE_DIRECTORY) snprintf(text, sizeof text, "%s", kind);
@@ -99,13 +111,23 @@ static void preview_content(UiContext *ui, View *v, const Item *it) {
     if (tm) strftime(date, sizeof date, v->width >= 26 ? "%Y-%m-%d %H:%M" : "%Y-%m-%d", tm);
     snprintf(text, sizeof text, "%s %s", v->width >= 20 ? "Modified:" : "Mod:", date);
     preview_line(ui, v, text, UI_MUTED);
+    if (ui->preview_result.code != RESULT_OK) {
+        preview_line(ui, v, "Cannot verify contents", UI_SPECIAL);
+        preview_line(ui, v, ui->preview_result.detail, UI_SPECIAL);
+        preview_line(ui, v, "Refresh to retry", UI_MUTED); return;
+    }
     if ((it->kind == FILE_LINK)) {
         if (ui->preview_link) { preview_line(ui, v, "Link target:", UI_DIR); preview_line(ui, v, ui->preview_link, UI_BASE); }
         return;
     }
-    if ((it->kind == FILE_DIRECTORY)) { preview_line(ui, v, "Double-click or use Open to enter", UI_MUTED); return; }
+    if (it->kind == FILE_DIRECTORY) {
+        if (ui->preview_ready && ui->preview_directory_empty)
+            preview_line(ui, v, "Empty directory", UI_MUTED);
+        preview_line(ui, v, "Double-click or use Open to enter", UI_MUTED); return;
+    }
     if (!(it->kind == FILE_REGULAR)) return;
     const PreviewText *page = &ui->preview_page;
+    if (page->empty) { preview_line(ui, v, "Empty file", UI_MUTED); return; }
     if (page->binary) { preview_line(ui, v, "Binary file - no text preview", UI_MUTED); return; }
     v->line += page->skipped;
     for (size_t i = 0; i < page->len; i++) preview_line(ui, v, page->lines[i], UI_BASE);

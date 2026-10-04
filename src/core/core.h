@@ -105,8 +105,11 @@ void search_result_free(SearchResult *result);
 typedef struct {
     char **lines;
     size_t len, skipped;
-    bool binary, more;
+    bool binary, more, empty;
 } PreviewText;
+/* Includes hidden names, ignores dot entries, and stops at the first child.
+   No child metadata, recursive traversal or total count is needed. */
+Result core_preview_directory_empty(const char *path, bool *empty);
 /* Returns at most limit content chunks; chunks match the existing preview's
    4175-byte line limit. Memory usage is bounded by the requested page. */
 Result core_preview_text(const char *path, size_t start, size_t limit, PreviewText *out);

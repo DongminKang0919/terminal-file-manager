@@ -92,6 +92,25 @@ Result platform_info(const char *path, FileInfo *out) {
     out->directory_target = out->kind == FILE_DIRECTORY || (out->kind == FILE_LINK && stat(path, &st) == 0 && S_ISDIR(st.st_mode));
     return result_make(RESULT_OK, NULL);
 }
+Result platform_directory_empty(const char *path, bool *empty) {
+    *empty = false;
+    DIR *handle = opendir(path);
+    if (!handle) return failure();
+    Result r = result_make(RESULT_OK, NULL);
+    for (;;) {
+        errno = 0;
+        struct dirent *entry = readdir(handle);
+        if (!entry) {
+            if (errno) r = failure();
+            else *empty = true;
+            break;
+        }
+        if (strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) break;
+    }
+    if (closedir(handle) < 0 && r.code == RESULT_OK) r = failure();
+    if (r.code != RESULT_OK) *empty = false;
+    return r;
+}
 struct PlatformDirectory { DIR *handle; char *path; };
 Result platform_directory_open(const char *path, PlatformDirectory **out) {
     *out = NULL; DIR *handle = opendir(path); if (!handle) return failure();

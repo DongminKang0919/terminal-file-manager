@@ -83,7 +83,7 @@ for w,h in [(50,9),(80,24),(160,32)]:
             t.send('\x1b'); focus(True)
             # Return sort to name before testing each non-text state.
             t.send('\x1b[18~'+DOWN*3+'\n\n\x1b\x1b')
-            for index,expected in [(3,'Binary file'),(4,'Link target:'),(6,'Error:')]:
+            for index,expected in [(3,'Binary file'),(4,'Link target:'),(6,'Cannot verify')]:
                 if index==6 and os.geteuid()==0: continue
                 t.send(HOME+DOWN*index+'\n'); focus(True)
                 collected=[]

@@ -4,9 +4,48 @@
 #include <assert.h>
 #include <unistd.h>
 #include <utime.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <errno.h>
 static size_t reads, opens, live, bytes;
 static bool fail_read, fail_refresh, forbid_list;
 static size_t checks;
+static size_t directory_probes;
+static ResultCode directory_failure;
+static bool probing_directory, fail_directory_read;
+static size_t directory_reads;
+struct dirent *__real_readdir(DIR *);
+struct dirent *__wrap_readdir(DIR *dir) {
+    if (probing_directory) {
+        directory_reads++;
+        if (fail_directory_read) { errno=EIO; return NULL; }
+    }
+    return __real_readdir(dir);
+}
+Result __real_platform_directory_empty(const char *, bool *);
+Result __wrap_platform_directory_empty(const char *path, bool *empty) {
+    assert(!forbid_list); directory_probes++;
+    if (directory_failure) {
+        *empty = false;
+        return result_make(directory_failure, directory_failure == RESULT_ACCESS ?
+            "Permission denied" : "Injected directory read failure");
+    }
+    probing_directory=true;
+    Result r=__real_platform_directory_empty(path, empty);
+    probing_directory=false;
+    return r;
+}
+static bool preview_has(const char *text) {
+    char line[100];
+    for (int y = 3; y < 20; y++) {
+        mvinnstr(y, 52, line, 46);
+        if (strstr(line, text)) return true;
+    }
+    return false;
+}
+static void render_preview(UiContext *ui) {
+    erase(); preview(ui, 50, 2, 50, 20);
+}
 Result __real_app_refresh(AppState *);
 Result __wrap_app_refresh(AppState *app) {
     return fail_refresh ? result_make(RESULT_ACCESS,"Injected refresh failure") : __real_app_refresh(app);
@@ -73,7 +112,7 @@ int main(void) {
     saved=opens; assert(preview_session_page(s,0,20,&p).code!=RESULT_OK && opens==saved);
     preview_session_close(s);
     write_file(path,0); assert(preview_session_open(path,&s).code==RESULT_OK);
-    assert(preview_session_page(s,0,20,&p).code==RESULT_OK && !p.len && !p.more); preview_text_free(&p); preview_session_close(s);
+    assert(preview_session_page(s,0,20,&p).code==RESULT_OK && !p.len && !p.more && p.empty); preview_text_free(&p); preview_session_close(s);
     FILE *f=fopen(path,"w"); assert(f); for(int i=0;i<10000;i++) fputc('x',f); fputc('\n',f); fclose(f);
     assert(preview_session_open(path,&s).code==RESULT_OK);
     assert(preview_session_page(s,0,20,&p).code==RESULT_OK && p.len==3 && strlen(p.lines[0])==4175); preview_text_free(&p); preview_session_close(s);
@@ -127,6 +166,9 @@ int main(void) {
     assert(!unlink(path)); ui.preview_checked=0; preview_prepare(&ui,18);
     assert(ui.preview_result.code!=RESULT_OK && live==0 && ui.preview_offset==0);
     saved_opens=opens; preview_prepare(&ui,18); assert(opens==saved_opens);
+    ui.preview_offset=3; preview_prepare(&ui,2);
+    assert(ui.preview_offset==3); /* Latched errors remain scrollable on small screens. */
+    ui.preview_offset=0;
     write_file(path,1000); preview_reset(&ui); preview_prepare(&ui,17);
     assert(ui.preview_result.code==RESULT_OK && live==1);
     for(int i=0;i<100;i++) { preview_reset(&ui); preview_prepare(&ui,17); assert(live==1); }
@@ -239,6 +281,65 @@ int main(void) {
     pair_content(UI_HEADER,&fg,&bg); assert(bg!=base_bg && fg!=bg);
     pair_content(UI_PATH,&fg,&bg); assert(bg==base_bg);
     pair_content(UI_SELECTED,&fg,&bg); assert(bg!=base_bg && fg!=bg);
+    /* Empty state is prepared once, independent of hidden display filtering.
+       Rendering consumes cached results and errors remain latched until refresh. */
+    forbid_list=false;
+    char folder[256], hidden_path[300];
+    snprintf(folder,sizeof folder,"%s/folder",dir); assert(!mkdir(folder,0700));
+    snprintf(hidden_path,sizeof hidden_path,"%s/.hidden",folder);
+    assert(load_dir(&ui,"folder").code==RESULT_OK);
+    ui.mode=UI_LIST_PREVIEW;
+    preview_prepare(&ui,17); render_preview(&ui);
+    assert(ui.preview_directory_empty && preview_has("Empty directory"));
+    assert(preview_has("Directory") && preview_has("Modified:"));
+    size_t probes=directory_probes;
+    for(int i=0;i<100;i++) { preview_prepare(&ui,17); render_preview(&ui); }
+    assert(directory_probes==probes);
+    write_file(hidden_path,0);
+    /* Stop at the first real entry, without counting the remaining entries. */
+    size_t directory_reads_before=directory_reads;
+    ui.preview_checked=0; preview_prepare(&ui,17); render_preview(&ui);
+    assert(!ui.preview_directory_empty && !preview_has("Empty directory"));
+    assert(directory_reads-directory_reads_before<=3);
+    for(int i=0;i<2;i++) {
+        ui_panel(&ui)->app.show_hidden=i;
+        preview_reset(&ui); preview_prepare(&ui,17); render_preview(&ui);
+        assert(!ui.preview_directory_empty && !preview_has("Empty directory"));
+    }
+    assert(!unlink(hidden_path));
+    ui.preview_checked=0; preview_prepare(&ui,17);
+    assert(ui.preview_directory_empty);
+    /* chmod is real permission coverage when not running with root privileges. */
+    assert(!chmod(folder,0000));
+    if (geteuid()!=0) {
+        preview_reset(&ui); preview_prepare(&ui,17); render_preview(&ui);
+        assert(ui.preview_result.code==RESULT_ACCESS && !preview_has("Empty directory"));
+        assert(preview_has("Cannot verify contents") && preview_has("Permission denied"));
+    }
+    assert(!chmod(folder,0700));
+    for(int i=0;i<2;i++) {
+        directory_failure=i ? RESULT_IO : RESULT_ACCESS;
+        preview_reset(&ui); preview_prepare(&ui,17); render_preview(&ui);
+        assert(ui.preview_result.code==directory_failure && !ui.preview_directory_empty);
+        assert(preview_has("Cannot verify contents") && !preview_has("Empty directory"));
+        assert(preview_has(i ? "Injected directory read failure" : "Permission denied"));
+        assert(preview_has("Directory") && preview_has("Modified:"));
+        probes=directory_probes;
+        ui.preview_checked=0; preview_prepare(&ui,18); render_preview(&ui);
+        assert(directory_probes==probes);
+    }
+    directory_failure=RESULT_OK;
+    fail_directory_read=true; preview_reset(&ui); preview_prepare(&ui,17); render_preview(&ui);
+    assert(ui.preview_result.code==RESULT_IO && !ui.preview_directory_empty);
+    assert(preview_has("Cannot verify contents") && !preview_has("Empty directory"));
+    fail_directory_read=false; preview_reset(&ui); preview_prepare(&ui,17);
+    assert(ui.preview_result.code==RESULT_OK && ui.preview_directory_empty);
+    assert(!rmdir(folder));
+    write_file(path,0); assert(load_dir(&ui,"file").code==RESULT_OK);
+    preview_prepare(&ui,17); render_preview(&ui);
+    assert(ui.preview_page.empty && preview_has("Empty file") && preview_has("Modified:"));
+    write_file(path,1); ui.preview_checked=0; preview_prepare(&ui,17); render_preview(&ui);
+    assert(!ui.preview_page.empty && !preview_has("Empty file"));
     ui_free(&ui); assert(live==0);
     endwin(); delscreen(screen); fclose(out); fclose(in);
     out=tmpfile(); in=tmpfile(); assert(out && in);
@@ -252,5 +353,6 @@ int main(void) {
     for(size_t i=0;i<40;i++) { assert(!unlink(extras[i])); free(extras[i]); }
     assert(!unlink(path)); assert(!rmdir(dir));
     notice_clear(&ui);
+    puts("PASS: empty file/directory, hidden-only directory, permission and directory read failures, cached directory probes, metadata retained");
     puts("PASS: 1000 sequential pages: 1 open, 1020 chunk reads, 12240 bytes; 100 unchanged redraws: 0 reads/opens; backward cache, EOF, changes, cleanup; sort preserves reader/page/selection without content or list I/O; refresh resets safely");
 }

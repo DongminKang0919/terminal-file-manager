@@ -50,7 +50,9 @@ for width, height in [(50,9),(80,24),(100,24),(160,32)]:
             if height>=12: assert 'Link target:' in t.screen.row(6)[split:]
             t.send('\x1bOB')
             if os.geteuid()!=0 and height>=12:
-                assert 'Error:' in t.screen.row(4)[split:]
+                assert 'File' in t.screen.row(4)[split:]
+                assert 'Modified:' in t.screen.row(5)[split:]
+                assert 'Cannot verify' in t.screen.row(6)[split:]
         finally: t.close(); (root/'f-error').chmod(0o600)
     with tempfile.TemporaryDirectory() as directory:
         t=Terminal(directory,width,height)
