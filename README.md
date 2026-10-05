@@ -10,6 +10,10 @@ C11과 ncursesw로 만든 **Linux/WSL용 터미널 파일 관리자**입니다. 
 
 ![tfile 이미지 미리보기: 왼쪽에서 선택한 PNG 이미지를 오른쪽 패널에 표시](docs/images/tfile_image_preview.png)
 
+PDF 파일도 오른쪽 미리보기 패널에서 **첫 페이지**를 이미지로 확인할 수 있습니다. 아래는 PDF 문서를 미리보는 실제 실행 화면입니다. PDF 이미지 미리보기에는 Sixel을 지원하는 터미널과 ImageMagick, Poppler의 `pdftoppm`이 필요합니다. 이미지 표시가 불가능한 경우에는 `pdftotext`를 사용할 수 있으면 첫 페이지 텍스트로 전환합니다.
+
+![tfile PDF 미리보기: 왼쪽에서 선택한 PDF 문서의 첫 페이지를 오른쪽 패널에 표시](docs/images/tfile_pdf_preview.png)
+
 ## 주요 기능
 
 - **탐색:** 디렉터리 열기, 상위 디렉터리 이동, 이전·다음 방문 위치와 커서·스크롤 복원.
