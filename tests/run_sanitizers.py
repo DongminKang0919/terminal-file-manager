@@ -35,7 +35,7 @@ targets={
 }
 for name in ['startup_ui_test','search_progress_ui_test','ownership_test']:
  if (root/'tests'/f'{name}.c').exists():
-  wraps={'startup_ui_test':['platform_directory_open','qsort','app_init','input_key','initscr'],
+  wraps={'startup_ui_test':['platform_directory_open','qsort','app_init','input_key','initscr','terminal_session_check'],
          'search_progress_ui_test':['platform_monotonic_ms','core_monotonic_ms','input_key','input_wide','wrefresh'],
          'ownership_test':['malloc','calloc','realloc','free']}[name]
   targets[name]=(wraps,ui if name!='ownership_test' else core)

@@ -3,6 +3,8 @@
 int main(int argc, char **argv) {
     setlocale(LC_ALL, "");
     if (argc > 2) { fprintf(stderr, "Usage: %s [directory]\n", argv[0]); return 1; }
+    Result terminal = terminal_session_check();
+    if (terminal.code != RESULT_OK) { fprintf(stderr,"%s\n",terminal.detail); return 1; }
     UiContext context = {0}; UiContext *ui = &context;
     Result initialized = ui_init(ui, argc == 2 ? argv[1] : NULL);
     if (initialized.code != RESULT_OK) { fprintf(stderr, "%s\n", initialized.detail); ui_free(ui); return 1; }

@@ -50,6 +50,7 @@ bool platform_media_cleanup_pending(void);
 void platform_media_install_signals(void);
 bool platform_media_shutdown_requested(void);
 Result platform_terminal_query(void);
+Result platform_terminal_session_check(void);
 Result platform_terminal_query_cells(void);
 TerminalTools platform_terminal_tools(void);
 bool platform_terminal_pixels(unsigned *width, unsigned *height);

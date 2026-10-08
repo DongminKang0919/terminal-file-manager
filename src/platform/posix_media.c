@@ -101,6 +101,14 @@ void platform_media_shutdown(void) {
     while(waitpid(retiring->pid,NULL,0)<0 && errno==EINTR) {}
     dispose(retiring); retiring=NULL;
 }
+Result platform_terminal_session_check(void) {
+    if (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO))
+        return result_make(RESULT_UNSUPPORTED,"tfile requires an interactive terminal for input and output; run ./tfile [directory] without redirection.");
+    const char *term = getenv("TERM");
+    if (!term || !*term || !strcmp(term,"dumb"))
+        return result_make(RESULT_UNSUPPORTED,"Terminal type unavailable; run tfile in a terminal with a valid TERM and installed terminfo.");
+    return result_make(RESULT_OK,NULL);
+}
 bool platform_terminal_pixels(unsigned *width,unsigned *height) {
     struct winsize s={0}; *width=*height=0;
     if(!isatty(STDIN_FILENO)||!isatty(STDOUT_FILENO)) return false;

@@ -72,7 +72,7 @@ tests/progress_ui_test: tests/progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOUR
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=core_monotonic_ms,--wrap=input_wide,--wrap=wrefresh
 
 tests/startup_ui_test: tests/startup_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
-	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/startup_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_directory_open,--wrap=qsort,--wrap=app_init,--wrap=input_key,--wrap=initscr
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/startup_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_directory_open,--wrap=qsort,--wrap=app_init,--wrap=input_key,--wrap=initscr,--wrap=terminal_session_check
 
 tests/search_progress_ui_test: tests/search_progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/search_progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_monotonic_ms,--wrap=core_monotonic_ms,--wrap=input_key,--wrap=input_wide,--wrap=wrefresh
@@ -97,6 +97,7 @@ check-isolated: tests/picker_test tests/media_test tests/panels_ui_test tests/tf
 	python3 tests/run_regressions.py controller
 	python3 tests/progress_pty.py
 	python3 tests/smoke.py
+	python3 tests/first_run.py
 	python3 tests/display_pty.py
 	python3 tests/sort_pty.py
 	python3 tests/layout_pty.py

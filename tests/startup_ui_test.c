@@ -18,6 +18,7 @@ Result __wrap_app_init(AppState *app,const char *path) {
     initialized_directories=directories; initialized_sorts=sorts; return r;
 }
 WINDOW *__wrap_initscr(void) { return stdscr; }
+Result __wrap_terminal_session_check(void) { return result_make(RESULT_OK,NULL); }
 int __wrap_input_key(WINDOW *win) {
     (void)win; inputs++;
     assert(directories==initialized_directories && sorts==initialized_sorts);
