@@ -85,7 +85,16 @@ void enter_item(UiContext *ui) {
     if (ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) return;
     FileInfo *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
     if (it->directory_target) navigate(ui, it->path, NULL);
-    else { ui_set_mode(ui,UI_LIST_PREVIEW); ui->focus = UI_FOCUS_PREVIEW; }
+    else {
+        ui_set_mode(ui,UI_LIST_PREVIEW);
+        if (stdscr) {
+            int h, w; getmaxyx(stdscr,h,w);
+            UiLayout layout = ui_layout(w,h,true);
+            preview_prepare(ui,h >= 9 && w >= 50 ? h - 7 : 0);
+            preview_update_actions(ui,w-layout.list_width,layout.panel_height);
+        }
+        ui->focus = preview_can_focus(ui) ? UI_FOCUS_PREVIEW : UI_FOCUS_FILES;
+    }
 }
 /* Fixed-size buffers belong only to the terminal forms, never to core paths. */
 int join(char *out, size_t size, const char *directory, const char *name) {
@@ -209,10 +218,10 @@ bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *
 
 /* Panel-only keys never perform list navigation while preview has focus. */
 bool panel_key(UiContext *ui, int key, int height) {
-    if (!ui_preview_enabled(ui)) ui->focus = UI_FOCUS_FILES;
+    if (!preview_can_focus(ui)) ui->focus = UI_FOCUS_FILES;
     if (key == '\t' || key == KEY_BTAB) {
         if(ui->mode==UI_LIST_LIST) { ui_activate_panel(ui,ui->active^1u); return true; }
-        if (ui_preview_enabled(ui)) ui->focus = ui->focus == UI_FOCUS_FILES ? UI_FOCUS_PREVIEW : UI_FOCUS_FILES;
+        if (preview_can_focus(ui)) ui->focus = ui->focus == UI_FOCUS_FILES ? UI_FOCUS_PREVIEW : UI_FOCUS_FILES;
         return true;
     }
     if (ui->focus != UI_FOCUS_PREVIEW) return false;

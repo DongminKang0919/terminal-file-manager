@@ -62,7 +62,7 @@ typedef struct {
     unsigned modal_depth;
     UiFocus focus;
     size_t preview_offset;
-    bool preview_more;
+    bool preview_more, preview_scrollable;
     char *preview_path, *preview_link;
     PreviewSession *preview_session;
     PreviewText preview_page;
@@ -192,6 +192,10 @@ void media_prepare(UiContext *ui, int rows, bool changed);
 bool media_pending(const UiContext *ui);
 void preview_prepare(UiContext *ui, int rows);
 void preview_reset(UiContext *ui);
+/* Existing preview actions currently consist of scrolling. Measure the same
+   content layout used for drawing; never infer capability from file type. */
+bool preview_can_focus(const UiContext *ui);
+void preview_update_actions(UiContext *ui, int width, int height);
 void preview_scroll(UiContext *ui, bool down);
 void preview(UiContext *ui, int x, int y, int w, int h);
 void search_items(UiContext *ui);

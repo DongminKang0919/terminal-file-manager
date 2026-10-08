@@ -25,7 +25,17 @@ Neutral information uses the existing cyan information color; setup warnings
 use yellow and real failures use the existing red error color. Hidden-only
 directories continue to be nonempty; directory read errors continue to be
 failures. The existing core/platform state and conversion policies are retained.
-Only viewport geometry changes to accommodate the separated header.
+Preview focus is available only when the current body can scroll. Tab, clicks,
+the active border and footer share `preview_can_focus`; static images have no
+implemented zoom or page actions and therefore do not take focus. Long wrapped
+status details scroll from the top; short messages retain the inset layout.
+Unavailable previews consume mouse wheel events without scrolling the file list.
+
+When content or viewport changes remove scrolling, focus returns to the list
+without altering its selection, marks or viewport. Completing preparation never
+requests focus. Enter may focus an already actionable preview; pending conversion
+stays in Files until the user explicitly switches. Dual-list Tab and modal input
+remain independent.
 
 ## Verification
 

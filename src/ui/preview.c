@@ -2,13 +2,18 @@
 
 
 void preview_reset(UiContext *ui) {
+    ui->preview_scrollable = false;
     media_reset(ui);
     preview_session_close(ui->preview_session); ui->preview_session = NULL;
     preview_text_free(&ui->preview_page); free(ui->preview_link); ui->preview_link = NULL;
     ui->preview_ready = false; ui->preview_directory_empty = false; ui->preview_result = result_make(RESULT_OK, NULL);
     ui->preview_offset = 0; ui->preview_more = false; free(ui->preview_path); ui->preview_path = NULL;
 }
+bool preview_can_focus(const UiContext *ui) {
+    return ui_preview_enabled(ui) && ui->preview_scrollable;
+}
 void preview_scroll(UiContext *ui, bool down) {
+    if (!preview_can_focus(ui)) return;
     if (down) { if (ui->preview_more) ui->preview_offset += (size_t)ui->wheel_step; }
     else ui->preview_offset = ui->preview_offset > (size_t)ui->wheel_step ? ui->preview_offset - ui->wheel_step : 0;
 }
@@ -93,9 +98,9 @@ void preview_prepare(UiContext *ui, int rows) {
     }
 }
 
-typedef struct { int x, y, width, rows; size_t line; } View;
+typedef struct { int x, y, width, rows; size_t line; bool measure; } View;
 static void preview_line(UiContext *ui, View *view, const char *text, int color) {
-    if (view->line >= ui->preview_offset && view->line - ui->preview_offset < (size_t)view->rows) {
+    if (!view->measure && view->line >= ui->preview_offset && view->line - ui->preview_offset < (size_t)view->rows) {
         attron(COLOR_PAIR(color));
         draw_text(view->y + (int)(view->line - ui->preview_offset), view->x, view->width, text);
         attroff(COLOR_PAIR(color));
@@ -110,9 +115,9 @@ static bool pdf_has_text(const char *data, size_t len) {
     return false;
 }
 /* Wrap by terminal cells, never splitting a UTF-8 character. */
-static void status_wrap(View *v, int *row, const char *text, int color, bool bold) {
+static void status_wrap(UiContext *ui, View *v, int *row, const char *text, int color, bool bold) {
     size_t at = 0;
-    while (text && text[at] && *row < v->rows) {
+    while (text && text[at]) {
         int cells = v->width < UI_INPUT_CAP / 4 ? v->width : UI_INPUT_CAP / 4;
         UiTextSpan span = ui_text_span(text, at, cells);
         if (span.end == at) break;
@@ -128,25 +133,39 @@ static void status_wrap(View *v, int *row, const char *text, int color, bool bol
         size_t len = end - at;
         if (len >= sizeof line) len = sizeof line - 1;
         memcpy(line, text + at, len); line[len] = 0;
-        attron(COLOR_PAIR(color) | (bold ? A_BOLD : 0));
-        draw_text(v->y + (*row)++, v->x, v->width, line);
-        attroff(COLOR_PAIR(color) | (bold ? A_BOLD : 0));
+        v->line = (size_t)(*row)++;
+        if (!v->measure && bold) attron(A_BOLD);
+        preview_line(ui, v, line, color);
+        if (!v->measure && bold) attroff(A_BOLD);
         at = end; while (text[at] == ' ' || text[at] == '\n') at++;
     }
 }
 static void preview_status(UiContext *ui, View *v, const char *title,
                            const char *reason, const char *help, int color) {
-    ui->preview_more = false;
     View block = *v;
     int pad = v->width >= 36 ? 2 : 0;
     block.x += pad; block.width -= pad * 2;
-    int row = v->rows >= 9 ? v->rows / 3 : 0;
-    status_wrap(&block, &row, title, color, true);
-    if (v->rows >= 6 && row + 2 < v->rows) row++;
-    status_wrap(&block, &row, reason, UI_BASE, false);
-    if (help && v->rows >= 8 && v->width >= 28 && row + 2 < v->rows) {
-        row++; status_wrap(&block, &row, help, UI_BASE, false);
+    /* Measure the entire message first; only short messages are centered. */
+    block.measure = true;
+    int row = 0;
+    status_wrap(ui, &block, &row, title, color, true);
+    status_wrap(ui, &block, &row, reason, UI_BASE, false);
+    if (help && v->rows >= 8 && v->width >= 28)
+        status_wrap(ui, &block, &row, help, UI_BASE, false);
+    bool long_message = row > v->rows && !strcmp(title,"[!] Preview failed");
+    block.measure = v->measure;
+    int total = row;
+    row = !long_message && v->rows >= 9 ? v->rows / 3 : 0;
+    if (!long_message && row + total > v->rows)
+        row = total < v->rows ? v->rows - total : 0;
+    status_wrap(ui, &block, &row, title, color, true);
+    if (!long_message && v->rows >= 6 && row + 2 < v->rows) row++;
+    status_wrap(ui, &block, &row, reason, UI_BASE, false);
+    if (help && v->rows >= 8 && v->width >= 28) {
+        if (!long_message && row + 2 < v->rows) row++;
+        status_wrap(ui, &block, &row, help, UI_BASE, false);
     }
+    v->line = long_message ? (size_t)row : 0;
 }
 static void preview_header(UiContext *ui, View *v, const Item *it) {
     char text[UI_INPUT_CAP + 80];
@@ -238,7 +257,26 @@ static void preview_content(UiContext *ui, View *v, const Item *it) {
     if (page->more) v->line++;
 
 }
+void preview_update_actions(UiContext *ui, int w, int h) {
+    ui->preview_scrollable = false;
+    ui->preview_more = false;
+    int top = h >= 10 ? 1 + PREVIEW_METADATA_ROWS : h >= 7 ? 5 : 3;
+    int pad = w >= 32 ? 2 : 1;
+    View v = { .width = w - pad * 2, .rows = h - (h >= 10 ? 2 : 1) - top, .measure = true };
+    if (ui_preview_enabled(ui) && w >= 4 && v.rows > 0 &&
+        ui_panel(ui)->selected < ui_panel(ui)->app.files.len) {
+        if (v.rows > PREVIEW_PAGE_MAX - 1) v.rows = PREVIEW_PAGE_MAX - 1;
+        preview_content(ui, &v, &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected]);
+        size_t max = v.line > (size_t)v.rows ? v.line - (size_t)v.rows : 0;
+        if (ui->preview_offset > max) ui->preview_offset = max;
+        ui->preview_scrollable = max > 0;
+        ui->preview_more = v.line > ui->preview_offset + (size_t)v.rows;
+    }
+    if (!preview_can_focus(ui) && !ui->modal_depth) ui->focus = UI_FOCUS_FILES;
+}
+
 void preview(UiContext *ui, int x, int y, int w, int h) {
+    preview_update_actions(ui,w,h);
     if (!ui_panel(ui)->app.files.len || ui_panel(ui)->selected >= ui_panel(ui)->app.files.len || w < 4 || h < 4) return;
     const Item *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
     int pad = w >= 32 ? 2 : 1;

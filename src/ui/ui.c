@@ -198,6 +198,8 @@ static void draw_screen(UiContext *ui, bool prepare) {
     graphics_clear(ui);
     erase(); int h, w; getmaxyx(stdscr, h, w);
     if (prepare) preview_prepare(ui, h >= 9 && w >= 50 ? h - 7 : 0);
+    UiLayout preview_layout = ui_layout(w, h, ui_preview_enabled(ui));
+    preview_update_actions(ui, w - preview_layout.list_width, h >= 9 && w >= 50 ? preview_layout.panel_height : 0);
     if (h < 9 || w < 50) { mvaddstr(0, 0, "Terminal too small (minimum 50x9)"); refresh(); return; }
     attrset(ui_bar()); mvhline(0, 0, ' ', w);
     for (size_t i = 0; i < sizeof actions / sizeof actions[0]; ++i) {
@@ -218,7 +220,7 @@ static void draw_screen(UiContext *ui, bool prepare) {
     for(unsigned i=0;i<2;i++) if(screen.visible[i])
         draw_file_panel(ui,&ui->panels[i],i,screen.x[i],screen.width[i],h,layout,ui->active==i&&ui->focus==UI_FOCUS_FILES);
     if(ui_preview_enabled(ui)) {
-        draw_box(mid,2,w-mid,panel_h," Preview ",ui->focus==UI_FOCUS_PREVIEW);
+        draw_box(mid,2,w-mid,panel_h," Preview ",ui->focus==UI_FOCUS_PREVIEW && preview_can_focus(ui));
         preview(ui,mid,2,w-mid,panel_h);
     }
     bool refresh_issue=ui->notice.present &&
@@ -261,7 +263,7 @@ static void draw_screen(UiContext *ui, bool prepare) {
         const char *labels[] = {reading ? ": Files" : ": Open", reading ? ": Row" : (ui->mode==UI_LIST_LIST ? ": Other" : ui_preview_enabled(ui) ? ": Preview" : ": Files"), reading ? ": Page" : ": Parent", reading ? ": Top" : ": Help", reading ? ": Files" : ": Menu"};
         int x = 1;
         for (size_t i = 0; i < 5; i++) {
-            if (!reading && i == 1 && ui->mode==UI_LIST_ONLY) continue;
+            if (!reading && i == 1 && (ui->mode!=UI_LIST_LIST && !preview_can_focus(ui))) continue;
             int keylen = (int)strlen(keys[i]), len = keylen + (int)strlen(labels[i]);
             if (x + len > w - 1) break;
             attron(A_BOLD); draw_text(h - 1, x, keylen, keys[i]); attroff(A_BOLD);

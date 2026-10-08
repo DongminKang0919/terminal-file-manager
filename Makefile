@@ -105,6 +105,7 @@ check-isolated: tests/picker_test tests/media_test tests/panels_ui_test tests/tf
 	python3 tests/rename_pty.py
 	python3 tests/transfer_form_pty.py
 	python3 tests/keyboard_pty.py
+	python3 tests/preview_focus_pty.py
 	python3 tests/search_ui_pty.py
 	python3 tests/help_pty.py
 	python3 tests/panels_pty.py

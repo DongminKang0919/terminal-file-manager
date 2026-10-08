@@ -170,8 +170,8 @@ int main(void) {
         resizeterm(24,160);draw(&ui);layout=ui_screen_layout(&ui,160,24);
         assert(layout.visible[0]&&layout.visible[1]&&ui_panel_at(&layout,1,5)==0&&ui_panel_at(&layout,81,5)==1&&ui_panel_at(&layout,80,5)==-1);
         assert(ui.panels[0].app.marks_len==marks0&&ui.panels[1].app.marks_len==marks1&&directories==d&&sorts==s&&reads==r);
-        select_name(&ui,"raw한글\xff\n");enter_item(&ui);assert(ui.mode==UI_LIST_PREVIEW&&ui.active==1&&ui.focus==UI_FOCUS_PREVIEW&&!ui.panels[0].app.marks_len);
-        assert(panel_key(&ui,27,24)&&ui.focus==UI_FOCUS_FILES);ok(ui_set_mode(&ui,UI_LIST_LIST));
+        select_name(&ui,"raw한글\xff\n");enter_item(&ui);assert(ui.mode==UI_LIST_PREVIEW&&ui.active==1&&ui.focus==UI_FOCUS_FILES&&!ui.panels[0].app.marks_len);
+        assert(!panel_key(&ui,27,24)&&ui.focus==UI_FOCUS_FILES);ok(ui_set_mode(&ui,UI_LIST_LIST));
         assert(navigate(&ui,a,NULL));assert(ui_activate_panel(&ui,0));
         app_marks_clear(&ui.panels[0].app);app_marks_clear(&ui.panels[1].app);
         ok(app_mark_toggle(&ui.panels[0].app,"f00"));ok(app_mark_toggle(&ui.panels[0].app,"f01"));ok(app_mark_toggle(&ui.panels[1].app,"f02"));

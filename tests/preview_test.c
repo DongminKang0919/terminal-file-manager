@@ -366,6 +366,57 @@ int main(void) {
             assert((mvinch(2+height-1,52)&A_CHARTEXT)==' ');
         }
     }
+    /* Capabilities follow the rendered viewport, including errors and resize. */
+    assert(load_dir(&ui,"file").code==RESULT_OK);
+    write_file(path,30); preview_prepare(&ui,17); draw(&ui);
+    assert(preview_can_focus(&ui));
+    assert(panel_key(&ui,'\t',24) && ui.focus==UI_FOCUS_PREVIEW);
+    size_t keep_selected=ui_panel(&ui)->selected, keep_top=ui_panel(&ui)->top;
+    assert(app_mark_toggle(&ui_panel(&ui)->app,"file").code==RESULT_OK);
+    size_t keep_marks=ui_panel(&ui)->app.marks_len;
+    resizeterm(80,100); draw(&ui);
+    assert(!preview_can_focus(&ui) && ui.focus==UI_FOCUS_FILES);
+    assert(ui_panel(&ui)->selected==keep_selected && ui_panel(&ui)->top==keep_top && ui_panel(&ui)->app.marks_len==keep_marks);
+    resizeterm(24,100); draw(&ui);
+    assert(preview_can_focus(&ui) && ui.focus==UI_FOCUS_FILES);
+    assert(panel_key(&ui,'\t',24) && ui.focus==UI_FOCUS_PREVIEW);
+    write_file(path,0); ui.preview_checked=0; draw(&ui);
+    assert(!preview_can_focus(&ui) && ui.focus==UI_FOCUS_FILES);
+    assert(panel_key(&ui,KEY_BTAB,24) && ui.focus==UI_FOCUS_FILES);
+    preview_scroll(&ui,true); assert(!ui.preview_offset);
+    char footer[101]; mvinnstr(23,0,footer,100); assert(!strstr(footer,"Tab: Preview"));
+    ui.focus=UI_FOCUS_PREVIEW;
+    ui.preview_result=result_make(RESULT_IO,"short failure");
+    render_preview(&ui); assert(!preview_can_focus(&ui) && ui.focus==UI_FOCUS_FILES);
+    char long_detail[sizeof ui.preview_result.detail];
+    memset(long_detail,'x',sizeof long_detail-1); long_detail[sizeof long_detail-1]=0;
+    ui.preview_result=result_make(RESULT_IO,long_detail);
+    preview_update_actions(&ui,20,12); assert(preview_can_focus(&ui));
+    assert(panel_key(&ui,'\t',24) && ui.focus==UI_FOCUS_PREVIEW);
+    preview_scroll(&ui,true); assert(ui.preview_offset>0);
+    preview_update_actions(&ui,50,20);
+    assert(!preview_can_focus(&ui) && ui.focus==UI_FOCUS_FILES && !ui.preview_offset);
+    ui.preview_result=result_make(RESULT_OK,NULL);
+    ui.media_kind=PREVIEW_PNG; ui.media_done=false;
+    render_preview(&ui); assert(!preview_can_focus(&ui));
+    preview_update_actions(&ui,20,5); assert(!preview_can_focus(&ui));
+    ui.focus=UI_FOCUS_PREVIEW;
+    ui.media_done=true; ui.media_result=result_make(RESULT_IO,"conversion failed");
+    render_preview(&ui); assert(!preview_can_focus(&ui));
+    assert(ui.focus==UI_FOCUS_FILES);
+    ui.media_result=result_make(RESULT_OK,NULL);
+    render_preview(&ui); assert(!preview_can_focus(&ui));
+    /* Successful PDF text conversion exposes only the existing scroll action,
+       and completion does not steal focus from the list. */
+    ui.media_kind=PREVIEW_PDF; ui.media_text=true;
+    ui.media_data=text_copy("one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\nten\neleven\ntwelve\nthirteen\nfourteen\nfifteen\n");
+    assert(ui.media_data); ui.media_len=strlen(ui.media_data);
+    render_preview(&ui); assert(preview_can_focus(&ui) && ui.focus==UI_FOCUS_FILES);
+    assert(panel_key(&ui,'\t',24) && ui.focus==UI_FOCUS_PREVIEW);
+    ui.media_text=false; /* Static image data has no implemented controls. */
+    render_preview(&ui); assert(!preview_can_focus(&ui) && ui.focus==UI_FOCUS_FILES);
+    media_reset(&ui);
+    write_file(path,1);
     ui_free(&ui); assert(live==0);
     endwin(); delscreen(screen); fclose(out); fclose(in);
     out=tmpfile(); in=tmpfile(); assert(out && in);

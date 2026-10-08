@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
             else if (mouse_click(&event)) {
                 if (event.y > 2 && event.y < h - 3) {
                     if (local_x > 0 && local_x < list_width - 1) ui->focus = UI_FOCUS_FILES;
-                    else if (ui_preview_enabled(ui) && event.x > list_width && event.x < w - 1) ui->focus = UI_FOCUS_PREVIEW;
+                    else if (preview_can_focus(ui) && event.x > list_width && event.x < w - 1) ui->focus = UI_FOCUS_PREVIEW;
                 }
                 if (event.y == h - 2) key = UI_RESULT;
                 else if (event.y == 0) key = header_action(event.x, w);

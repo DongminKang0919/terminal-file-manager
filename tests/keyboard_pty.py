@@ -29,6 +29,11 @@ for w,h in [(50,9),(80,24),(160,32)]:
             assert t.screen.rows[2][2 if preview else split+2]==' '
             assert ('Esc: Files' if preview else 'Enter: Open') in t.screen.row(h-1)
         def row():
+            if h<14:
+                body='\n'.join(t.screen.row(y)[split:] for y in range(3,h-3))
+                match=re.search(r'INE (\d+)',body)
+                assert match,body
+                return int(match[1])+1
             match=re.search(r'Row (\d+)', ''.join(t.screen.rows[h-4][split:]))
             assert match,t.screen.row(h-4)
             return int(match[1])
@@ -57,10 +62,10 @@ for w,h in [(50,9),(80,24),(160,32)]:
             t.send(PGUP); assert row()==2
             t.send(HOME); assert row()==1
             for _ in range(60):
-                if 'End' in t.screen.row(h-4)[split:]: break
+                if 'INE 099' in '\n'.join(t.screen.row(y)[split:] for y in range(3,h-3)): break
                 t.send(PGDN)
             else: raise AssertionError('preview did not reach EOF')
-            assert 'LINE 099' in '\n'.join(t.screen.row(y)[split:] for y in range(3,h-3))
+            assert 'INE 099' in '\n'.join(t.screen.row(y)[split:] for y in range(3,h-3))
             assert left()==selected
             t.send('\x1b'); focus(False)
             # Clicking each panel changes focus, without selecting an item in preview.
@@ -83,15 +88,19 @@ for w,h in [(50,9),(80,24),(160,32)]:
             t.send('\x1b'); focus(True)
             # Return sort to name before testing each non-text state.
             t.send('\x1b[18~'+DOWN*3+'\n\n\x1b\x1b')
-            for index,expected in [(3,'Binary file'),(4,'Link target:'),(6,'Cannot verify')]:
-                if index==6 and os.geteuid()==0: continue
-                t.send(HOME+DOWN*index+'\n'); focus(True)
+            for index,expected in [(3,'Preview'),(4,'Link target:')]:
+                t.send(HOME+DOWN*index)
+                actionable='Tab: Preview' in t.screen.row(h-1)
+                t.send('\n'); focus(actionable)
                 collected=[]
                 for _ in range(5):
                     collected.extend(t.screen.row(y)[split:] for y in range(3,h-3))
-                    t.send(DOWN)
+                    if actionable: t.send(DOWN)
                 assert expected in '\n'.join(collected),(expected,collected)
-                t.send('\x1b'); focus(False)
+                if actionable: t.send('\x1b')
+                else:
+                    before=left(); t.send('\t'); t.click(split+3,3); focus(False)
+                    assert left()==before
             t.send(HOME+DOWN*5+'\n')
             assert 'z-dir' in t.screen.row(1); focus(False)
             t.send('\x7f'+HOME+DOWN+'\n'); focus(True)
@@ -111,7 +120,7 @@ for w,h in [(50,9),(80,24),(160,32)]:
             assert 'No visible items' in t.screen.row(first)
             assert 'F7: Show hidden files' in t.screen.row(first+1)
             assert 'Shown: 0 | Hidden: off' in t.screen.row(h-2)
-            t.send('\t'+DOWN+PGDN+HOME+'\x1b') # empty preview is navigable and harmless
+            t.send('\t'+DOWN+PGDN+HOME+'\x1b') # empty preview retains list focus
             assert 'No visible items' in t.screen.row(first)
         finally: t.close()
     with tempfile.TemporaryDirectory() as directory:
