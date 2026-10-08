@@ -29,6 +29,9 @@ class AutoTerminal(Terminal):
         env.pop('TFILE_SIXEL',None);env.pop('TFILE_CELL_PIXELS',None)
         self.proc=subprocess.Popen([BINARY,str(base/'files')],stdin=slave,stdout=slave,stderr=slave,env=env)
         os.close(slave);self.read(.08)
+        # cbreak/input_init must be ready before sending control keys. The first
+        # painted frame provides a readiness boundary instead of a fixed sleep.
+        self.wait(lambda:'Shown:' in self.text())
     def send(self,key):
         os.write(self.master,key.encode() if isinstance(key,str) else key);self.read(.08)
     def queries(self): return self.output.count(b'\x1b[c'),self.output.count(b'\x1b[16t')
@@ -217,8 +220,11 @@ with tempfile.TemporaryDirectory(prefix='tfile-auto-input-') as d:
 with tempfile.TemporaryDirectory(prefix='tfile-auto-find-') as d:
     base=Path(d);fixture(base);t=AutoTerminal(base)
     try:
-        t.send('\x06');t.wait(lambda:'No terminal reply' in t.text())
-        assert 'Find:' in t.text();t.reply();t.send('z.txt\n')
+        t.send('\x06')
+        # draw() flushes the preview before quick_find overlays its status row;
+        # inspect the completed interactive frame, not that intermediate flush.
+        t.wait(lambda:'No terminal reply' in t.text() and 'Find:' in t.text())
+        t.reply();t.send('z.txt\n')
         assert 'ordinary text' in t.text() and not t.screen.images;t.idle()
     finally:t.close()
 
@@ -236,4 +242,18 @@ for action in ['resize','exit','signal']:
             assert not t.records()
         finally:t.close()
 
-print('PASS: lazy Auto PNG/JPEG/PDF, session reuse/restart/resize, ioctl, Off, failed/late/malformed replies, missing tools, selection/modal/child cleanup, UTF-8/mouse/keys and idle waits')
+with tempfile.TemporaryDirectory(prefix='tfile-auto-delayed-start-') as d:
+    base=Path(d);fixture(base);actual=BINARY;launcher=base/'delayed-tfile'
+    launcher.write_text('#!'+sys.executable+'\nimport os,sys,time\ntime.sleep(.25)\n'
+                        +'os.execv('+repr(actual)+',['+repr(actual)+',*sys.argv[1:]])\n')
+    launcher.chmod(0o700);BINARY=str(launcher);t=None
+    try:
+        t=AutoTerminal(base);t.send('\x06')
+        t.wait(lambda:'No terminal reply' in t.text() and 'Find:' in t.text())
+        t.reply();t.send('z.txt\n')
+        assert 'ordinary text' in t.text() and not t.screen.images,t.text()
+    finally:
+        if t is not None:t.close()
+        BINARY=actual
+
+print('PASS: lazy Auto PNG/JPEG/PDF, session reuse/restart/resize, ioctl, Off, failed/late/malformed replies, missing tools, selection/modal/child cleanup, UTF-8/mouse/keys, delayed startup and idle waits')

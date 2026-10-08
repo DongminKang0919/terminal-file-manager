@@ -16,6 +16,14 @@ from display_pty import Screen
 from media_tools import STUB
 
 BINARY=os.path.abspath(os.environ.get('TFILE_BINARY','./tfile'))
+
+def assert_artifacts_removed(log):
+    records=[json.loads(line) for line in log.read_text().splitlines()]
+    assert records, 'No converter artifacts were observed'
+    paths={Path(record['temporary']) for record in records}
+    assert all(path.parent==Path('/tmp') and path.name.startswith('tfile-media-') for path in paths)
+    assert all(not path.exists() for path in paths), paths
+
 class GraphicsScreen(Screen):
     def __init__(self,h,w):
         super().__init__(h,w); self.raw=b''; self.images=[]; self.image=None; self.clears=0; self.saved=(0,0)
@@ -101,7 +109,6 @@ if __name__ == '__main__':
         (root/'e-broken.png').write_bytes(b'\x89PNG\r\n\x1a\nfail')
         (root/'f-zero.png').touch()
         (root/'g-fake.png').write_text('ordinary text with image suffix')
-        before={x.name for x in Path('/tmp').glob('tfile-media-*')}
         t=Terminal(root,tools,log)
         try:
             t.wait(lambda:len(t.records())>=1)
@@ -146,7 +153,10 @@ if __name__ == '__main__':
             conversions=len(t.records());t.send('\x1bOH');t.wait(lambda:len(t.records())>conversions)
             pid=t.records()[-1]['pid'];t.close();t=None
             assert not Path(f'/proc/{pid}').exists()
-            assert {x.name for x in Path('/tmp').glob('tfile-media-*')}==before
+            # Another preview/test may create or remove a different directory.
+            # Inspect only directories reported by this app's converters.
+            with tempfile.TemporaryDirectory(prefix='tfile-media-unrelated-'):
+                assert_artifacts_removed(log)
         finally:
             if t is not None:t.close()
         # Shrink while the converter is still running, not after it completed.
@@ -163,14 +173,14 @@ if __name__ == '__main__':
                 t.read(.4)
                 assert len(t.records())==1 and len(t.output)==start
                 assert Path(f'/proc/{t.proc.pid}/stat').read_text().split()[13:15]==ticks
-                assert {x.name for x in Path('/tmp').glob('tfile-media-*')}==before
+                assert_artifacts_removed(log)
                 if not exit_small:
                     t.resize(100,24);t.wait(lambda:len(t.records())==2)
                     assert t.records()[-1]['mode']=='slow'
                     t.send('\x1bOB');t.wait(lambda:t.screen.image is not None)
                     assert t.records()[-1]['mode']=='ok'
             finally:t.close()
-            assert {x.name for x in Path('/tmp').glob('tfile-media-*')}==before
+            assert_artifacts_removed(log)
         # Wall-clock deadline is enforced without a keypress, while input stays live.
         log.write_text('')
         t=Terminal(root,tools,log)
@@ -189,7 +199,7 @@ if __name__ == '__main__':
             pid=t.records()[-1]['pid'];os.kill(t.proc.pid,signal.SIGTERM)
             t.wait(lambda:t.proc.poll() is not None)
             assert t.proc.returncode==0 and not Path(f'/proc/{pid}').exists()
-            assert {x.name for x in Path('/tmp').glob('tfile-media-*')}==before
+            assert_artifacts_removed(log)
         finally:t.close()
         # Signal shutdown also unwinds a modal rather than leaving a dead input loop.
         log.write_text('')

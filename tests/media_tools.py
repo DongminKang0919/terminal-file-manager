@@ -18,7 +18,7 @@ mode=b[8:] if b.startswith(b'\x89PNG') else b[3:] if b.startswith(b'\xff\xd8\xff
 # A PDF raster stage is passed by its safe private name instead of source FD.
 log=os.environ.get('TFILE_MEDIA_TEST_LOG')
 if log:
-    with open(log,'a') as f: f.write(json.dumps({'tool':name,'args':args,'mode':mode.decode(errors='replace'),'pid':os.getpid()})+'\n')
+    with open(log,'a') as f: f.write(json.dumps({'tool':name,'args':args,'mode':mode.decode(errors='replace'),'pid':os.getpid(),'temporary':os.environ.get('MAGICK_TEMPORARY_PATH')})+'\n')
 if mode==b'slow': time.sleep(30)
 if mode==b'late': time.sleep(.15)
 if mode==b'fail': sys.stderr.write('damaged image\x1b[2J hostile diagnostic');sys.exit(1)
