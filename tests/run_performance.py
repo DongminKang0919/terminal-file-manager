@@ -48,7 +48,7 @@ fixture_seconds=time.monotonic()-start
 flags=['-D_XOPEN_SOURCE=700','-O2','-Wall','-Wextra','-Wpedantic','-std=c11']
 source=a.source.resolve()
 harness=Path(__file__).with_name('performance.c').resolve()
-wrappers='qsort,malloc,calloc,realloc,initscr,input_key,input_wide,wrefresh,platform_directory_open,platform_reader_open,platform_reader_line'
+wrappers='qsort,malloc,calloc,realloc,initscr,terminal_session_check,input_key,input_wide,wrefresh,platform_directory_open,platform_reader_open,platform_reader_line'
 with tempfile.TemporaryDirectory(prefix='tfile-perf-build-') as build:
     obj=Path(build)/'main.o'; binary=Path(build)/'measure'
     start=time.monotonic()

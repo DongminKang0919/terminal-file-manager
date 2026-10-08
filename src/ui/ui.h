@@ -95,7 +95,9 @@ typedef struct {
 } UiContext;
 static inline UiFilePanel *ui_panel(UiContext *ui) { return &ui->panels[ui->active]; }
 static inline bool ui_preview_enabled(const UiContext *ui) { return ui->mode==UI_LIST_PREVIEW; }
-/* Initialize an empty context; ui_free releases all owned UI and panel data. */
+/* Initialize a fresh or ui_free'd context, not a live context.
+   After success or failure, ui_free releases all owned UI, settings and panels
+   before reuse. Repeated ui_free on a released context is safe. */
 Result ui_init(UiContext *ui, const char *directory);
 Result ui_set_mode(UiContext *ui, UiMode mode);
 bool ui_activate_panel(UiContext *ui, unsigned panel);

@@ -11,6 +11,7 @@ static size_t dirs, sorts, opens, reads, frames, polls, allocations;
 static enum { IDLE, STARTUP, FIND, SEARCH, CLOSE } mode;
 static size_t input_at;
 WINDOW *__wrap_initscr(void) { return stdscr; }
+Result __wrap_terminal_session_check(void) { return result_make(RESULT_OK,NULL); }
 int tfile_main(int, char **);
 void __real_qsort(void *,size_t,size_t,int (*)(const void *,const void *));
 void __wrap_qsort(void *p,size_t n,size_t s,int (*c)(const void *,const void *)) { sorts++; __real_qsort(p,n,s,c); }
@@ -85,7 +86,7 @@ static void resources(const char *root) {
         char *partial=path(out,"cancelled"); ok(core_delete(partial)); free(partial);
         if(cycle%10==0) { begin(); finish("resources",cycle); }
     }
-    notice_clear(&ui); preview_reset(&ui); app_free(&ui_panel(&ui)->app);
+    ui_free(&ui);
     free(small); free(many); free(tree); free(text); free(large); free(out);
     begin(); finish("resources_released",100); mode=IDLE;
 }
@@ -112,7 +113,7 @@ int main(int argc,char **argv) {
             if(size==2) {
                 UiContext ui={0}; ok(ui_init(&ui,dir)); draw(&ui); mode=FIND; input_at=0;
                 begin(); quick_find(&ui); finish("quick_find_10000",run); mode=IDLE;
-                preview_reset(&ui); app_free(&ui_panel(&ui)->app);
+                ui_free(&ui);
             }
         }
         free(dir);
@@ -121,7 +122,7 @@ int main(int argc,char **argv) {
     for(int run=0;run<reps;run++) {
         begin(); SearchResult result=core_search(tree,"zzzz-no-match",search_default_limits(),NULL,NULL); ok(result.result); finish("search_core",run); search_result_free(&result);
         UiContext ui={0}; ok(ui_init(&ui,tree)); draw(&ui); mode=SEARCH; input_at=0;
-        begin(); search_items(&ui); finish("search_ui",run); mode=IDLE; preview_reset(&ui); app_free(&ui_panel(&ui)->app);
+        begin(); search_items(&ui); finish("search_ui",run); mode=IDLE; ui_free(&ui);
         PreviewSession *s=NULL; PreviewText page={0};
         begin(); ok(preview_session_open(text,&s));
         for(size_t at=0;at<20000;at+=20) { ok(preview_session_page(s,at,21,&page)); preview_text_free(&page); }

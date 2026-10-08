@@ -120,7 +120,7 @@ int main(void) {
         bad_refresh=false;ok(load_dir(&ui,NULL));assert(ui_panel(&ui)->app.marks_len==1);ok(app_mark_all(&ui_panel(&ui)->app));ok(core_delete(dst));assert(!mkdir(dst,0700));
         /* Cancel during the first file, keeps unfinished bytes and remaining mark. */
         ok(batch_prepare(&ui_panel(&ui)->app,0,BATCH_COPY,&job));ok(batch_destination(&job,dst));cancelling=true;polls=draws=0;refreshes=0;run_batch_operation(&ui,&job);assert(job.result.code==RESULT_CANCELLED&&job.result.partial&&job.targets[1].status==BATCH_UNEXECUTED);batch_finish(&ui,&job);assert(refreshes==1&&ui_panel(&ui)->app.marks_len==2);ok(core_delete(dst));assert(!mkdir(dst,0700));
-        notice_clear(&ui);preview_reset(&ui);app_free(&ui_panel(&ui)->app);
+        ui_free(&ui);
     }
     endwin();delscreen(screen);fclose(in);fclose(out);ok(core_delete(root));free(a);free(b);free(src);free(dst);
     puts("PASS: marks without I/O/sort, focus, safe Cancel paging, batch outcomes/one refresh/failure, frozen draw with polling, details preserve cursor/scroll/focus/cache at 50x9/80x24/160x24");

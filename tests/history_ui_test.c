@@ -42,7 +42,7 @@ int main(void) {
     assert(app_history(&ui_panel(&ui)->app,true).code==RESULT_NOT_FOUND);
     for(int i=0;i<140;i++) assert(navigate(&ui,i%2?a:b,NULL));
     assert(ui_panel(&ui)->app.history_len==128 && ui_panel(&ui)->app.history_at==127);
-    preview_reset(&ui); app_free(&ui_panel(&ui)->app); endwin(); delscreen(screen); fclose(out); fclose(in);
+    ui_free(&ui); endwin(); delscreen(screen); fclose(out); fclose(in);
     free(a); free(b); ok(core_delete(root));
     puts("PASS: history identity/raw bytes/scroll, changed sort, missing/hidden fallback, failed navigation transaction, Parent, forward trim and 128-entry ownership");
 }

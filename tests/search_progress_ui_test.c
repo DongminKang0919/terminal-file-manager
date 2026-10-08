@@ -43,7 +43,7 @@ int main(void) {
         assert(ui.notice.visible && ui.notice.operation.code==RESULT_IO);
         if(cancel) assert(strstr(ui.status,"Search cancelled: 64 found"));
     }
-    notice_clear(&ui); preview_reset(&ui); app_free(&ui_panel(&ui)->app);
+    ui_free(&ui);
     for(int i=0;i<1024;i++) { char name[32]; snprintf(name,sizeof name,"f%04d",i); char *p=core_path_join(root,name); assert(p && core_delete(p).code==RESULT_OK); free(p); }
     assert(!rmdir(root)); endwin(); delscreen(screen); fclose(in); fclose(out);
     puts("PASS: frozen-clock search suppresses redundant frames but polls every callback, keeps cancellation/results/notice and UI state at 50x9/100x24");

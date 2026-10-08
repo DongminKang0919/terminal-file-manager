@@ -97,6 +97,6 @@ int main(int argc, char **argv) {
     assert(!transfer_path(&ui,false,"/missing-source",root,"copy.txt",warning,sizeof warning));
     assert(ui.notice.operation.code==RESULT_EXISTS && ui.notice.refresh_attempted && ui.notice.refresh.code==RESULT_OK);
     assert(ui.notice.kind==NOTICE_ERROR);
-    notice_clear(&ui); free(moved); free(created); preview_reset(&ui); app_free(&ui_panel(&ui)->app);
+    free(moved); free(created); ui_free(&ui);
     puts("PASS: refresh errors preserve UI state; create/copy/move/delete success remains distinct from refresh failure");
 }

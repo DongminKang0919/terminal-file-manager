@@ -120,6 +120,24 @@ int main(void) {
     FILE *out=tmpfile(),*in=tmpfile(); assert(out&&in);
     SCREEN *screen=newterm("xterm-256color",out,in);assert(screen);init_theme();
     size_t initial_fds=fds(),baseline=live;
+    /* Settings survive for the whole context, including failed initialization.
+       Exercise the application's init/free lifecycle, reuse and repeated cleanup
+       with allocation/FD accounting independent of LeakSanitizer availability. */
+    UiContext lifecycle={0};current=&lifecycle;
+    snprintf(target,sizeof target,"%s/missing-initial-directory",root);
+    for(int cycle=0;cycle<8;cycle++) {
+        ok(ui_init(&lifecycle,a));
+        assert(lifecycle.settings.path && slot(lifecycle.settings.path)<32768);
+        assert(strstr(lifecycle.settings.path,"tfile/settings.conf"));
+        ui_free(&lifecycle);
+        assert(!lifecycle.settings.path && !lifecycle.panels[0].app.directory);
+        assert(live==baseline && fds()==initial_fds);
+        ui_free(&lifecycle);assert(live==baseline && fds()==initial_fds);
+        assert(ui_init(&lifecycle,target).code!=RESULT_OK);
+        assert(lifecycle.settings.path && slot(lifecycle.settings.path)<32768);
+        ui_free(&lifecycle);assert(!lifecycle.settings.path);
+        assert(live==baseline && fds()==initial_fds);
+    }
     for(int size=0;size<3;size++) {
         resizeterm(size==0?9:24,size==0?50:size==1?80:160);
         UiContext ui={0};current=&ui;directories=sorts=reads=0;

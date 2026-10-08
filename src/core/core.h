@@ -18,6 +18,8 @@ typedef struct {
 } SettingsStore;
 StartupSettings settings_defaults(void);
 Result settings_parse(const char *data, size_t len, StartupSettings *out);
+/* Load into a fresh or settings_free'd store. The store owns path until
+   settings_free, including read/parse failures; do not reload a live store. */
 void settings_load(SettingsStore *store);
 Result settings_save(SettingsStore *store, const StartupSettings *settings, bool replace);
 void settings_free(SettingsStore *store);

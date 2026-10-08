@@ -14,7 +14,8 @@ void __wrap_qsort(void *p,size_t n,size_t s,int (*compare)(const void *,const vo
 Result __real_app_init(AppState *,const char *);
 Result __wrap_app_init(AppState *app,const char *path) {
     Result r=__real_app_init(app,path);
-    assert(r.code==RESULT_OK && app->files.len==3 && !strcmp(app->files.entries[0].name,"A"));
+    if(r.code!=RESULT_OK) return r;
+    assert(app->files.len==3 && !strcmp(app->files.entries[0].name,"A"));
     initialized_directories=directories; initialized_sorts=sorts; return r;
 }
 WINDOW *__wrap_initscr(void) { return stdscr; }
@@ -37,6 +38,11 @@ int main(void) {
         char *args[]={"tfile",root,NULL}; assert(tfile_main(2,args)==0);
         assert(inputs==1 && directories==2 && sorts==1); /* validation + one list read */
     }
+    /* Exercise main's ui_init failure branch, not only direct ui_free callers. */
+    char missing[128]; snprintf(missing,sizeof missing,"%s/missing",root);
+    directories=sorts=inputs=0;
+    char *failed_args[]={"tfile",missing,NULL}; assert(tfile_main(2,failed_args)==1);
+    assert(inputs==0); /* The failed UI is released before any event loop. */
     AppState app={0}; directories=sorts=0;
     assert(app_init(&app,root).code==RESULT_OK && directories==2 && sorts==1);
     size_t selected=2; app_set_sort(&app,(SortSettings){SORT_SIZE,true},&selected);
