@@ -79,6 +79,8 @@ typedef struct {
     bool image_probe_cells_only, image_cells_fixed, image_cells_stale;
     int image_columns, image_rows;
     unsigned cell_width, cell_height, media_width, media_height;
+    unsigned media_output_width, media_output_height, media_target_width, media_target_height;
+    uint64_t media_resize_due;
     PreviewMediaKind media_kind;
     MediaPreview *media_job;
     bool media_done, media_text, media_fallback;
@@ -155,6 +157,8 @@ size_t draw_window_page(WINDOW *win, int y, int x, int width, const char *text, 
 int header_action(int x, int width);
 typedef struct { int list_width, panel_height, list_y, list_rows; bool columns; } UiLayout;
 UiLayout ui_layout(int width, int height, bool preview);
+typedef struct { int top, rows; } UiPreviewBody;
+UiPreviewBody ui_preview_body(int panel_height);
 typedef struct {
     UiLayout list;
     int x[2], width[2];
@@ -186,6 +190,9 @@ const char *image_status_label(const UiContext *ui);
 bool image_setup(UiContext *ui,char *result,size_t capacity);
 void graphics_clear(UiContext *ui);
 void graphics_present(UiContext *ui);
+typedef struct { int x, y, columns, rows; } UiMediaArea;
+UiMediaArea ui_media_area(int width, int height);
+bool graphics_inspect(const char *data, size_t len, unsigned width, unsigned height, unsigned *output_width, unsigned *output_height);
 bool graphics_validate(const char *data, size_t len, unsigned width, unsigned height);
 void media_reset(UiContext *ui);
 void media_prepare(UiContext *ui, int rows, bool changed);

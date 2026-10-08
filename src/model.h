@@ -7,10 +7,11 @@
 typedef struct { int image; bool pdf_image, pdf_text; } TerminalTools; /* image: 0/magick=1/convert=2 */
 
 typedef enum { PREVIEW_NOT_MEDIA, PREVIEW_PNG, PREVIEW_JPEG, PREVIEW_PDF } PreviewMediaKind;
-#define PREVIEW_SIXEL_BYTES (256u * 1024u)
+#define PREVIEW_SIXEL_BYTES (2u * 1024u * 1024u)
 #define PREVIEW_PDF_TEXT_BYTES (64u * 1024u)
-#define PREVIEW_PIXEL_WIDTH 512u
-#define PREVIEW_PIXEL_HEIGHT 384u
+#define PREVIEW_PIXEL_WIDTH 1536u
+#define PREVIEW_PIXEL_HEIGHT 1152u
+#define PREVIEW_PIXEL_COUNT (1536u * 1152u)
 #define PREVIEW_CONVERSION_MS 8000u
 
 typedef enum { FILE_REGULAR, FILE_DIRECTORY, FILE_LINK, FILE_OTHER } FileKind;

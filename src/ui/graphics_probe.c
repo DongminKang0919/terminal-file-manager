@@ -50,7 +50,8 @@ void graphics_probe_poll(UiContext *ui) {
             } else ui->image_cells_stale=true; /* Refresh lazily, only if media needs it. */
         }
     }
-    if(h<9 || w<50 || w-ui_layout(w,h,true).list_width-4<12 || h-7-PREVIEW_METADATA_ROWS-1<3) {
+    UiMediaArea area=ui_media_area(w,h);
+    if(h<9 || w<50 || area.columns<12 || area.rows<3) {
         graphics_probe_cancel(ui); return;
     }
     if(ui->image_probe!=IMAGE_PROBE_WAITING) return;
@@ -73,8 +74,9 @@ void graphics_probe_prepare(UiContext *ui,int rows) {
     if(!ui->image_auto || ui->modal_depth || !ui_preview_enabled(ui) || core_media_shutdown_requested()) return;
     int h=0,w=0;
     if(stdscr) getmaxyx(stdscr,h,w);
-    UiLayout layout=ui_layout(w,h,true);
-    if(h<9 || w<50 || w-layout.list_width-4<12 || rows-PREVIEW_METADATA_ROWS-1<3) return;
+    (void)rows;
+    UiMediaArea area=ui_media_area(w,h);
+    if(h<9 || w<50 || area.columns<12 || area.rows<3) return;
     if(ui->sixel_confirmed && ui->image_cells_stale) begin(ui,true);
     else if(!ui->sixel_confirmed && ui->image_probe==IMAGE_PROBE_IDLE) begin(ui,false);
 }

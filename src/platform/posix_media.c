@@ -185,7 +185,7 @@ Result platform_media_open(const char *path,PreviewMediaKind kind,bool text,unsi
     *out=NULL; platform_media_reap();
     if(retiring || active) return result_make(RESULT_CANCELLED,"Previous preview is stopping");
     if(kind<PREVIEW_PNG || kind>PREVIEW_PDF || (text && kind!=PREVIEW_PDF) ||
-        (!text && (!width||!height||width>PREVIEW_PIXEL_WIDTH||height>PREVIEW_PIXEL_HEIGHT)))
+        (!text && (!width||!height||width>PREVIEW_PIXEL_WIDTH||height>PREVIEW_PIXEL_HEIGHT||width>PREVIEW_PIXEL_COUNT/height)))
         return result_make(RESULT_UNSUPPORTED,"Unsupported preview request");
     PlatformMedia *m=calloc(1,sizeof *m);
     if(!m) return result_make(RESULT_NO_MEMORY,"Out of memory");

@@ -5,6 +5,10 @@ UiLayout ui_layout(int width, int height, bool preview) {
     bool columns = height >= 12;
     return (UiLayout){list, height - 4, columns ? 5 : 4, height - (columns ? 8 : 7), columns};
 }
+UiPreviewBody ui_preview_body(int height) {
+    int top=height>=10 ? 1+PREVIEW_METADATA_ROWS : height>=7 ? 5 : 3;
+    return (UiPreviewBody){top,height-(height>=10 ? 2 : 1)-top};
+}
 /* Rendering and hit testing share these rectangles, including the narrow fallback. */
 UiScreenLayout ui_screen_layout(const UiContext *ui,int width,int height) {
     UiScreenLayout layout={.list=ui_layout(width,height,ui_preview_enabled(ui))};

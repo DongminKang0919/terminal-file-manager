@@ -91,9 +91,9 @@ README·core/preview·UI/preview·main 이벤트 루프·panel_key·draw/draw_ca
 | 리소스 | 상한/정책 |
 | --- | --- |
 | 입력 | 정규 파일, PNG/JPEG/PDF magic, 64 MiB 이하 |
-| 이미지 출력 | 512×384 pixel 이하, 비율 유지, 이미지 확대 없음, 64색 |
-| Sixel 결과/캐시 | 256 KiB 이하, 정확히 한 DCS, 주변 escape/newline·다른 이미지 거부, raster/repeat 실제 경계 검증 |
-| PDF 임시 raster | 첫 페이지만, 긴 변 512 pixel 이하, 해당 stage 파일당 8 MiB 제한 |
+| 이미지 출력 | 1536×1152 pixel 및 1,769,472 pixel 이하, 비율 유지, 래스터 원본 확대 없음, 64색 |
+| Sixel 결과/캐시 | 2 MiB 이하, 정확히 한 DCS, 주변 escape/newline·다른 이미지 거부, raster/repeat 실제 경계 검증 |
+| PDF 임시 raster | 첫 페이지만, 긴 변 1536 pixel 이하 (중간 raster 최대 2,359,296 pixel), 해당 stage 파일당 8 MiB 제한 |
 | PDF 텍스트 | 첫 페이지만, 파일 64 KiB 이하, UI 128행 이하. 초과 시 상한 오류 |
 | 변환 시간 | 총 8초. pending loop wall clock + 자식 alarm, 각 프로세스 CPU 5초 |
 | 프로세스 메모리 | 일반 빌드 주소 공간 512 MiB. ImageMagick pixel cache 128 MiB, map/disk cache 0, thread 1 |
@@ -205,3 +205,40 @@ python3 tests/run_media_sanitizers.py --output-directory /tmp/tfile-media-saniti
 상위 명령의 exit 값·종료 메시지·옵션은 사용자 보고를 근거로 하며, 디렉터리의 상세 로그와 스크립트 설정은 직접 검토한 근거다. 이 범위에서 **수정 후 사용자 수동 실행의 ASan/UBSan/LSan 검사 완료 및 누수 미검출**을 확인했다. 이는 해당 17개 native 검사와 별도 media/preview/picker native·media PTY의 실제 실행 경로에 한정한다. 외부 ImageMagick/Poppler 내부, 프로젝트 전체 또는 모든 사용 경로의 누수 부재를 의미하지 않는다. 미디어 수명주기는 변환 도구 대역으로 검사하며 실제 터미널 픽셀 표시·삭제·모달 잔상 검증을 대체하지 않는다.
 
 이전 자동 환경의 `/tmp/tfile-media-sanitizers-review-lsan/` ptrace 실패와 `--disable-leaks` 검사 기록은 그대로 유지한다. 이번 수동 성공이 그 자동 실행을 성공으로 바꾸지는 않는다. Clang 실행 및 실제 그래픽 육안 검증의 미확인 상태도 유지한다.
+
+
+## 2026-10-08 Fit 배치 변경
+
+미디어 영역은 상단 파일명·메타데이터·구분선 아래 본문에서 계산한다.
+본문 양쪽·위·아래에 1셀 여백을 두고 테두리와 하단 위치 안내 행을 제외한다.
+메타데이터는 왼쪽 정렬을 유지한다. 이미지/PDF는 검증된 Sixel raster header의
+실제 픽셀 크기와 현재 셀 픽셀 크기를 이용해 가로·세로 중앙에 둔다.
+마지막 Sixel band는 6픽셀로 올림하여 배치 경계에 포함한다. 중앙 좌표는
+셀 단위로 내림하므로 1셀 미만의 오차가 허용된다. 자르기와 비율 왜곡은 없다.
+
+기존 512×384 상한은 넓은 화면에서 가용 영역을 활용하지 못했다. 현재 출력
+상한은 위 표와 같이 1536×1152/1,769,472픽셀, Sixel 2MiB이다. 래스터는
+`-auto-orient -thumbnail WxH>`로 원본 확대 없이 Fit한다. PDF 첫 페이지는
+가용 크기의 긴 변으로 Poppler를 렌더링한 뒤 같은 Fit 경로를 거친다.
+Poppler 중간 raster는 최대 1536×1536/2,359,296픽셀, 파일당 8MiB이다.
+원본 64MiB, 주소 공간 512MiB, pixel cache 128MiB, map/disk 0, thread 1,
+CPU 5초/프로세스, 전체 변환 8초 제한은 유지한다. 출력 한도 초과는 오류로 처리한다.
+
+위치만 바뀌거나 축소되지 않은 작은 원본이 새 영역에 들어가는 경우 변환 결과를
+재사용한다. 크기 변경은 이전 진행 중 변환을 취소하고 마지막 변경 후 120ms를
+기다린다. 완료된 이전 결과는 현재 영역에 들어갈 때만 재배치한다. 선택 변경,
+모달, 최소 화면 미만 축소는 기존 지우기/취소 정책을 유지한다. 초점 정책과
+자동 지원 감지는 유지하며 확대/축소·PDF 페이지 이동은 추가하지 않는다.
+
+자동 검증: `media_fit_pty.py`는 세로/가로/정사각/작은/큰 이미지와 PDF의
+출력 좌표·비율·경계, 연속 리사이즈 작업 수, 원본 캐시, 모달/최소 화면 지우기를
+검사한다. `media_real_fit.py`는 실제 ImageMagick/Poppler로 80×24/260×80에서
+출력 크기와 Fit 비율을 검사한다. 이것은 변환 결과 및 프로토콜 검증이다.
+실제 Sixel 그래픽 터미널에서 픽셀 표시·색·잔상을 육안 확인하지 않았다.
+
+최종 검증 실행 결과: `make -j4 check-isolated`에서 core/settings/terminal 검사가
+통과했다. 새 캐시 단위 테스트의 명시적 셀 픽셀 설정을 보완한 뒤
+`make -o check-core -o check-settings -o check-terminal check-isolated`로 나머지
+UI/PTY 전체를 재실행하여 종료 코드 0을 확인했다. 위 세 영역은 이미 통과하여
+반복하지 않았다. `tests/media_real.py`의 실제 PNG/JPEG/Poppler 변환 검사,
+아키텍처 검사, Python 문법 검사와 `git diff --check`도 통과했다.

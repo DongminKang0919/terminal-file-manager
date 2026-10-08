@@ -28,6 +28,8 @@ void media_reset(UiContext *ui) {
     free(ui->media_data); ui->media_data=NULL; ui->media_len=0;
     ui->media_kind=PREVIEW_NOT_MEDIA; ui->media_done=false; ui->media_text=false; ui->media_fallback=false; ui->media_fallback_detail[0]=0;
     ui->media_width=ui->media_height=0;
+    ui->media_output_width=ui->media_output_height=0;
+    ui->media_target_width=ui->media_target_height=0; ui->media_resize_due=0;
     ui->media_result=result_make(RESULT_OK,NULL); ui->media_hint[0]=0;
 }
 static bool number(const char **p,const char *end,unsigned *out) {
@@ -45,7 +47,8 @@ static bool parameter(const char **p,const char *end,unsigned *out) {
 }
 /* Accept exactly one bounded, square-pixel Sixel DCS. Reject all surrounding
    controls, cursor commands, strings, extra images and raster overdraw. */
-bool graphics_validate(const char *data,size_t len,unsigned max_width,unsigned max_height) {
+bool graphics_inspect(const char *data,size_t len,unsigned max_width,unsigned max_height,
+                      unsigned *output_width,unsigned *output_height) {
     if(len<14 || len>PREVIEW_SIXEL_BYTES || data[0]!=27 || data[1]!='P') return false;
     const char *p=data+2,*end=data+len;
     unsigned param=0;
@@ -59,13 +62,16 @@ bool graphics_validate(const char *data,size_t len,unsigned max_width,unsigned m
     if(p>=end || *p++!='q' || p>=end || *p++!='"') return false;
     unsigned pan,pad,width,height;
     if(!number(&p,end,&pan)||!parameter(&p,end,&pad)||!parameter(&p,end,&width)||!parameter(&p,end,&height)||
-        pan!=1||pad!=1||!width||!height||width>max_width||height>max_height) return false;
+        pan!=1||pad!=1||!width||!height||width>max_width||height>max_height||width>PREVIEW_PIXEL_COUNT/height) return false;
     unsigned x=0,y=0; bool painted=false;
     while(p<end) {
         unsigned repeat=1; char c=*p++;
         if(c==27) {
             if(p>=end || *p++!='\\') return false;
-            return p==end && painted;
+            if(p!=end || !painted) return false;
+            if(output_width) *output_width=width;
+            if(output_height) *output_height=height;
+            return true;
         }
         if(c=='#') {
             unsigned color;
@@ -93,28 +99,57 @@ bool graphics_validate(const char *data,size_t len,unsigned max_width,unsigned m
     }
     return false;
 }
-static void geometry(UiContext *ui,int rows,unsigned *width,unsigned *height) {
+bool graphics_validate(const char *data,size_t len,unsigned width,unsigned height) {
+    return graphics_inspect(data,len,width,height,NULL,NULL);
+}
+/* The text body begins below fixed metadata and its separator. Media reserves
+   one additional cell on all sides, inside the borders and above the footer. */
+UiMediaArea ui_media_area(int width,int height) {
+    UiLayout layout=ui_layout(width,height,true);
+    UiPreviewBody body=ui_preview_body(layout.panel_height);
+    return (UiMediaArea){layout.list_width+2,2+body.top+1,width-layout.list_width-4,body.rows-2};
+}
+static void geometry(UiContext *ui,unsigned *width,unsigned *height) {
     int h=0,w=0; if(stdscr) getmaxyx(stdscr,h,w);
-    UiLayout layout=ui_layout(w,h,true);
-    int columns=w-layout.list_width-4;
-    int image_rows=rows-PREVIEW_METADATA_ROWS-1;
+    UiMediaArea area=ui_media_area(w,h);
     *width=*height=0;
-    if(columns<12 || image_rows<3 || !ui->sixel_confirmed || !ui->cell_width || !ui->cell_height) return;
-    unsigned px=(unsigned)columns*ui->cell_width,py=(unsigned)image_rows*ui->cell_height;
+    if(h<9 || w<50 || area.columns<12 || area.rows<3 || !ui->sixel_confirmed || !ui->cell_width || !ui->cell_height) return;
+    unsigned px=(unsigned)area.columns*ui->cell_width,py=(unsigned)area.rows*ui->cell_height;
     *width=px<PREVIEW_PIXEL_WIDTH?px:PREVIEW_PIXEL_WIDTH;
     *height=py<PREVIEW_PIXEL_HEIGHT?py:PREVIEW_PIXEL_HEIGHT;
     *height-=*height%6; /* Whole sixel bands stay inside the panel. */
 }
+
 void media_prepare(UiContext *ui,int rows,bool changed) {
     core_media_reap();
     PreviewMediaKind kind=preview_session_media(ui->preview_session);
     if(kind!=PREVIEW_NOT_MEDIA) graphics_probe_prepare(ui,rows);
-    unsigned width,height; geometry(ui,rows,&width,&height);
+    unsigned width,height; geometry(ui,&width,&height);
     bool text=kind==PREVIEW_PDF && (ui->media_fallback || !ui->image_auto || !ui->sixel_confirmed || !width || !height);
-    if(changed || kind!=ui->media_kind || width!=ui->media_width || height!=ui->media_height || text!=ui->media_text) {
-        media_reset(ui); text=kind==PREVIEW_PDF && (!ui->image_auto || !ui->sixel_confirmed || !width || !height);
-        ui->media_kind=kind; ui->media_text=text;
+    bool size_changed=width!=ui->media_width || height!=ui->media_height;
+    bool original_fits=kind!=PREVIEW_PDF && ui->media_done && ui->media_output_width &&
+        ui->media_output_width+5<ui->media_width && ui->media_output_height+5<ui->media_height &&
+        ui->media_output_width<=width && ui->media_output_height<=height;
+    if(changed || kind!=ui->media_kind || text!=ui->media_text || !width || !height) {
+        if(changed || kind!=ui->media_kind || size_changed || text!=ui->media_text) {
+            media_reset(ui); text=kind==PREVIEW_PDF && (!ui->image_auto || !ui->sixel_confirmed || !width || !height);
+            ui->media_kind=kind; ui->media_text=text;
+            ui->media_width=width; ui->media_height=height;
+        }
+    } else if(size_changed && !text && !original_fits) {
+        /* Cancel obsolete in-flight work immediately, but retain safe completed
+           pixels until geometry settles for 120 ms. Position-only moves reuse. */
+        uint64_t now=core_monotonic_ms();
+        if(width!=ui->media_target_width || height!=ui->media_target_height || !ui->media_resize_due) {
+            core_media_close(ui->media_job); ui->media_job=NULL;
+            ui->media_target_width=width; ui->media_target_height=height;
+            ui->media_resize_due=now+120;
+        }
+        if(now<ui->media_resize_due) return;
+        media_reset(ui); ui->media_kind=kind; ui->media_text=text;
         ui->media_width=width; ui->media_height=height;
+    } else {
+        ui->media_resize_due=0; ui->media_target_width=ui->media_target_height=0;
     }
     if(ui->image_probe==IMAGE_PROBE_WAITING) {
         snprintf(ui->media_hint,sizeof ui->media_hint,"Checking terminal image support...");
@@ -158,13 +193,13 @@ void media_prepare(UiContext *ui,int rows,bool changed) {
         ui->media_fallback=true; ui->media_text=true; ui->media_done=false; return;
     }
     if(ui->media_result.code==RESULT_OK && !text &&
-        !graphics_validate(ui->media_data,ui->media_len,width,height)) {
+        !graphics_inspect(ui->media_data,ui->media_len,width,height,&ui->media_output_width,&ui->media_output_height)) {
         free(ui->media_data); ui->media_data=NULL; ui->media_len=0;
         ui->media_result=result_make(RESULT_IO,"Converter returned invalid or oversized Sixel output");
     }
 }
 bool media_pending(const UiContext *ui) {
-    return ui->image_probe==IMAGE_PROBE_WAITING || (ui->media_kind!=PREVIEW_NOT_MEDIA && !ui->media_done);
+    return ui->media_resize_due || ui->image_probe==IMAGE_PROBE_WAITING || (ui->media_kind!=PREVIEW_NOT_MEDIA && !ui->media_done);
 }
 /* Every main/cached frame uses the same ordering: erase previous graphics,
    force curses repaint, refresh cells, then emit graphics. ED2 is intentionally
@@ -184,9 +219,14 @@ void graphics_present(UiContext *ui) {
     /* Cached modal restoration must wait for the resize preparation pass,
        even when both old/new pixel limits happen to hit the same caps. */
     if(ui->image_columns && (w!=ui->image_columns || h!=ui->image_rows)) return;
-    unsigned width,height; geometry(ui,h-7,&width,&height);
-    if(!width||!height||width!=ui->media_width||height!=ui->media_height) return;
-    int x=ui_layout(w,h,true).list_width+2,y=3+PREVIEW_METADATA_ROWS+1;
+    UiMediaArea area=ui_media_area(w,h);
+    unsigned width=ui->media_output_width,height=ui->media_output_height;
+    if(w<50 || h<9 || !width || !height || !ui->cell_width || !ui->cell_height ||
+       area.columns<12 || area.rows<3 || width>(unsigned)area.columns*ui->cell_width ||
+       ((height+5)/6*6)>(unsigned)area.rows*ui->cell_height) return;
+    int x=area.x+(int)(((unsigned)area.columns*ui->cell_width-width)/2/ui->cell_width);
+    unsigned band_height=(height+5)/6*6;
+    int y=area.y+(int)(((unsigned)area.rows*ui->cell_height-band_height)/2/ui->cell_height);
     /* Save/restore cursor and use cursor-relative Sixel placement;
        the validated image bounds prevent scrolling. */
     fprintf(stdout,"\0337\033[?80s\033[?80l\033[%d;%dH",y+1,x+1);

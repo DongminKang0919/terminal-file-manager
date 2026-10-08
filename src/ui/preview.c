@@ -260,9 +260,9 @@ static void preview_content(UiContext *ui, View *v, const Item *it) {
 void preview_update_actions(UiContext *ui, int w, int h) {
     ui->preview_scrollable = false;
     ui->preview_more = false;
-    int top = h >= 10 ? 1 + PREVIEW_METADATA_ROWS : h >= 7 ? 5 : 3;
+    UiPreviewBody body = ui_preview_body(h);
     int pad = w >= 32 ? 2 : 1;
-    View v = { .width = w - pad * 2, .rows = h - (h >= 10 ? 2 : 1) - top, .measure = true };
+    View v = { .width = w - pad * 2, .rows = body.rows, .measure = true };
     if (ui_preview_enabled(ui) && w >= 4 && v.rows > 0 &&
         ui_panel(ui)->selected < ui_panel(ui)->app.files.len) {
         if (v.rows > PREVIEW_PAGE_MAX - 1) v.rows = PREVIEW_PAGE_MAX - 1;
@@ -281,7 +281,8 @@ void preview(UiContext *ui, int x, int y, int w, int h) {
     const Item *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
     int pad = w >= 32 ? 2 : 1;
     for (int r = 1; r < h - 1; r++) mvhline(y + r, x + 1, ' ', w - 2);
-    int content_top = h >= 10 ? 1 + PREVIEW_METADATA_ROWS : h >= 7 ? 5 : 3;
+    UiPreviewBody body = ui_preview_body(h);
+    int content_top = body.top;
     View header = { .x = x + pad, .y = y + 1, .width = w - pad * 2, .rows = h >= 7 ? 3 : 1 };
     size_t offset = ui->preview_offset;
     ui->preview_offset = 0; preview_header(ui, &header, it); ui->preview_offset = offset;
@@ -289,7 +290,7 @@ void preview(UiContext *ui, int x, int y, int w, int h) {
     mvhline(y + (h >= 7 ? 4 : 2), x + 1, ACS_HLINE, w - 2);
     attroff(COLOR_PAIR(UI_BORDER));
     View v = { .x = x + pad, .y = y + content_top,
-               .width = w - pad * 2, .rows = h - (h >= 10 ? 2 : 1) - content_top };
+               .width = w - pad * 2, .rows = body.rows };
     if (v.rows < 1) { ui->preview_more = false; return; }
     if (v.rows > PREVIEW_PAGE_MAX - 1) v.rows = PREVIEW_PAGE_MAX - 1;
     preview_content(ui, &v, it);

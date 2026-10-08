@@ -80,6 +80,11 @@ int main(int argc,char **argv) {
     assert(argc==2); const char *tools=argv[1];
     const char *valid="\033Pq\"1;1;1;1@\033\\";
     assert(graphics_validate(valid,strlen(valid),1,1));
+    unsigned actual_width=0,actual_height=0;
+    assert(graphics_inspect(valid,strlen(valid),1,1,&actual_width,&actual_height));
+    assert(actual_width==1 && actual_height==1);
+    const char *over_pixels="\033Pq\"1;1;1536;1153@\033\\";
+    assert(!graphics_validate(over_pixels,strlen(over_pixels),1536,1153));
     const char *invalid[]={"\033Pq\"1;1;1;1A\033\\", "\033Pq\"1;1;1;1!9999999~\033\\",
         "\033Pq\"2;1;1;1@\033\\", "\033Pq\"1;1;1;1@\033\\\n\n", "\033Pq\"1;1;1;1@\033\\\033[2J"};
     for(size_t i=0;i<sizeof invalid/sizeof *invalid;i++) assert(!graphics_validate(invalid[i],strlen(invalid[i]),1,1));
@@ -168,6 +173,14 @@ int main(int argc,char **argv) {
     select_name(&ui,"next");prepared(&ui);assert(ui.media_kind==PREVIEW_PDF);
     source(path,PREVIEW_PNG,"ok");select_name(&ui,"- 한글 'quote\" [0].png");prepared(&ui);
     char *cache=ui.media_data;
+    assert(ui.media_output_width==6 && ui.media_output_height==6);
+    ui.image_cells_fixed=true; /* Explicit test cell pixels survive resizeterm. */
+    UiMediaArea area=ui_media_area(100,24);
+    assert(area.x==57 && area.y==9 && area.columns==41 && area.rows==10);
+    resizeterm(24,80); prepared(&ui);
+    assert(ui.media_data==cache && !ui.media_job && !ui.media_resize_due);
+    resizeterm(24,100); prepared(&ui);
+    assert(ui.media_data==cache && !ui.media_job);
     for(int i=0;i<100;i++) { preview_prepare(&ui,17); assert(ui.media_data==cache && !ui.media_job); }
     ui.focus=UI_FOCUS_PREVIEW; preview_prepare(&ui,17); assert(ui.media_data==cache);
     ui.modal_depth=1; draw_cached(&ui); assert(!ui.graphics_visible && ui.media_data==cache);

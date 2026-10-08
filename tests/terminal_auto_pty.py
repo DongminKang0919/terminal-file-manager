@@ -90,7 +90,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-auto-success-') as d:
         t.send('\x1b[999~');t.send('\x1bOP');assert 'Help' in t.text();t.send('\x1b')
         t.resize_cells(80,20);assert t.queries()==(1,2) and t.screen.image is None
         t.reply(b'\x1b[6;20;10t');t.wait(lambda:t.screen.image is not None)
-        assert any('320x138' in ' '.join(e['args']) for e in t.records()),t.records()
+        assert any('320x120' in ' '.join(e['args']) for e in t.records()),t.records()
         t.idle()
         t.send(F7+DOWN*7);assert 'Enabled' in t.text() and t.screen.image is None
         t.send('\x1bOA'*2+'\n\x1b');t.idle();assert t.screen.image is None
@@ -108,7 +108,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-auto-modal-resize-') as d:
     try:
         t.reply();t.wait(lambda:t.screen.image is not None)
         t.resize_cells(160,40);t.reply(CELLS);t.wait(lambda:t.screen.image is not None)
-        # Both geometries saturate the 512x384 cap: comparing raster limits
+        # Both geometries fit this tiny original raster: comparing raster limits
         # alone cannot tell that cached cell measurements are stale.
         t.send('\x1bOP');before=len(t.screen.images);t.resize_cells(180,42)
         assert len(t.screen.images)==before and t.screen.image is None
@@ -120,9 +120,10 @@ with tempfile.TemporaryDirectory(prefix='tfile-auto-ioctl-') as d:
     base=Path(d);fixture(base);t=AutoTerminal(base,pixels=True)
     try:
         t.reply(DA);t.wait(lambda:t.screen.image is not None)
+        conversions=len(t.records())
         t.resize_cells(80,20,9,18);t.wait(lambda:t.screen.image is not None)
         assert t.queries()==(1,1)
-        assert any('288x126' in ' '.join(e['args']) for e in t.records()),t.records()
+        assert len(t.records())==conversions  # unscaled original survives new cell pixels
         t.idle()
     finally:t.close()
 

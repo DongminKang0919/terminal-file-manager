@@ -23,7 +23,7 @@ if mode==b'slow': time.sleep(30)
 if mode==b'late': time.sleep(.15)
 if mode==b'fail': sys.stderr.write('damaged image\x1b[2J hostile diagnostic');sys.exit(1)
 if mode==b'encrypted': sys.stderr.write('Command Line Error: Incorrect password');sys.exit(1)
-if mode==b'huge': sys.stdout.buffer.write(b'x'*(300*1024));sys.exit(0)
+if mode==b'huge': sys.stdout.buffer.write(b'x'*(3*1024*1024));sys.exit(0)
 if name=='pdftoppm':
     assert args[0:5]==['-f','1','-l','1','-singlefile']
     Path(args[-1]+'.png').write_bytes(b'\x89PNG\r\n\x1a\nok');sys.exit(0)
@@ -38,6 +38,17 @@ if name=='pdftotext':
     print('First page text\nSafe \x1b[2J text');sys.exit(0)
 if mode==b'bad': sys.stdout.buffer.write(b'\x1b]52;c;bad\x07');sys.exit(0)
 if mode==b'overflow': sys.stdout.buffer.write(b'\x1bPq"1;1;6;6!9999~\x1b\\');sys.exit(0)
+if mode.startswith(b'shape:'):
+    import re
+    w,h=map(int,mode[6:].split(b'x'))
+    limit=next(x for x in args if re.fullmatch(r'\d+x\d+>',x))
+    mw,mh=map(int,limit[:-1].split('x'))
+    scale=min(1,mw/w,mh/h); w=max(1,int(w*scale)); h=max(1,int(h*scale))
+    frame=f'\x1bP0;0;0q"1;1;{w};{h}#0;2;100;0;0'
+    for row in range(0,h,6):
+        if row: frame+='-'
+        frame+=f'!{w}'+chr(63+(1<<min(6,h-row))-1)
+    sys.stdout.buffer.write((frame+'\x1b\\').encode());sys.exit(0)
 sys.stdout.buffer.write(b'\x1bP0;0;0q"1;1;6;6#0;2;100;0;0!6~\x1b\\')
 '''
 # In converter stage two, the raster path is an ordinary PNG: argument.

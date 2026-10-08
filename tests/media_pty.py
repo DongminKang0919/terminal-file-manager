@@ -118,8 +118,8 @@ if __name__ == '__main__':
             assert len(t.records())==conversions+1;conversions+=1
             t.send('\x1bOP');assert t.screen.image is None and t.screen.clears>0
             t.send('\x1b');assert t.screen.image==initial and len(t.records())==conversions
-            t.resize(80,24);t.wait(lambda:len(t.records())>conversions and t.screen.image is not None)
-            assert len(t.records())==conversions+1
+            t.resize(80,24);t.wait(lambda:t.screen.image is not None)
+            assert len(t.records())==conversions  # tiny unscaled raster: only position changes
             # Tiny screens clear graphics without conversion; resizing restores them.
             t.resize(50,9);assert t.screen.image is None
             conversions=len(t.records());t.send('\t');t.send('\t');assert len(t.records())==conversions
