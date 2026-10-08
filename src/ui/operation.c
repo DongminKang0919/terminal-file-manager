@@ -48,9 +48,9 @@ static bool operation_progress(const OperationProgress *progress, void *context)
         if (kind == KEY_CODE_YES && key == KEY_MOUSE) {
             MEVENT e;
             if (getmouse(&e) == OK && mouse_click(&e)) {
-                int y, x, h, w; getbegyx(view->win, y, x); getmaxyx(view->win, h, w); (void)w;
+                int h=getmaxy(view->win);
                 if (dialog_closed(view->win, &e) ||
-                    (e.y == y + h - 2 && e.x >= x + 2 && e.x < x + 12)) view->cancelled = true;
+                    dialog_button_hit(view->win,&e,h-2,2,"[ Cancel ]",true)) view->cancelled = true;
             }
         }
     }

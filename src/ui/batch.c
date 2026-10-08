@@ -35,13 +35,13 @@ static bool review(UiContext *ui,const BatchJob *job,bool *resized) {
         if(key==KEY_MOUSE) {
             MEVENT e;if(getmouse(&e)!=OK) continue;
             if(dialog_closed(w,&e)) break;
-            int y,x;getbegyx(w,y,x);
+            int y,x;getbegyx(w,y,x);(void)x;
             if(!wenclose(w,e.y,e.x)) continue;
             if(e.bstate&BUTTON4_PRESSED) key=KEY_UP;
             else if(e.bstate&BUTTON5_PRESSED) key=KEY_DOWN;
             else if(mouse_click(&e)&&e.y==y+h-2) {
-                if(e.x>=x+2&&e.x<x+12) break;
-                if(e.x>=x+14&&e.x<x+14+(int)strlen(label)) { accepted=true;break; }
+                if(dialog_button_hit(w,&e,h-2,2,"[ Cancel ]",true)) break;
+                if(dialog_button_hit(w,&e,h-2,14,label,true)) { accepted=true;break; }
             }
         }
         if(key==27||key=='x'||key==KEY_RESIZE) { if(key==KEY_RESIZE && resized) *resized=true; break; }
@@ -69,7 +69,7 @@ void batch_finish(UiContext *ui,BatchJob *job) {
 /* Own the frozen job throughout editing; only execution transfers it to notice. */
 static void batch_transfer_form(UiContext *ui,BatchJob *job) {
     char title[80];
-    snprintf(title,sizeof title,"Batch destination directory - %s %zu",job->action==BATCH_MOVE?"Move":"Copy",job->len);
+    snprintf(title,sizeof title,"Batch destination - %s %zu targets",job->action==BATCH_MOVE?"Move":"Copy",job->len);
     UiTransferContext context;
     if(!ui_transfer_context(ui,&context)) return;
     char *base=context.base;
@@ -89,13 +89,13 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
         int h,w; getmaxyx(win,h,w);
         dialog_frame(win,title);
         draw_window_text(win,1,2,6,"Base:");
-        draw_window_text(win,1,8,w-10,base);
+        draw_window_path(win,1,8,w-10,base);
         draw_window_text(win,2,2,w-4,"Relative paths use Base; blank uses Base.");
         draw_window_text(win,3,2,6,"To:");
         int col=field_draw(win,3,8,w-10,&field,focus==DESTINATION);
-        wattron(win,COLOR_PAIR(*warning?UI_SPECIAL:UI_MUTED));
+        wattron(win,COLOR_PAIR(*warning?UI_ERROR:UI_MUTED));
         draw_window_text(win,h-3,2,w-4,*warning?warning:"Enter: review targets  Tab: focus  Esc: cancel");
-        wattroff(win,COLOR_PAIR(*warning?UI_SPECIAL:UI_MUTED));
+        wattroff(win,COLOR_PAIR(*warning?UI_ERROR:UI_MUTED));
         for(int i=0;i<3;i++) dialog_button(win,h-2,xs[i],buttons[i],focus==i+1,true);
         curs_set(focus==DESTINATION); if(focus==DESTINATION) wmove(win,3,8+col);
         dialog_refresh(win);
@@ -109,7 +109,7 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
             int y,x; getbegyx(win,y,x); y=e.y-y; x=e.x-x;
             if(y==3&&x>=8&&x<w-2) { focus=DESTINATION; field_click(&field,x-8); continue; }
             if(y==h-2) for(int i=0;i<3;i++)
-                if(x>=xs[i]&&x<xs[i]+(int)strlen(buttons[i])) action=focus=i+1;
+                if(dialog_button_hit(win,&e,h-2,xs[i],buttons[i],true)) action=focus=i+1;
         }
         if(kind==OK&&key=='\t') { focus=(focus+1)%FIELDS; continue; }
         if(kind==KEY_CODE_YES&&key==KEY_BTAB) { focus=(focus+FIELDS-1)%FIELDS; continue; }
@@ -133,7 +133,7 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
             free(start);
         } else {
             if(r.code==RESULT_OK) r=batch_destination(job,resolved);
-            if(r.code!=RESULT_OK) snprintf(warning,sizeof warning,"Destination: %.450s",r.detail);
+            if(r.code!=RESULT_OK) { snprintf(warning,sizeof warning,"Destination: %.450s",r.detail); focus=DESTINATION; }
             else if(review(ui,job,&resized)) {
                 free(resolved); dialog_close(ui,win); ui_transfer_context_free(&context);
                 run_batch_operation(ui,job); batch_finish(ui,job); return;

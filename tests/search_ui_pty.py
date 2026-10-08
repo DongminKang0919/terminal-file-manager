@@ -133,7 +133,7 @@ for width,height in [(50,9),(100,24)]:
                     assert 'Cancelled: 64 found' in t.screen.row(3)
                     assert 'match-' in t.screen.row(4)
                     t.send('\n')  # retained results remain openable
-                    assert 'Opened search result' in t.screen.row(height-2)
+                    assert 'Opened search result' in t.screen.row(height-2),(width,action,t.screen.row(height-2))
                 else:
                     actual_h=10 if action=='resize' else height
                     assert 'Search cancelled: 64 found' in t.screen.row(actual_h-2)

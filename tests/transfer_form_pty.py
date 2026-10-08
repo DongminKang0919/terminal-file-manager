@@ -49,7 +49,7 @@ for w,h in [(50,9),(80,24),(160,32)]:
             assert (root/('fixed-'+source.name)).exists()
             source_select(); t.send('\x1b[15~missing-directory\n\n\n')
             assert 'Destination:' in '\n'.join(t.screen.row(y) for y in range(h))
-            t.send('\t\t\x1bOH'+'\x1b[3~'*100+'dest\n\x1bOHretry-\n\n')
+            t.send('\x1bOH'+'\x1b[3~'*100+'dest\n\x1bOHretry-\n\n')
             assert (dest/('retry-'+source.name)).exists()
             if os.geteuid()!=0:
                 source_select(); dest.chmod(0)
@@ -58,7 +58,7 @@ for w,h in [(50,9),(80,24),(160,32)]:
                     assert 'Permission denied' in '\n'.join(t.screen.row(y) for y in range(h))
                     assert source.exists()
                 finally: dest.chmod(0o700)
-                t.send('\n'); assert (dest/source.name).exists()
+                button('[ Copy now ]'); assert (dest/source.name).exists()
             # Long directory text and the source's control bytes are never shell-expanded.
             long=dest
             for n in range(4): long=long/('part'+str(n)+'한'*20); long.mkdir()

@@ -27,11 +27,11 @@ for w,h in [(50,9),(80,24),(160,32)]:
             t.send(F5); assert '/B' in body();t.send('\n\n')
             assert not (b/'source').exists() # explicit button only
             run();assert (b/'source').read_text()=='original' and (a/'source').exists()
-            t.send('\t');assert 'M:1' in t.screen.row(h-2);t.send('\t')
+            t.send('\t');assert 'Marked: 1' in t.screen.row(h-2);t.send('\t')
             # Same name collision keeps the form. Editing relative to frozen A
             # must not navigate the opposite B panel.
             t.send(F5); run(); assert 'exists' in body()
-            t.send('\x1b[Z'*5);replace('../C');run();assert (c/'source').exists()
+            t.send('\x1b[Z'*4);replace('../C');run();assert (c/'source').exists()
             t.send('\t');assert '/B' in body();t.send('\t')
             # Destination disappears after opening: preserve input and selection.
             t.send(F5);(b/'source').unlink();(b/'peer').unlink();b.rmdir()

@@ -31,8 +31,10 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
     bool reload = true, accepted = false, readable = false;
     size_t last_choice = SIZE_MAX;
     uint64_t last_click = 0;
+    int focus=0; /* list, Use, Open, Cancel */
     for (;;) {
         if (reload) {
+            focus=0;
             FileList old = {entries, picker_count}; file_list_free(&old); entries = NULL; picker_count = choice = offset = 0;
             FileList list;
             Result read_result = core_list(folder, true, folders_only, &list);
@@ -47,11 +49,11 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
         if (choice >= offset + (size_t)rows) offset = choice - rows + 1;
         dialog_frame(win, folders_only ? "Choose destination directory" : "Choose source file or directory");
         wattron(win, COLOR_PAIR(UI_PATH));
-        mvwhline(win, 1, 1, ' ', w - 2); draw_window_text(win, 1, 2, w - 4, folder);
+        mvwhline(win, 1, 1, ' ', w - 2); draw_window_path(win,1,2,w-4,folder);
         wattroff(win, COLOR_PAIR(UI_PATH));
         draw_window_text(win, 2, 2, w - 4, "[Parent]  [Enter path...]");
         for (int i = 0; i < rows && offset + (size_t)i < picker_count; i++) {
-            FileInfo *it = &entries[offset + i]; bool active = offset + i == choice;
+            FileInfo *it = &entries[offset + i]; bool active = focus==0 && offset + i == choice;
             wattron(win, (active ? ui_selection() : COLOR_PAIR(it->directory_target ? UI_DIR : UI_FILE)));
             mvwhline(win, i + 3, 1, ' ', w - 2);
             draw_window_text(win, i + 3, 2, 11, it->directory_target ? "Directory  " : "File       ");
@@ -60,12 +62,12 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
         }
         if (!readable) draw_window_text(win, 3, 2, w - 4, "Cannot inspect directory contents");
         else if (!picker_count) draw_window_text(win, 3, 2, w - 4, folders_only ? "No subdirectories. You can use this directory." : "This directory is empty.");
-        draw_window_text(win, h - 3, 2, w - 4, *warning ? warning : "Double-click/Enter: open   Space: use   p: path");
+        draw_window_text(win, h - 3, 2, w - 4, *warning ? warning : "Enter: open  Tab: focus  Space: use  p: path");
         const char *use_label = folders_only ? "[ Use directory ]" : "[ Use selected ]";
         int open_x = 2 + (int)strlen(use_label) + 2, cancel_x = open_x + 8 + 2;
-        dialog_button(win, h - 2, 2, use_label, false, readable && (folders_only || picker_count));
-        dialog_button(win, h - 2, open_x, "[ Open ]", false, picker_count != 0);
-        dialog_button(win, h - 2, cancel_x, "[ Cancel ]", false, true);
+        dialog_button(win, h - 2, 2, use_label, focus==1, readable && (folders_only || picker_count));
+        dialog_button(win, h - 2, open_x, "[ Open ]", focus==2, picker_count != 0);
+        dialog_button(win, h - 2, cancel_x, "[ Cancel ]", focus==3, true);
         dialog_refresh(win);
         int key = input_key(win);
         bool use = false, open = false, up = false, path = false;
@@ -78,7 +80,7 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
             else if (e.bstate & BUTTON5_PRESSED) key = KEY_DOWN;
             else if (mouse_click(&e)) {
                 if (row >= 3 && row < 3 + rows && offset + (size_t)(row - 3) < picker_count) {
-                    choice = offset + row - 3;
+                    focus=0; choice = offset + row - 3;
                     uint64_t now = core_monotonic_ms();
                     uint64_t ms = now - last_click;
                     open = choice == last_choice && ms < 350;
@@ -86,12 +88,22 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
                 }
                 if (row == 2) { up = col >= 2 && col < 10; path = col >= 12 && col < 27; }
                 if (row == h - 2) {
-                    use = col >= 2 && col < open_x - 2; open = col >= open_x && col < open_x + 8;
-                    if (col >= cancel_x && col < cancel_x + 10) break;
+                    use=dialog_button_hit(win,&e,h-2,2,use_label,readable && (folders_only || picker_count));
+                    open=dialog_button_hit(win,&e,h-2,open_x,"[ Open ]",picker_count!=0);
+                    if(dialog_button_hit(win,&e,h-2,cancel_x,"[ Cancel ]",true)) break;
                 }
             }
         }
         if (key == 27 || key == KEY_RESIZE) { if(key==KEY_RESIZE && resized) *resized=true; break; }
+        if(key=='\t' || key==KEY_BTAB) {
+            unsigned disabled=(!readable || (!folders_only && !picker_count) ? 1u<<1 : 0) | (!picker_count ? 1u<<2 : 0);
+            focus=dialog_focus_next(focus,4,key==KEY_BTAB,disabled); continue;
+        }
+        if((key=='\n' || key==KEY_ENTER) && focus) {
+            if(focus==3) break;
+            use=focus==1; open=focus==2; key=0;
+        }
+        if(key==KEY_UP || key==KEY_DOWN || key==KEY_PPAGE || key==KEY_NPAGE || key==KEY_HOME || key==KEY_END) focus=0;
         if (key == KEY_UP && choice) choice--;
         if (key == KEY_DOWN && choice + 1 < picker_count) choice++;
         if (key == KEY_HOME) choice = 0;
@@ -225,9 +237,9 @@ void transfer_entry(UiContext *ui, bool move_it) {
         int cursor_y = 0, cursor_x = 0;
         for (int row = offset; row < 7 && row < offset + rows; row++) {
             int y = row - offset + 1;
-            if (row == 0) { draw_window_text(win,y,2,8,"Item 1:"); draw_window_text(win,y,10,w-12,source_name ? source_name : ""); }
-            if (row == 1) draw_window_text(win,y,2,w-4,source);
-            if (row == 2) { draw_window_text(win,y,2,6,"Base:"); draw_window_text(win,y,8,w-10,base); }
+            if (row == 0) { draw_window_text(win,y,2,8,"Source:"); draw_window_text(win,y,10,w-12,source_name ? source_name : ""); }
+            if (row == 1) draw_window_path(win,y,2,w-4,source);
+            if (row == 2) { draw_window_text(win,y,2,6,"Base:"); draw_window_path(win,y,8,w-10,base); }
             if (row == 3 || row == 4) {
                 bool active = focus == (row == 3 ? DESTINATION : NAME);
                 draw_window_text(win,y,2,6,row == 3 ? "To:" : "Name:");
@@ -235,11 +247,11 @@ void transfer_entry(UiContext *ui, bool move_it) {
                 if (active) { cursor_y = y; cursor_x = 8 + col; }
             }
             if (row == 5) for (int i = 0; i < 3; i++) dialog_button(win,y,button_x[i],buttons[i],focus==BROWSE+i,i!=2 || !fixed_source);
-            if (row == 6) { draw_window_text(win,y,2,8,"Target:"); draw_window_text(win,y,10,w-12,target ? target : "Input too long / no memory"); }
+            if (row == 6) { draw_window_text(win,y,2,8,"Target:"); if(target) draw_window_path(win,y,10,w-12,target); else draw_window_text(win,y,10,w-12,"Input too long / no memory"); }
         }
-        wattron(win,COLOR_PAIR(*warning ? UI_SPECIAL : UI_MUTED));
+        wattron(win,COLOR_PAIR(*warning ? UI_ERROR : UI_MUTED));
         draw_window_text(win,h-3,2,w-4,*warning ? warning : "To: relative/blank uses Base; Tab: focus");
-        wattroff(win,COLOR_PAIR(*warning ? UI_SPECIAL : UI_MUTED));
+        wattroff(win,COLOR_PAIR(*warning ? UI_ERROR : UI_MUTED));
         int cancel_x = 2 + (int)strlen(run_label) + 2;
         dialog_button(win,h-2,2,run_label,focus==RUN,true);
         dialog_button(win,h-2,cancel_x,"[ Cancel ]",focus==CANCEL,true);
@@ -259,14 +271,14 @@ void transfer_entry(UiContext *ui, bool move_it) {
                 focus=row==3?DESTINATION:NAME; field_click(row==3?&folder_field:&name_field,x-8); continue;
             }
             if (y>=1 && y<=rows && row==5) for(int i=0;i<3;i++)
-                if(x>=button_x[i] && x<button_x[i]+(int)strlen(buttons[i])) action=focus=BROWSE+i;
+                if(dialog_button_hit(win,&e,y,button_x[i],buttons[i],i!=2 || !fixed_source)) action=focus=BROWSE+i;
             if (y==h-2) {
-                if(x>=2 && x<2+(int)strlen(run_label)) action=focus=RUN;
-                if(x>=cancel_x && x<cancel_x+10) action=focus=CANCEL;
+                if(dialog_button_hit(win,&e,h-2,2,run_label,true)) action=focus=RUN;
+                if(dialog_button_hit(win,&e,h-2,cancel_x,"[ Cancel ]",true)) action=focus=CANCEL;
             }
         }
-        if ((kind==OK && key=='\t') || (kind==KEY_CODE_YES && key==KEY_DOWN)) { focus=(focus+1)%FIELDS; continue; }
-        if (kind==KEY_CODE_YES && (key==KEY_BTAB || key==KEY_UP)) { focus=(focus+FIELDS-1)%FIELDS; continue; }
+        if ((kind==OK && key=='\t') || (kind==KEY_CODE_YES && key==KEY_DOWN)) { focus=dialog_focus_next(focus,FIELDS,false,fixed_source?1u<<SOURCE:0); continue; }
+        if (kind==KEY_CODE_YES && (key==KEY_BTAB || key==KEY_UP)) { focus=dialog_focus_next(focus,FIELDS,true,fixed_source?1u<<SOURCE:0); continue; }
         if ((kind==OK && (key=='\n' || key=='\r')) || (kind==KEY_CODE_YES && key==KEY_ENTER)) {
             if (focus==DESTINATION) { focus=NAME; continue; }
             if (focus==NAME) {
@@ -306,7 +318,7 @@ void transfer_entry(UiContext *ui, bool move_it) {
         } else if (action==RUN) {
             char *resolved=NULL;
             Result r=core_resolve_directory(base,*folder?folder:".",&resolved);
-            if(r.code!=RESULT_OK) snprintf(warning,sizeof warning,"Destination: %.450s",r.detail);
+            if(r.code!=RESULT_OK) { snprintf(warning,sizeof warning,"Destination: %.450s",r.detail); focus=DESTINATION; }
             else if(transfer_path(ui,move_it,source,resolved,name,warning,sizeof warning)) { free(resolved); break; }
             free(resolved);
         }

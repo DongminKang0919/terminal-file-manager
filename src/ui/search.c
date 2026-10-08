@@ -9,6 +9,7 @@ typedef struct {
     WINDOW *win;
     char term[256];
     unsigned frame;
+    int focus; /* 0: results, 1: Search, 2: Open. */
     bool drawn;
     uint64_t last_draw;
 
@@ -34,7 +35,7 @@ static void search_draw(Search *s, size_t choice, size_t offset, bool scanning) 
     wattron(s->win, COLOR_PAIR(UI_MUTED)); draw_window_text(s->win, 2, 2, w - 4, info); wattroff(s->win, COLOR_PAIR(UI_MUTED));
     for (int row = 0; row < h - 6 && offset + (size_t)row < s->len; ++row) {
         Item *it = &s->entries[offset + (size_t)row];
-        bool active = !scanning && offset + (size_t)row == choice;
+        bool active = !scanning && s->focus==0 && offset + (size_t)row == choice;
         if (active) { wattron(s->win, COLOR_PAIR(UI_SELECTED)); mvwhline(s->win, row + 3, 1, ' ', w - 2); wattroff(s->win, COLOR_PAIR(UI_SELECTED)); }
         int pair = item_color(it, active);
         wattron(s->win, COLOR_PAIR(pair) | (active ? A_BOLD | (has_colors() ? 0 : A_REVERSE) : A_NORMAL));
@@ -46,10 +47,11 @@ static void search_draw(Search *s, size_t choice, size_t offset, bool scanning) 
     char detail[256];
     const Result *issue = s->outcome.code != RESULT_OK ? &s->outcome : &s->omission;
     if (issue->code != RESULT_OK) snprintf(detail, sizeof detail, "%.100s: %.150s", issue->detail, issue->path);
-    else snprintf(detail, sizeof detail, "%s", scanning ? "Enter/Esc: keep results  x: close" : "Enter: open  /: search  Esc: close");
-    draw_window_text(s->win, h - 3, 2, w - 4, detail);
-    dialog_button(s->win, h - 2, 2, scanning ? "[ Cancel ]" : "[ Search ]", scanning, true);
-    if (!scanning) dialog_button(s->win, h - 2, 14, "[ Open ]", false, s->len != 0);
+    else snprintf(detail, sizeof detail, "%s", scanning ? "Enter/Esc: keep results  x: close" : s->focus==1 ? "Enter: search  Tab: focus  Esc: close" : "Enter: open  Tab: focus  Esc: close");
+    attr_t detail_style=ui_notice_style(issue->code==RESULT_OK ? NOTICE_INFO : NOTICE_ERROR);
+    wattron(s->win,detail_style); draw_window_text(s->win,h-3,2,w-4,detail); wattroff(s->win,detail_style);
+    dialog_button(s->win, h - 2, 2, scanning ? "[ Cancel ]" : "[ Search ]", scanning || s->focus==1, true);
+    if (!scanning) dialog_button(s->win, h - 2, 14, "[ Open ]", s->focus==2, s->len != 0);
     dialog_refresh(s->win);
 }
 
@@ -74,9 +76,9 @@ static bool search_progress(const SearchResult *progress, const char *path, void
     if (key == KEY_MOUSE) {
         MEVENT event;
         if (getmouse(&event) == OK) {
-            int y, x, h, w; getbegyx(s->win, y, x); getmaxyx(s->win, h, w); (void)w;
+            int y, x, h, w; getbegyx(s->win, y, x); getmaxyx(s->win, h, w); (void)w; (void)y; (void)x;
             if (dialog_closed(s->win, &event)) s->close_requested = s->stopped = true;
-            else if (mouse_click(&event) && event.y == y + h - 2 && event.x >= x + 2 && event.x < x + 12) s->stopped = true;
+            else if (dialog_button_hit(s->win,&event,h-2,2,"[ Cancel ]",true)) s->stopped = true;
         }
     }
     if (key == KEY_RESIZE || key == KEY_F(10)) s->close_requested = s->stopped = true;
@@ -129,13 +131,14 @@ void search_items(UiContext *ui) {
                     int wy, wx; getbegyx(win, wy, wx);
                     int row = event.y - wy - 3;
                     if (mouse_click(&event) && event.y == wy + h - 2) {
-                        if (event.x >= wx + 2 && event.x < wx + 12) break;
-                        if (event.x >= wx + 14 && event.x < wx + 22) key = '\n';
+                        if (dialog_button_hit(win,&event,h-2,2,"[ Search ]",true)) break;
+                        if (dialog_button_hit(win,&event,h-2,14,"[ Open ]",s.len!=0)) { s.focus=2; key='\n'; }
+                        else continue;
                     }
                     else if (event.bstate & BUTTON4_PRESSED) key = KEY_UP;
                     else if (event.bstate & BUTTON5_PRESSED) key = KEY_DOWN;
                     else if (mouse_click(&event) && event.x > wx && event.x < wx + w - 1 && row >= 0 && row < h - 6 && offset + (size_t)row < s.len) {
-                        choice = offset + (size_t)row;
+                        s.focus=0; choice = offset + (size_t)row;
                         uint64_t now = core_monotonic_ms();
                         uint64_t ms = now - last_click;
                         bool twice = choice == last_choice && ms < 350;
@@ -146,6 +149,9 @@ void search_items(UiContext *ui) {
             }
             if (key == KEY_RESIZE || key == 27 || key == KEY_F(10)) goto search_done;
             if (key == '/' || key == KEY_F(3)) break;
+            if(key=='\t' || key==KEY_BTAB) { s.focus=dialog_focus_next(s.focus,3,key==KEY_BTAB,s.len?0:1u<<2); continue; }
+            if((key=='\n' || key==KEY_ENTER) && s.focus==1) break;
+            if(key==KEY_UP || key==KEY_DOWN || key==KEY_PPAGE || key==KEY_NPAGE) s.focus=0;
             if (key == KEY_UP && choice > 0) choice--;
             if (key == KEY_DOWN && choice + 1 < s.len) choice++;
             if (key == KEY_PPAGE) choice = choice > (size_t)(h - 6) ? choice - (size_t)(h - 6) : 0;

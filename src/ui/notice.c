@@ -132,20 +132,19 @@ void show_result(UiContext *ui) {
         char hint[96]; snprintf(hint, sizeof hint, "Lines %zu-%zu/%zu | %s %s", offset+1, end, text.len,
                                offset ? "^ more" : "Top", end < text.len ? "v more" : "End");
         draw_window_text(win, h-3, 2, w-4, hint);
-        dialog_button(win, h-2, 2, "[ Ack ]", false, n->present);
-        draw_window_text(win, h-2, 11, w-13, "a: ack  Esc: close");
+        dialog_button(win, h-2, 2, "[ Ack ]", true, n->present);
+        draw_window_text(win, h-2, 11, w-13, n->present ? "a: ack  Esc: close" : "Esc: close");
         dialog_refresh(win);
         int key = input_key(win);
         if (key == KEY_MOUSE) {
             MEVENT e; if (getmouse(&e) != OK) continue;
             if (dialog_closed(win, &e)) break;
-            int y,x; getbegyx(win,y,x);
             if (!wenclose(win,e.y,e.x)) continue;
-            if (n->present && mouse_click(&e) && e.y == y+h-2 && e.x >= x+2 && e.x < x+9) key='a';
+            if (dialog_button_hit(win,&e,h-2,2,"[ Ack ]",n->present)) key='a';
             else if (e.bstate & BUTTON4_PRESSED) key=KEY_UP;
             else if (e.bstate & BUTTON5_PRESSED) key=KEY_DOWN;
         }
-        if (key == 'a' || key == '\n' || key == KEY_ENTER) { if (n->present) notice_dismiss(ui); break; }
+        if (key == 'a' || key == '\n' || key == KEY_ENTER) { if(n->present) { notice_dismiss(ui); break; } continue; }
         if (key == 27 || key == 'x' || key == KEY_RESIZE) break;
         if (key == KEY_UP && offset) offset--;
         if (key == KEY_DOWN && offset < max) offset++;
