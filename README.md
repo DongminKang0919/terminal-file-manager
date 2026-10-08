@@ -87,6 +87,7 @@ make -j4 check
 
 전체 검사는 임시 HOME/XDG와 개발용 `TFILE_*` 변수를 제거한 환경에서 실행합니다. 파일 작업 검사는 임시 디렉터리를 사용합니다. 물리 터미널의 폰트·색·Sixel 표시/잔상은 자동 PTY 결과와 구분하며, LSan의 알려진 ptrace 환경 제약은 누수 검사 통과로 기록하지 않습니다.
 
+- [설정 경로 누수 원인과 최신 LSan 검증](docs/SETTINGS_OWNERSHIP_VALIDATION_2026-10-08.md): 테스트 정리 수정과 재실행 명령
 - [이번 설치·사용 흐름 점검 결과](docs/RELEASE_READINESS_2026-10-08.md): 재현, 수정, 최신 검사 결과와 미검증 범위
 - [상세 사용·개발 안내](docs/USER_GUIDE.md): 전체 단축키·설정 형식·미디어 진단·구조·검사 명령
 - [설계 참고서](docs/REFERENCE.md), [UI/UX 검증](docs/UI_UX_VALIDATION.md), [이미지/PDF 검증](docs/MEDIA_PREVIEW_VALIDATION.md)
