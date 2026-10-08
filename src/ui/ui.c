@@ -109,9 +109,9 @@ static void draw_file_panel(UiContext *ui,UiFilePanel *p,unsigned index,int x,in
                  p->app.sort.key == SORT_MODIFIED ? "Time" : sort_label(p->app.sort.key),
                  p->app.sort.descending ? '-' : '+');
     if(ui->mode==UI_LIST_LIST) {
-        snprintf(title,sizeof title," %s%s %s%c S:%zu M:%zu H:%d ", index ? "Right" : "Left",p->stale?" STALE":"",
+        snprintf(title,sizeof title," %s%s %s%c Marked:%zu Dotfiles:%s ", index ? "Right" : "Left",p->stale?" STALE":"",
                  p->app.sort.key==SORT_MODIFIED?"Time":sort_label(p->app.sort.key),p->app.sort.descending?'-':'+',
-                 p->app.files.len,p->app.marks_len,p->app.show_hidden);
+                 p->app.marks_len,p->app.show_hidden?"on":"off");
     } else if(p->stale) snprintf(title,sizeof title," Files STALE - refresh before writes ");
     draw_box(x, 2, mid, panel_h, title, focused);
     attron(COLOR_PAIR(UI_MUTED));
@@ -189,11 +189,7 @@ static void draw_location(UiFilePanel *p,int x,int w,bool dual) {
     if(!dual) draw_text(1, x+10, 10, "Location:");
     attrset(COLOR_PAIR(UI_PATH));
     int start_col=dual?10:20; int available=w-start_col-1;
-    if (ui_text_span(p->app.directory, 0, available).more) {
-        mvaddstr(1, x+start_col, "... ");
-        size_t start = ui_text_tail(p->app.directory, available - 4);
-        draw_window_page(stdscr, 1, x+start_col+4, available - 4, p->app.directory, start);
-    } else draw_text(1, x+start_col, available, p->app.directory);
+    draw_window_path(stdscr,1,x+start_col,available,p->app.directory);
     attroff(COLOR_PAIR(UI_PATH));
 }
 
@@ -230,44 +226,49 @@ static void draw_screen(UiContext *ui, bool prepare) {
     bool refresh_issue=ui->notice.present &&
         ((ui->notice.refresh_attempted && ui->notice.refresh.code!=RESULT_OK) ||
          (ui->notice.peer_refresh_attempted && ui->notice.peer_refresh.code!=RESULT_OK));
-    char summary[96];
-    snprintf(summary,sizeof summary,"Shown: %zu | Hidden: %s Sel:%zu",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden ? "on" : "off",ui_panel(ui)->app.marks_len);
-    if(w>=90 && ui_panel(ui)->app.marks_len)
-        snprintf(summary,sizeof summary,"Shown: %zu | Hidden: %s | Selected: %zu",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden ? "on" : "off",ui_panel(ui)->app.marks_len);
-    if(w<90 && (ui_panel(ui)->app.marks_len || (ui->notice.present && ui->notice.visible)))
-        snprintf(summary,sizeof summary,"Shown: %zu H:%s Sel:%zu",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden ? "on" : "off",ui_panel(ui)->app.marks_len);
-    /* Reserve routine guidance as well as all three counts on narrow screens.
-       S=Shown, H=hidden (1/on, 0/off), M=marked. Retained result labels stay separate. */
-    if(!(ui->notice.present && ui->notice.visible && !ui->status_priority) && w<90 &&
-       strlen(ui->status)+(ui->status_kind==NOTICE_INFO?6u:0u) > (size_t)(w-(int)strlen(summary)-4))
-        snprintf(summary,sizeof summary,"S:%zu H:%d M:%zu",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden,ui_panel(ui)->app.marks_len);
-    if(ui->mode==UI_LIST_LIST) snprintf(summary,sizeof summary,"%s* / %s  S:%zu H:%d M:%zu",ui->active?"Right":"Left",ui->active?"Left":"Right",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden,ui_panel(ui)->app.marks_len);
-    if(w<90 && (ui->status_priority || (refresh_issue && ui->notice.visible))) {
-        if(ui->mode==UI_LIST_LIST)
-            snprintf(summary,sizeof summary,"%s* S:%zu H:%d M:%zu",ui->active?"Right":"Left",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden,ui_panel(ui)->app.marks_len);
-        else snprintf(summary,sizeof summary,"S:%zu H:%d M:%zu",ui_panel(ui)->app.files.len,ui_panel(ui)->app.show_hidden,ui_panel(ui)->app.marks_len);
-    }
-    attron(COLOR_PAIR(UI_STATUS)); mvhline(h - 2, 0, ' ', w);
-    int summary_width = (int)strlen(summary);
-    draw_text(h - 2, 1, summary_width, summary);
-    int x = summary_width + 3;
-    char alert[600];
+    char alert[600]="";
+    NoticeKind alert_kind=ui->status_kind;
     if (ui->notice.present && ui->notice.visible && !ui->status_priority) {
-        snprintf(alert, sizeof alert, "[%s] ! %s%s%s", notice_label(ui->notice.kind),
-                 refresh_issue ? "refresh failed" : "detail", w>=90 ? ": " : "", w>=90 ? ui->notice.action : "");
-    } else snprintf(alert, sizeof alert, "%s%s%s", ui->status[0] && ui->status_kind == NOTICE_INFO ? "Info" : "",
-                    ui->status[0] && ui->status_kind == NOTICE_INFO ? ": " : "", ui->status);
-    if(ui->settings_warning[0]) snprintf(alert,sizeof alert,"%s",ui->settings_warning);
-    draw_text(h - 2, x, w - x - 1, alert);
-    attroff(COLOR_PAIR(UI_STATUS));
+        OperationNotice *n=&ui->notice;
+        const char *label=n->operation.partial && n->kind!=NOTICE_CANCELLED ? "Partial" : notice_label(n->kind);
+        snprintf(alert,sizeof alert,"[%s] ! %s%s%s",label,
+            refresh_issue ? "refresh failed" : n->operation.partial && n->kind==NOTICE_CANCELLED ? "Partial; details" : "Details",
+            w>=90 ? ": " : "",w>=90 ? n->action : "");
+        alert_kind=refresh_issue ? NOTICE_WARNING : n->kind;
+    } else if(ui->status[0]) snprintf(alert,sizeof alert,"%s",ui->status);
+    if(ui->settings_warning[0]) { snprintf(alert,sizeof alert,"%s",ui->settings_warning); alert_kind=NOTICE_WARNING; }
+    char summary[128], panel[16]="";
+    UiFilePanel *active=ui_panel(ui);
+    if(ui->mode==UI_LIST_LIST) snprintf(panel,sizeof panel,"%s* ",ui->active?"Right":"Left");
+    snprintf(summary,sizeof summary,"%sShown: %zu | Marked: %zu | Dotfiles: %s",panel,active->app.files.len,active->app.marks_len,active->app.show_hidden?"on":"off");
+    /* Keep counts readable and reserve an independent alert region first.
+       Dotfiles is a display setting, never a hidden-entry count. */
+    int reserve=ui_text_span(alert,0,w-4).cells;
+    if(reserve>32) reserve=32;
+    if((int)strlen(summary)>w-reserve-4)
+        snprintf(summary,sizeof summary,"%sShown: %zu Marked: %zu",panel,active->app.files.len,active->app.marks_len);
+    if((int)strlen(summary)>w-reserve-4)
+        snprintf(summary,sizeof summary,"Shown: %zu Marked: %zu",active->app.files.len,active->app.marks_len);
+    if((int)strlen(summary)>w-reserve-4)
+        snprintf(summary,sizeof summary,"Marked: %zu",active->app.marks_len);
+    attrset(COLOR_PAIR(UI_STATUS)); mvhline(h-2,0,' ',w);
+    int summary_width=(int)strlen(summary);
+    if(summary_width>w-4) summary_width=w-4;
+    draw_text(h-2,1,summary_width,summary);
+    int x=summary_width+3;
+    attrset(ui_notice_style(alert_kind));
+    draw_text(h-2,x,w-x-1,alert);
+    attrset(A_NORMAL);
     attrset(ui_bar()); mvhline(h - 1, 0, ' ', w);
     if (!ui->modal_depth) {
         bool reading = ui->focus == UI_FOCUS_PREVIEW;
-        const char *keys[] = {reading ? "Esc" : "Enter", reading ? "Up/Down" : "Tab", reading ? "PgUp/PgDn" : "Backspace", reading ? "Home" : "F1", reading ? "Tab" : "F9"};
-        const char *labels[] = {reading ? ": Files" : ": Open", reading ? ": Row" : (ui->mode==UI_LIST_LIST ? ": Other" : ui_preview_enabled(ui) ? ": Preview" : ": Files"), reading ? ": Page" : ": Parent", reading ? ": Top" : ": Help", reading ? ": Files" : ": Menu"};
+        bool has_item=ui_panel(ui)->selected<ui_panel(ui)->app.files.len;
+        const char *keys[] = {reading ? "Esc" : has_item ? "Enter" : "F2", reading ? "Up/Down" : "Space", reading ? "PgUp/PgDn" : "Tab", reading ? "Home" : "Backspace", reading ? "Tab" : "F1", "F9"};
+        const char *labels[] = {reading ? ": Files" : has_item ? ": Open" : ": New", reading ? ": Row" : ": Mark", reading ? ": Page" : ui->mode==UI_LIST_LIST ? ": Other" : ": Preview", reading ? ": Top" : ": Parent", reading ? ": Files" : ": Help", ": Menu"};
         int x = 1;
-        for (size_t i = 0; i < 5; i++) {
-            if (!reading && i == 1 && (ui->mode!=UI_LIST_LIST && !preview_can_focus(ui))) continue;
+        for (size_t i = 0; i < (reading ? 5u : 6u); i++) {
+            if(!reading && i==1 && !has_item) continue;
+            if(!reading && i==2 && ui->mode!=UI_LIST_LIST && !preview_can_focus(ui)) continue;
             int keylen = (int)strlen(keys[i]), len = keylen + (int)strlen(labels[i]);
             if (x + len > w - 1) break;
             attron(A_BOLD); draw_text(h - 1, x, keylen, keys[i]); attroff(A_BOLD);

@@ -28,6 +28,15 @@ void draw_window_text(WINDOW *win, int y, int x, int width, const char *text) {
     write_span(win, y, x, text, 0, span.end);
     if (ellipsis) mvwaddstr(win, y, x + span.cells, "...");
 }
+void draw_window_path(WINDOW *win,int y,int x,int width,const char *path) {
+    width=text_width(win,y,x,width);
+    if(!width) return;
+    if(!ui_text_span(path,0,width).more) { draw_window_text(win,y,x,width,path); return; }
+    int prefix=width>4 ? 4 : 0;
+    if(prefix) mvwaddstr(win,y,x,"... ");
+    size_t start=ui_text_tail(path,width-prefix);
+    draw_window_page(win,y,x+prefix,width-prefix,path,start);
+}
 void draw_text(int y, int x, int width, const char *text) {
     draw_window_text(stdscr, y, x, width, text);
 }

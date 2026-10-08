@@ -25,6 +25,22 @@ void dialog_button(WINDOW *win, int y, int x, const char *label, bool focused, b
     wattroff(win, style);
 }
 
+/* Use the same safely clipped cell span as drawing; disabled buttons never hit. */
+bool dialog_button_hit(WINDOW *win,const MEVENT *event,int y,int x,const char *label,bool enabled) {
+    int wy,wx; getbegyx(win,wy,wx);
+    int width=getmaxx(win)-x-2;
+    UiTextSpan span=ui_text_span(label,0,width);
+    int cells=span.more && width>=3 ? ui_text_span(label,0,width-3).cells+3 : span.cells;
+    return enabled && mouse_click(event) && event->y==wy+y && event->x>=wx+x && event->x<wx+x+cells;
+}
+int dialog_focus_next(int focus,int count,bool reverse,unsigned disabled) {
+    for(int i=0;i<count;i++) {
+        focus=(focus+count+(reverse ? -1 : 1))%count;
+        if(!(disabled&(1u<<focus))) break;
+    }
+    return focus;
+}
+
 /* Resolve existing semantic colors onto the popup surfaces without changing text,
    coordinates, cursor, or input policy. Keep ACS and wide-character cells intact. */
 void dialog_refresh(WINDOW *win) {
@@ -45,7 +61,9 @@ void dialog_refresh(WINDOW *win) {
             if (!has_colors()) attr |= A_REVERSE;
         } else if (selected) { pair = UI_SELECTED; attr |= A_BOLD; }
         else if (attr & A_DIM) pair = UI_POP_DISABLED;
-        else if (old == UI_SPECIAL) pair = footer ? UI_POP_FOOT_WARNING : UI_POP_WARNING;
+        else if (old == UI_ERROR) pair = footer ? UI_POP_FOOT_ERROR : UI_POP_ERROR;
+        else if (old == UI_SPECIAL || old == UI_WARNING || old == UI_PREVIEW_WARNING)
+            pair = footer ? UI_POP_FOOT_WARNING : UI_POP_WARNING;
         else if (footer) pair = UI_POP_FOOTER;
         else pair = old == UI_MUTED ? UI_POP_MUTED : UI_POP_BODY;
         mvwchgat(win, y, x, 1, attr, has_colors() ? pair : 0, NULL);
@@ -62,9 +80,9 @@ WINDOW *dialog_open(UiContext *ui, const char *title, int height, int width) {
     return win;
 }
 bool dialog_closed(WINDOW *win, const MEVENT *e) {
-    int y, x, h, w; getbegyx(win, y, x); getmaxyx(win, h, w); (void)h;
-    return mouse_click(e) && e->y == y && e->x >= x + w - 6 && e->x < x + w - 1;
+    return dialog_button_hit(win,e,0,getmaxx(win)-6,"[ x ]",true);
 }
+
 int mouse_key(WINDOW *win, int key) {
     if (key != KEY_MOUSE) return key;
     MEVENT e;
@@ -106,7 +124,7 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
             mvwaddstr(win, 2, 2, "Name:");
             if (h > 7) draw_window_text(win, h - 3, 2, w - 4, "Tab: next field   Type: Left/Right   Esc: cancel");
         } else {
-            draw_window_text(win, 1, 2, w - 4, ui_panel(ui)->app.directory);
+            draw_window_path(win,1,2,w-4,ui_panel(ui)->app.directory);
             if (host) {
                 mvwaddstr(win, 2, 2, "Name contains:");
                 if (!*warning) draw_window_text(win, 4, 2, w - 4, focus == 2 ?
@@ -114,9 +132,9 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
             }
         }
         if (*warning) {
-            wattron(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
+            wattron(win, ui_notice_style(NOTICE_ERROR));
             draw_window_text(win, 4, 2, w - 4, warning);
-            wattroff(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
+            wattroff(win, ui_notice_style(NOTICE_ERROR));
         }
         int cols = field_draw(win, 3, 2, w - 4, &field, focus == 0);
         dialog_button(win, h - 2, 2, directory ? "[ Create ]" : host ? "[ Search ]" : "[ OK ]", focus == 1, true);
@@ -141,8 +159,8 @@ static bool input_dialog(UiContext *ui, const char *label, char *out, size_t siz
                 if (e.x >= x + 19 && e.x < x + 32) { *directory = true; focus = 0; }
                 continue;
             }
-            if (e.y == y + h - 2 && e.x >= x + cancel_x && e.x < x + cancel_x + 10) break;
-            if (e.y == y + h - 2 && e.x >= x + 2 && e.x < x + ((directory || host) ? 12 : 8)) { key = '\n'; kind = OK; focus = 1; }
+            if (dialog_button_hit(win,&e,h-2,cancel_x,"[ Cancel ]",true)) break;
+            if (dialog_button_hit(win,&e,h-2,2,directory?"[ Create ]":host?"[ Search ]":"[ OK ]",true)) { key = '\n'; kind = OK; focus = 1; }
             else if (e.y == y + 3 && e.x >= x + 2 && e.x < x + w - 2) {
                 focus = 0; field_click(&field, e.x - x - 2);
                 continue;
@@ -203,7 +221,7 @@ bool confirm(UiContext *ui, const char *name, bool directory) {
     for (;;) {
         int h, w; getmaxyx(win, h, w);
         dialog_frame(win, "Confirm deletion");
-        draw_window_text(win, 1, 2, w - 4, directory ? "Delete directory and all its contents?" : "Delete this file?");
+        draw_window_text(win, 1, 2, w - 4, directory ? "Delete directory and all its contents?" : "Permanently delete this file?");
         size_t pages = 0, page = 0;
         for (size_t at = 0;;) {
             if (at == start) page = pages;
@@ -220,7 +238,9 @@ bool confirm(UiContext *ui, const char *name, bool directory) {
             char hint[80]; snprintf(hint, sizeof hint, "Name %zu/%zu  PgUp/PgDn", page + 1, pages);
             draw_window_text(win, h - 3, 7, w - 14, hint);
         }
-        draw_window_text(win, 3, 2, w - 4, "This cannot be undone.");
+        wattron(win,ui_notice_style(NOTICE_WARNING));
+        draw_window_text(win,3,2,w-4,"[!] Permanent deletion; cannot be undone.");
+        wattroff(win,ui_notice_style(NOTICE_WARNING));
         dialog_button(win, h - 2, 2, "[ Delete ]", yes, true);
         dialog_button(win, h - 2, 14, "[ Cancel ]", !yes, true); dialog_refresh(win);
         int key = input_key(win);
@@ -233,8 +253,8 @@ bool confirm(UiContext *ui, const char *name, bool directory) {
                 else if (e.x >= x + w - 5 && e.x < x + w - 2) key = KEY_NPAGE;
             }
             if (mouse_click(&e) && e.y == y + h - 2) {
-                if (e.x >= x + 2 && e.x < x + 12) { result = true; break; }
-                if (e.x >= x + 14 && e.x < x + 24) break;
+                if (dialog_button_hit(win,&e,h-2,2,"[ Delete ]",true)) { result = true; break; }
+                if (dialog_button_hit(win,&e,h-2,14,"[ Cancel ]",true)) break;
             }
         }
         if (key == KEY_NPAGE && name[next]) { start = next; yes = false; }
@@ -245,29 +265,31 @@ bool confirm(UiContext *ui, const char *name, bool directory) {
             start = previous; yes = false;
         }
         if (key == 27 || key == KEY_RESIZE || key == 'n') break;
-        if (key == '\t' || key == KEY_LEFT || key == KEY_RIGHT) yes = !yes;
+        if (key == '\t' || key == KEY_BTAB || key == KEY_LEFT || key == KEY_RIGHT) yes = !yes;
         if (key == '\n' || key == KEY_ENTER) { result = yes; break; }
     }
     dialog_close(ui, win); return result;
 }
 
-static int choice_dialog(WINDOW *win, const char *title, const char **labels, int total, int *selection, int *scroll, const char *warning) {
+static int choice_dialog(WINDOW *win, const char *title, const char **labels, int total, int *selection, int *scroll, const char *warning, NoticeKind warning_kind, unsigned disabled) {
     int selected_row = *selection, offset = *scroll, result = -1;
+    if(disabled&(1u<<selected_row)) selected_row=dialog_focus_next(selected_row,total,false,disabled);
     for (;;) {
         int h, w; getmaxyx(win, h, w); int rows = h - 4;
         if (selected_row < offset) offset = selected_row;
         if (selected_row >= offset + rows) offset = selected_row - rows + 1;
         dialog_frame(win, title);
         for (int i = 0; i < rows && offset + i < total; i++) {
-            if (offset + i == selected_row) wattron(win, ui_selection());
-            draw_window_text(win, i + 1, 2, w - 4, labels[offset + i]); wattroff(win, ui_selection());
+            attr_t style=(disabled&(1u<<(offset+i))) ? A_DIM : offset+i==selected_row ? ui_selection() : A_NORMAL;
+            wattron(win,style);
+            draw_window_text(win,i+1,2,w-4,labels[offset+i]); wattroff(win,style);
         }
         if (warning && *warning) {
-            wattron(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
-            draw_window_text(win, h - 3, 2, w - 4, warning);
-            wattroff(win, COLOR_PAIR(UI_SPECIAL) | A_BOLD);
+            wattron(win,ui_notice_style(warning_kind));
+            draw_window_text(win,h-3,2,w-4,warning);
+            wattroff(win,ui_notice_style(warning_kind));
         }
-        draw_window_text(win, h - 2, 2, w - 4, "Up/Down  Enter: choose  Esc: close"); dialog_refresh(win);
+        draw_window_text(win, h - 2, 2, w - 4, "Tab/Arrows  Enter: choose  Esc: close"); dialog_refresh(win);
         int key = input_key(win);
         if (key == KEY_MOUSE) {
             MEVENT e; if (getmouse(&e) != OK) continue;
@@ -276,11 +298,16 @@ static int choice_dialog(WINDOW *win, const char *title, const char **labels, in
             if (!wenclose(win, e.y, e.x)) continue;
             if (e.bstate & BUTTON4_PRESSED) key = KEY_UP;
             else if (e.bstate & BUTTON5_PRESSED) key = KEY_DOWN;
-            else if (mouse_click(&e) && e.x > x && e.x < x + w - 1 && e.y > y && e.y < y + 1 + rows && offset + e.y - y - 1 < total) { result = offset + e.y - y - 1; break; }
+            else if (mouse_click(&e) && e.x > x && e.x < x + w - 1 && e.y > y && e.y < y + 1 + rows && offset + e.y - y - 1 < total) { int hit=offset+e.y-y-1; if(!(disabled&(1u<<hit))) { result=hit; break; } }
         }
         if (key == 27 || key == KEY_RESIZE) break;
-        if (key == KEY_UP && selected_row) selected_row--;
-        if (key == KEY_DOWN && selected_row + 1 < total) selected_row++;
+        if (key=='\t' || key==KEY_BTAB) selected_row=dialog_focus_next(selected_row,total,key==KEY_BTAB,disabled);
+        if (key == KEY_UP && selected_row) {
+            do { selected_row--; } while(selected_row && (disabled&(1u<<selected_row)));
+        }
+        if (key == KEY_DOWN && selected_row + 1 < total) {
+            do { selected_row++; } while(selected_row+1<total && (disabled&(1u<<selected_row)));
+        }
         if (key == '\n' || key == KEY_ENTER) { result = selected_row; break; }
     }
     *selection = result >= 0 ? result : selected_row; *scroll = offset;
@@ -293,7 +320,7 @@ int show_menu(UiContext *ui) {
     WINDOW *win = dialog_open(ui, "Menu", 14, 52);
     if (!win) return 0;
     int selected = 0, offset = 0;
-    int i = choice_dialog(win, "Menu", labels, 19, &selected, &offset, NULL);
+    int i = choice_dialog(win,"Menu",labels,19,&selected,&offset,NULL,NOTICE_INFO,ui_panel(ui)->app.marks_len>1 ? 1u<<11 : 0);
     dialog_close(ui, win);
     if (i == 11 && ui_panel(ui)->app.marks_len > 1) { message(ui, "Rename unavailable: multiple marked items"); return 0; }
     return i < 0 ? 0 : keys[i];
@@ -304,6 +331,7 @@ void show_options(UiContext *ui) {
     int selected = 0, offset = 0;
     char warning[sizeof ui->status] = "Active panel sort/hidden saved as defaults";
     if(ui->settings.load_result.code!=RESULT_OK) snprintf(warning,sizeof warning,"%s",ui->settings.load_result.detail);
+    NoticeKind warning_kind=ui->settings.load_result.code==RESULT_OK ? NOTICE_INFO : NOTICE_WARNING;
     bool replace=false;
     for (;;) {
         char hidden[64], preview_text[64], wheel[64], sort[64], direction[64], image[64], setup[96];
@@ -315,19 +343,19 @@ void show_options(UiContext *ui) {
         snprintf(image,sizeof image,"Image preview: %s (click to change)",ui->image_auto ? "Auto" : "Off");
         snprintf(setup,sizeof setup,"Image display setup: %s",image_status_label(ui));
         const char *labels[] = {hidden, preview_text, wheel, sort, direction, image, replace ? "Confirm: replace existing settings file" : "Save current settings as startup defaults", setup, "Done"};
-        int i = choice_dialog(win, "Options", labels, 9, &selected, &offset, warning);
+        int i = choice_dialog(win,"Options",labels,9,&selected,&offset,warning,warning_kind,0);
         if (i < 0 || i == 8) break;
         if(i!=6) replace=false;
         if(i==6) {
             if(ui->settings.replace_required && !replace) {
-                replace=true;
+                replace=true; warning_kind=NOTICE_WARNING;
                 snprintf(warning,sizeof warning,"Replace file using active panel sort/hidden?");
                 continue;
             }
             StartupSettings s={.mode=ui->mode,.wheel_step=ui->wheel_step,
                 .sort=ui_panel(ui)->app.sort,.show_hidden=ui_panel(ui)->app.show_hidden,.image_auto=ui->image_auto};
             Result r=settings_save(&ui->settings,&s,replace);
-            replace=false;
+            replace=false; warning_kind=r.code==RESULT_OK ? NOTICE_SUCCESS : NOTICE_ERROR;
             snprintf(warning,sizeof warning,"%s",r.code==RESULT_OK ? "Saved startup defaults (active panel sort/hidden)" : r.detail);
             if(r.code==RESULT_OK) ui->settings_warning[0]=0;
         }
@@ -338,6 +366,7 @@ void show_options(UiContext *ui) {
             ui_panel(ui)->app.show_hidden = !ui_panel(ui)->app.show_hidden;
             if (load_dir(ui, NULL).code != RESULT_OK) {
                 ui_panel(ui)->app.show_hidden = !ui_panel(ui)->app.show_hidden;
+                warning_kind=NOTICE_ERROR;
                 snprintf(warning, sizeof warning, "%s", ui->status);
             }
         }

@@ -2,6 +2,7 @@
 from pathlib import Path
 import os
 import tempfile
+import re
 from display_pty import Terminal
 F5='\x1b[15~';F6='\x1b[17~';F8='\x1b[19~';F9='\x1b[20~'
 DOWN='\x1bOB';HOME='\x1bOH';END='\x1bOF';PGDN='\x1b[6~'
@@ -15,8 +16,11 @@ for w,h in [(50,9),(80,24),(160,32)]:
         def body():return '\n'.join(t.screen.row(y) for y in range(h))
         def summary(n):
             text=t.screen.row(h-2)
-            assert f'Sel:{n}' in text or f'Selected: {n}' in text or (f'M:{n}' in text and 'S:' in text and 'H:' in text),body()
-        def menu(i):t.send(F9+HOME+DOWN*i+'\n')
+            assert f'Marked: {n}' in text,body()
+        def menu(i):
+            marked=re.search(r"Marked: (\d+)",t.screen.row(h-2))
+            steps=i-(1 if i>11 and marked and int(marked[1])>1 else 0)
+            t.send(F9+HOME+DOWN*steps+'\n')
         def destination(path):t.send('\x1bOH'+'\x1b[3~'*len(str(root))+str(path)+'\n')
         try:
             summary(0);t.send(HOME+' ');summary(1)
@@ -27,7 +31,11 @@ for w,h in [(50,9),(80,24),(160,32)]:
             # Select all and clear via menu; retain existing menu indexes.
             menu(14);summary(4);menu(15);summary(0)
             t.send(HOME+DOWN+' '+DOWN+' ');summary(2)
-            menu(11);assert 'Rename unavailable' in body() or 'multiple marked' in body();summary(2)
+            t.send('\x1b[20~'+'\x1bOB'*11)
+            row=next(y for y in range(h) if '[disabled]' in t.screen.row(y))
+            t.click(t.screen.row(row).index('[disabled]')+2,row)
+            assert 'Menu' in body()  # disabled Rename cannot execute or close Menu
+            t.send('\x1b');summary(2)
             # Finding with a Space is input and must not change the marks.
             t.send('\x06a \x1b');summary(2)
             t.send(F5);assert 'Batch destination' in body();destination(dst)

@@ -42,9 +42,9 @@ for case,(action,gate,how,w,h) in enumerate(cases + [('copy','partial','esc',50,
         try:
             pump(lambda:'Shown:' in body())
             if dual:
-                send('\x1b[20~'+'\x1bOB'*18+'\n');pump(lambda:'Left* /' in body())
+                send('\x1b[20~'+'\x1bOB'*18+'\n');pump(lambda:'Left*' in body())
                 send('\t \t') # inactive Right has its own marked a
-            send(' \x1bOB \x1bOB ');pump(lambda:'Sel:3' in body() or 'Selected: 3' in body() or (dual and 'M:3' in body()))
+            send(' \x1bOB \x1bOB ');pump(lambda:'Marked: 3' in body())
             send({'copy':'\x1b[15~','move':'\x1b[17~','delete':'\x1b[19~'}[action])
             if action!='delete':
                 pump(lambda:'Batch destination' in body());send('\x1bOH'+'\x1b[3~'*len(str(root))+str(dst)+'\n')
@@ -66,7 +66,7 @@ for case,(action,gate,how,w,h) in enumerate(cases + [('copy','partial','esc',50,
             pump(lambda:'[Cancelled]' in body())
             assert proc.poll() is None and 'confirmation' not in body() and 'Batch destination' not in body()
             assert (root/'b').exists() and (root/'c').exists()
-            if dual: assert 'Left* /' in body()
+            if dual: assert 'Left*' in body() or '* Left' in body()
             send('!');pump(lambda:'Recent operation result' in body());send('\x1b');pump(lambda:'[Cancelled]' in body());send('q');assert proc.wait(timeout=3)==0
         finally:
             if proc.poll() is None:proc.kill();proc.wait()

@@ -6,6 +6,7 @@ import re
 import signal
 import struct
 import tempfile
+import re
 import termios
 from display_pty import Terminal, Screen
 
@@ -25,10 +26,13 @@ for width,height in [(50,9),(80,24),(160,32)]:
         (b/'peer.txt').write_text('peer')
         t=Terminal(str(a),width,height);w,h=width,height
         def body():return '\n'.join(t.screen.row(y) for y in range(h))
-        def menu(index):t.send(F9+HOME+DOWN*index+'\n')
+        def menu(index):
+            marked=re.search(r"Marked: (\d+)",t.screen.row(h-2))
+            steps=index-(1 if index>11 and marked and int(marked[1])>1 else 0)
+            t.send(F9+HOME+DOWN*steps+'\n')
         def find(name):t.send('\x06'+name+'\n')
-        def marks(n):assert f'M:{n}' in t.screen.row(h-2),body()
-        def side(name):assert f'{name}* /' in t.screen.row(h-2),body()
+        def marks(n):assert f'Marked: {n}' in t.screen.row(h-2),body()
+        def side(name):assert f'{name}* ' in t.screen.row(h-2) or f'* {name}' in body(),body()
         def replace(value):t.send(HOME+DELETE*600+str(value))
         def button(label):
             for y in range(h):
@@ -76,7 +80,7 @@ for width,height in [(50,9),(80,24),(160,32)]:
             for name in ['a-partial','b-collision','c-unexecuted']:find(name);t.send(' ')
             marks(3);t.send(F5+'\n');t.send('\t\n');marks(2)
             assert (b/'a-partial').read_text()=='x'*400 and (b/'b-collision').read_text()=='keep collision' and not (b/'c-unexecuted').exists()
-            assert '[Warning]' in body();result=details()
+            assert '[Partial]' in body();result=details()
             for expected in ['Partialcompletion','Target1/3:Success','Target2/3:Failed','Target3/3:Unexecuted']:assert expected in result,result
             t.send('\t');marks(1);t.send('\t');menu(15)
             # Cursor-only copy; edit relative to nested source, leave B untouched.

@@ -24,6 +24,9 @@ int main(void) {
     for (size_t i = 0; expected[i]; ++i) assert(cell(win, 2, 2 + (int)i) == expected[i]);
     werase(win); draw_window_text(win, 2, 2, 6, "한글이름");
     assert(cell(win, 2, 2) == L'한' && cell(win, 2, 4) == L'.' && cell(win, 2, 6) == L'.');
+    werase(win); draw_window_path(win,2,2,12,"/far/long/path/한글");
+    assert(cell(win,2,2)==L'.' && cell(win,2,10)==L'한' && cell(win,2,12)==L'글');
+    assert(cell(win,2,14)==L' '); /* directory tail fits without entering the guard */
     delwin(win); endwin(); delscreen(screen); fclose(in); fclose(out);
     puts("PASS: curses cell inspection keeps text within its row/region and preserves guards");
 }

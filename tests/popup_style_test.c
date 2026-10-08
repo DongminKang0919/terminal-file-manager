@@ -80,6 +80,18 @@ int main(void) {
             dialog_button(win,ph-2,2,"[ One ]",false,true);
             dialog_button(win,ph-2,11,"[ Two ]",true,true);
             dialog_button(win,ph-2,20,"[ Off ]",false,false);
+            int wy,wx; getbegyx(win,wy,wx);
+            for(int x=0;x<pw;x++) {
+                MEVENT click={.x=wx+x,.y=wy+ph-2,.bstate=BUTTON1_PRESSED};
+                assert(dialog_button_hit(win,&click,ph-2,11,"[ Two ]",true)==(x>=11 && x<18));
+                assert(!dialog_button_hit(win,&click,ph-2,20,"[ Off ]",false));
+            }
+            /* Clipped wide labels include the ellipsis but never its blank gap. */
+            const char *wide="한글한글한글";
+            int available=6, at=pw-2-available;
+            MEVENT edge={.x=wx+at+4,.y=wy+ph-2,.bstate=BUTTON1_PRESSED};
+            assert(dialog_button_hit(win,&edge,ph-2,at,wide,true));
+            edge.x++; assert(!dialog_button_hit(win,&edge,ph-2,at,wide,true));
             Cell *before=calloc((size_t)(ph*pw),sizeof *before); assert(before);
             for(int y=0;y<ph;y++) for(int x=0;x<pw;x++) before[y*pw+x]=cell(win,y,x);
             dialog_refresh(win);

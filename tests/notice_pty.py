@@ -14,7 +14,7 @@ for w,h in [(50,9),(100,24)]:
         def result():
             assert 'Recent operation result' in body()
         try:
-            assert 'Shown: 30 | Hidden: on' in status()
+            assert 'Shown: 30 | Marked: 0 | Dotfiles: on' in status()
             t.send('!'); result(); assert 'No recent file operation result.' in body()
             t.send('\x1b')
             t.send('\x1bOF\x1b[19~\x1b')

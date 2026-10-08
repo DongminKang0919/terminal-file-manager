@@ -27,7 +27,8 @@ for w,h in [(50,9),(80,24),(160,32)]:
         def focus(preview):
             assert t.screen.rows[2][split+2 if preview else 2]=='*'
             assert t.screen.rows[2][2 if preview else split+2]==' '
-            assert ('Esc: Files' if preview else 'Enter: Open') in t.screen.row(h-1)
+            empty='No visible items' in '\n'.join(t.screen.row(y) for y in range(h))
+            assert ('Esc: Files' if preview else 'F2: New' if empty else 'Enter: Open') in t.screen.row(h-1)
         def row():
             if h<14:
                 body='\n'.join(t.screen.row(y)[split:] for y in range(3,h-3))
@@ -119,7 +120,7 @@ for w,h in [(50,9),(80,24),(160,32)]:
             t.send('\x1b[18~\n\x1b')
             assert 'No visible items' in t.screen.row(first)
             assert 'F7: Show hidden files' in t.screen.row(first+1)
-            assert 'Shown: 0 | Hidden: off' in t.screen.row(h-2)
+            assert 'Shown: 0 | Marked: 0 | Dotfiles: off' in t.screen.row(h-2)
             t.send('\t'+DOWN+PGDN+HOME+'\x1b') # empty preview retains list focus
             assert 'No visible items' in t.screen.row(first)
         finally: t.close()

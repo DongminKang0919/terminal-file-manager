@@ -33,10 +33,18 @@ attr_t ui_bar(void) {
     return has_colors() ? COLOR_PAIR(UI_HEADER) : A_REVERSE;
 }
 
+attr_t ui_notice_style(NoticeKind kind) {
+    int pair=kind==NOTICE_SUCCESS ? UI_SUCCESS : kind==NOTICE_WARNING ? UI_WARNING :
+        kind==NOTICE_ERROR ? UI_ERROR : UI_MUTED;
+    return COLOR_PAIR(pair) | ((kind==NOTICE_WARNING || kind==NOTICE_ERROR) ? A_BOLD : A_NORMAL);
+}
 void init_theme(void) {
     if (!has_colors()) return;
     start_color();
     if (COLORS >= 256) {
+        init_pair(UI_SUCCESS, 157, 235);
+        init_pair(UI_WARNING, 222, 235);
+        init_pair(UI_ERROR, 210, 235);
         init_pair(UI_PREVIEW_WARNING, 222, 235);
         init_pair(UI_BASE, 255, 235);
         init_pair(UI_BORDER, 242, 235);
@@ -60,6 +68,9 @@ void init_theme(void) {
         init_pair(UI_HIDDEN_SELECTED, 225, 25);
         init_pair(UI_SPECIAL_SELECTED, 224, 25);
     } else {
+        init_pair(UI_SUCCESS, COLOR_GREEN, COLOR_BLACK);
+        init_pair(UI_WARNING, COLOR_YELLOW, COLOR_BLACK);
+        init_pair(UI_ERROR, COLOR_RED, COLOR_BLACK);
         init_pair(UI_PREVIEW_WARNING, COLOR_YELLOW, COLOR_BLACK);
         init_pair(UI_BASE, COLOR_WHITE, COLOR_BLACK);
         init_pair(UI_BORDER, COLOR_WHITE, COLOR_BLACK);
@@ -90,6 +101,8 @@ void init_theme(void) {
         init_pair(UI_POP_BORDER, 250, 238);
         init_pair(UI_POP_TITLE, 255, 60);
         init_pair(UI_POP_FOOTER, 250, 237);
+        init_pair(UI_POP_ERROR, 210, 238);
+        init_pair(UI_POP_FOOT_ERROR, 210, 237);
         init_pair(UI_POP_WARNING, 222, 238);
         init_pair(UI_POP_FOOT_WARNING, 222, 237);
         init_pair(UI_POP_DISABLED, 244, 237);
@@ -100,6 +113,8 @@ void init_theme(void) {
         init_pair(UI_POP_BORDER, COLOR_WHITE, COLOR_BLACK);
         init_pair(UI_POP_TITLE, COLOR_WHITE, COLOR_BLUE);
         init_pair(UI_POP_FOOTER, COLOR_BLACK, COLOR_WHITE);
+        init_pair(UI_POP_ERROR, COLOR_RED, COLOR_WHITE);
+        init_pair(UI_POP_FOOT_ERROR, COLOR_RED, COLOR_WHITE);
         init_pair(UI_POP_WARNING, COLOR_RED, COLOR_WHITE);
         init_pair(UI_POP_FOOT_WARNING, COLOR_RED, COLOR_WHITE);
         init_pair(UI_POP_DISABLED, COLOR_BLACK, COLOR_WHITE);

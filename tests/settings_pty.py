@@ -33,7 +33,7 @@ for width, height in [(50, 9), (100, 24)]:
         t = Terminal(str(start), width, height)
         try:
             body = '\n'.join(t.screen.row(y) for y in range(height))
-            assert 'Left*' in body and 'Size-' in body and 'H:0' in body, body
+            assert 'Left*' in body and 'Size-' in body and 'Dotfiles:off' in body, body
             assert 'visible' in body and '.hidden' not in body, body
             t.send('\t')
             assert 'Right*' in t.screen.row(height - 2)

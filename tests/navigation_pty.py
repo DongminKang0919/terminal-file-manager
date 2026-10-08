@@ -31,7 +31,7 @@ for w,h in [(50,9),(80,24),(100,24),(160,32)]:
             t.send('\x1b[18~'+'\x1bOB'*index+'\n')
             t.send('\x1b')
         try:
-            assert 'Shown: 61 | Hidden: on' in t.screen.row(h-2)
+            assert 'Shown: 61 | Marked: 0 | Dotfiles: on' in t.screen.row(h-2)
             assert f'Shown 1-{rows}/61' in t.screen.row(h-3)
             t.send('\x1bOF')
             before=[t.screen.row(y)[:split] for y in range(first,h-2)]
@@ -45,10 +45,10 @@ for w,h in [(50,9),(80,24),(100,24),(160,32)]:
             option(1)
             assert [t.screen.row(y)[:split] for y in range(first,h-2)]==before
             option(0)
-            assert 'Shown: 60 | Hidden: off' in t.screen.row(h-2)
+            assert 'Shown: 60 | Marked: 0 | Dotfiles: off' in t.screen.row(h-2)
             assert '/60' in t.screen.row(h-3)
             option(0)
-            assert 'Shown: 61 | Hidden: on' in t.screen.row(h-2)
+            assert 'Shown: 61 | Marked: 0 | Dotfiles: on' in t.screen.row(h-2)
             t.send('\x1b[19~\x1b')
             assert '[Cancelled]' in t.screen.row(h-2)
             t.send('\x1bOA')
@@ -76,7 +76,7 @@ for w,h in [(50,9),(80,24),(100,24),(160,32)]:
     with tempfile.TemporaryDirectory() as directory:
         t=Terminal(directory,w,h)
         try:
-            assert 'Shown: 0 | Hidden: on' in t.screen.row(h-2)
+            assert 'Shown: 0 | Marked: 0 | Dotfiles: on' in t.screen.row(h-2)
             assert 'Shown' not in t.screen.row(h-3)
             (Path(directory)/'single').write_text('one\n')
             t.send('r')

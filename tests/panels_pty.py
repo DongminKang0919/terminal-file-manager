@@ -5,6 +5,7 @@ from pathlib import Path
 import signal
 import struct
 import tempfile
+import re
 import termios
 from display_pty import Terminal, Screen
 
@@ -19,9 +20,12 @@ for width,height in [(50,9),(80,24),(160,32)]:
         t=Terminal(str(root),width,height)
         w,h=width,height
         def body(): return '\n'.join(t.screen.row(y) for y in range(h))
-        def menu(index): t.send(F9+HOME+DOWN*index+'\n')
+        def menu(index):
+            marked=re.search(r"Marked: (\d+)",t.screen.row(h-2))
+            steps=index-(1 if index>11 and marked and int(marked[1])>1 else 0)
+            t.send(F9+HOME+DOWN*steps+'\n')
         def active(side): assert f'{side}* ' in t.screen.row(h-2),body()
-        def marked(n): assert f'M:{n}' in t.screen.row(h-2),body()
+        def marked(n): assert f'Marked: {n}' in t.screen.row(h-2),body()
         def button(label):
             for y in range(h):
                 row=t.screen.row(y)
@@ -44,14 +48,14 @@ for width,height in [(50,9),(80,24),(160,32)]:
             if w>=80:
                 assert '00-A' in panel('Left') and '00-A' in panel('Right')
                 assert ':' in panel('Right') and '>' in panel('Left')
-                assert 'S:25' in panel('Left') and 'M:1' in panel('Left')
+                assert 'Marked:1' in panel('Left') and 'Marked:1' in panel('Left')
             t.send('\t');active('Right');marked(0)
             t.send(BACK+HOME+DOWN+'\n');find('f07');t.send(' ');marked(1)
             if w>=80: assert '00-A' in panel('Left') and '01-B' in panel('Right')
             t.send('\x1b[18~'+DOWN*3+'\n\x1b') # Right-only sort
             assert 'Size+' in panel('Right') and (w<80 or 'Name+' in panel('Left'))
-            t.send('\x1b[18~\n\x1b');assert 'H:0' in panel('Right') # Right-only hidden filter
-            t.send('\t');active('Left');marked(1);assert 'Name+' in panel('Left') and 'H:1' in panel('Left')
+            t.send('\x1b[18~\n\x1b');assert 'Dotfiles:off' in panel('Right') # Right-only hidden filter
+            t.send('\t');active('Left');marked(1);assert 'Name+' in panel('Left') and 'Dotfiles:on' in panel('Left')
             t.send('\x1b[Z');active('Right');marked(1)
             # Back/forward and search result opening belong to Right.
             t.send('[');assert '00-A' in panel('Right');t.send(']');assert '01-B' in panel('Right')
@@ -70,7 +74,7 @@ for width,height in [(50,9),(80,24),(160,32)]:
             t.click(30,4);active('Right')
             resize(160,32);w,h=160,32;active('Right');marked(1)
             t.click(3,4);active('Left');marked(1)
-            assert 'M:1' in panel('Right')
+            assert 'Marked:1' in panel('Right')
             t.click(w//2+3,4);active('Right');marked(1)
             # Different paths: opposite directory is the editable default.
             t.send('\t'+F6)

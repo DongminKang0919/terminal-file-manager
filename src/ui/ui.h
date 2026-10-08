@@ -116,7 +116,7 @@ enum { UI_BASE = 1, UI_BORDER, UI_HEADER, UI_SELECTED, UI_DIR, UI_MUTED, UI_STAT
        UI_FILE, UI_LINK, UI_DIR_SELECTED, UI_FILE_SELECTED, UI_LINK_SELECTED,
        UI_EXEC, UI_HIDDEN, UI_SPECIAL, UI_EXEC_SELECTED, UI_HIDDEN_SELECTED, UI_SPECIAL_SELECTED,
        UI_INACTIVE, UI_POP_BODY, UI_POP_MUTED, UI_POP_BORDER, UI_POP_TITLE,
-       UI_POP_FOOTER, UI_POP_WARNING, UI_POP_FOOT_WARNING, UI_POP_DISABLED, UI_COLUMNS, UI_DISABLED, UI_PREVIEW_WARNING };
+       UI_POP_FOOTER, UI_POP_WARNING, UI_POP_FOOT_WARNING, UI_POP_DISABLED, UI_COLUMNS, UI_DISABLED, UI_PREVIEW_WARNING, UI_SUCCESS, UI_WARNING, UI_ERROR, UI_POP_ERROR, UI_POP_FOOT_ERROR };
 typedef enum { TYPE_DIR, TYPE_FILE, TYPE_EXEC, TYPE_HIDDEN, TYPE_LINK, TYPE_SPECIAL } FileType;
 void message(UiContext *ui, const char *text);
 Result load_dir(UiContext *ui, const char *highlight);
@@ -140,6 +140,8 @@ bool mouse_click(const MEVENT *e);
 void dialog_frame(WINDOW *win, const char *title);
 void dialog_refresh(WINDOW *win);
 void dialog_button(WINDOW *win, int y, int x, const char *label, bool focused, bool enabled);
+bool dialog_button_hit(WINDOW *win, const MEVENT *event, int y, int x, const char *label, bool enabled);
+int dialog_focus_next(int focus, int count, bool reverse, unsigned disabled);
 WINDOW *dialog_open(UiContext *ui, const char *title, int height, int width);
 bool dialog_closed(WINDOW *win, const MEVENT *e);
 int mouse_key(WINDOW *win, int key);
@@ -153,6 +155,7 @@ int show_menu(UiContext *ui);
 void show_options(UiContext *ui);
 void draw_text(int y, int x, int width, const char *s);
 void draw_window_text(WINDOW *win, int y, int x, int width, const char *text);
+void draw_window_path(WINDOW *win, int y, int x, int width, const char *path);
 size_t draw_window_page(WINDOW *win, int y, int x, int width, const char *text, size_t start);
 int header_action(int x, int width);
 typedef struct { int list_width, panel_height, list_y, list_rows; bool columns; } UiLayout;
@@ -180,6 +183,7 @@ char type_letter(FileType type);
 int item_color(const Item *it, bool active);
 attr_t ui_selection(void);
 attr_t ui_bar(void);
+attr_t ui_notice_style(NoticeKind kind);
 void init_theme(void);
 void show_help(UiContext *ui);
 void graphics_init(UiContext *ui);
