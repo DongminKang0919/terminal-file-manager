@@ -27,7 +27,7 @@ void external_entry(UiContext *ui,bool edit) {
         else { Result r=core_external_open(path,&ui->external_job);outcome=r;message(ui,r.code==RESULT_OK?"External open requested; display/save unconfirmed":r.detail); }
     } else {
         UiFocus focus=ui->focus;
-        graphics_probe_cancel(ui);graphics_clear(ui);preview_reset(ui);core_media_shutdown();
+        graphics_probe_cancel(ui);graphics_clear(ui);preview_reset(ui);core_media_pause();
         if(stdscr) {def_prog_mode();endwin();fflush(stdout);}
         Result r=core_vim_run(path);outcome=r;
         if(stdscr) {
@@ -44,7 +44,7 @@ void external_entry(UiContext *ui,bool edit) {
             wtimeout(stdscr,0);for(int i=0;i<64 && input_key(stdscr)!=ERR;i++) {}
             wtimeout(stdscr,-1);flushinp();clearok(stdscr,TRUE);
         }
-        core_media_install_signals();ui->focus=focus;
+        ui->focus=focus;
         Result refreshed=ui_refresh_panel(ui,ui->active,name,true);
         if(refreshed.code==RESULT_OK) for(size_t i=0;i<panel->app.files.len;i++) if(!strcmp(panel->app.files.entries[i].name,name)) panel->selected=i;
         Result peer=result_make(RESULT_OK,NULL);

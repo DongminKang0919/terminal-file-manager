@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <time.h>
 
 struct PlatformExternal { pid_t pid; };
 static pid_t active_launcher,detached_launcher;
@@ -116,19 +117,48 @@ static Result exit_result(int status,const char *tool) {
     else snprintf(detail,sizeof detail,"%s exited with status %d",tool,WIFEXITED(status)?WEXITSTATUS(status):-1);
     return result_make(RESULT_IO,detail);
 }
+static volatile sig_atomic_t editor_shutdown;
+static void editor_request_shutdown(int number) { editor_shutdown|=number==SIGTERM?1:2; }
+bool platform_editor_shutdown_requested(void) { return editor_shutdown!=0; }
 Result platform_editor_run(char **configured,size_t count,const char *path) {
     char *file=NULL;Result r=target(path,&file);if(r.code!=RESULT_OK) return r;
     char *tool=program(configured[0]);if(!tool) {free(file);return result_make(RESULT_NOT_FOUND,"Editor program unavailable (VISUAL/EDITOR/vi)");}
     char **argv=calloc(count+2,sizeof *argv);if(!argv) {free(file);free(tool);return result_make(RESULT_NO_MEMORY,"Out of memory");}
     for(size_t i=0;i<count;i++) argv[i]=configured[i];
     argv[count]=file;
-    struct sigaction ignored={0},old_int,old_quit;ignored.sa_handler=SIG_IGN;sigemptyset(&ignored.sa_mask);
-    if(sigaction(SIGINT,&ignored,&old_int)<0) {r=external_error("Cannot suspend editor signals");goto done;}
-    if(sigaction(SIGQUIT,&ignored,&old_quit)<0) {r=external_error("Cannot suspend editor signals");sigaction(SIGINT,&old_int,NULL);goto done;}
+    const int signals[]={SIGINT,SIGQUIT,SIGTERM,SIGHUP};
+    struct sigaction previous[4],action={0};size_t installed=0;
+    editor_shutdown=0;sigemptyset(&action.sa_mask);
+    sigaddset(&action.sa_mask,SIGTERM);sigaddset(&action.sa_mask,SIGHUP);
+    for(size_t i=0;i<4;i++) {
+        action.sa_handler=i<2?SIG_IGN:editor_request_shutdown;
+        if(sigaction(signals[i],&action,&previous[i])<0) {
+            r=external_error("Cannot suspend editor signals");goto restore;
+        }
+        installed++;
+    }
+    /* A request caught by the app handler during terminal handoff precedes
+       these handlers. Do not start a new editor for an already closing app. */
+    if(platform_media_shutdown_requested()) {
+        r=result_make(RESULT_CANCELLED,"Shutdown requested before editor launch");goto restore;
+    }
     pid_t pid=0;r=spawn(tool,argv,true,&pid);
-    if(r.code==RESULT_OK) {int status=0;pid_t waited;do {waited=waitpid(pid,&status,0);} while(waited<0&&errno==EINTR);r=waited<0?external_error("Cannot wait for editor"):exit_result(status,!strcmp(configured[0],"vim")?"Vim":"Editor");}
-    sigaction(SIGINT,&old_int,NULL);sigaction(SIGQUIT,&old_quit,NULL);
-done:
+    if(r.code==RESULT_OK) {
+        int status=0,forwarded=0;pid_t waited;
+        /* A request may arrive during exec. Use polling waitpid to
+           avoid the check/wait lost-wakeup race. No timeout or forced kill. */
+        for(;;) {
+            sig_atomic_t requested=editor_shutdown;
+            if((requested&1) && !(forwarded&1)) {kill(pid,SIGTERM);forwarded|=1;}
+            if((requested&2) && !(forwarded&2)) {kill(pid,SIGHUP);forwarded|=2;}
+            waited=waitpid(pid,&status,WNOHANG);
+            if(waited==pid || (waited<0&&errno!=EINTR)) break;
+            struct timespec delay={0,20000000};nanosleep(&delay,NULL);
+        }
+        r=waited<0?external_error("Cannot wait for editor"):exit_result(status,!strcmp(configured[0],"vim")?"Vim":"Editor");
+    }
+restore:
+    while(installed) {installed--;sigaction(signals[installed],&previous[installed],NULL);}
     free(argv);free(tool);free(file);return r;
 }
 bool platform_external_cleanup_pending(void) {

@@ -98,3 +98,5 @@ Result core_external_poll(ExternalJob *job,bool *done) { return platform_externa
 void core_external_close(ExternalJob *job) { if(job) { platform_external_close(job->process);free(job); } }
 bool core_external_cleanup_pending(void) { return platform_external_cleanup_pending(); }
 bool core_terminal_size(unsigned *rows,unsigned *columns) { return platform_terminal_size(rows,columns); }
+
+bool core_editor_shutdown_requested(void) { return platform_editor_shutdown_requested(); }

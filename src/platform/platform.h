@@ -50,6 +50,7 @@ Result platform_editor_inspect(const char *path,unsigned char *sample,size_t cap
 Result platform_vim_available(void);
 Result platform_editor_setting(char **out);
 Result platform_editor_run(char **argv,size_t count,const char *path);
+bool platform_editor_shutdown_requested(void);
 typedef struct PlatformExternal PlatformExternal;
 Result platform_external_open(const char *path,PlatformExternal **out);
 Result platform_external_poll(PlatformExternal *job,bool *done);
@@ -62,6 +63,7 @@ Result platform_media_poll(PlatformMedia *media, bool *done, char **data, size_t
 void platform_media_close(PlatformMedia *media);
 void platform_media_reap(void);
 void platform_media_shutdown(void);
+void platform_media_pause(void);
 bool platform_media_cleanup_pending(void);
 void platform_media_install_signals(void);
 bool platform_media_shutdown_requested(void);

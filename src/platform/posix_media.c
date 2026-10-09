@@ -91,15 +91,19 @@ void platform_media_close(PlatformMedia *m) {
     } else dispose(m);
 }
 bool platform_media_cleanup_pending(void) { platform_media_reap(); return retiring!=NULL; }
+void platform_media_pause(void) {
+    if(!retiring) return;
+    /* Editor handoff / exit only: converter SIGKILL is already sent.
+       Keep handlers installed during handoff; do not wait on navigation. */
+    while(waitpid(retiring->pid,NULL,0)<0 && errno==EINTR) {}
+    dispose(retiring); retiring=NULL;
+}
 void platform_media_shutdown(void) {
     if(handlers_installed) {
         for(size_t i=0;i<3;i++) sigaction(shutdown_signals[i],&previous_signals[i],NULL);
         handlers_installed=false;
     }
-    if(!retiring) return;
-    /* Exit only: SIGKILL is already sent. Never wait in input/selection handling. */
-    while(waitpid(retiring->pid,NULL,0)<0 && errno==EINTR) {}
-    dispose(retiring); retiring=NULL;
+    platform_media_pause();
 }
 Result platform_terminal_session_check(void) {
     if (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO))

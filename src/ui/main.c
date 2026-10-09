@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
     /* app_init already loaded and sorted this directory. */
     int key; bool redraw=true;
     for (;;) {
-        if (core_media_shutdown_requested()) break;
+        if (core_media_shutdown_requested() || core_editor_shutdown_requested()) break;
         bool external_changed=external_prepare(ui);
         if(redraw||external_changed) draw(ui);
         bool media_wait=media_pending(ui)||core_media_cleanup_pending();

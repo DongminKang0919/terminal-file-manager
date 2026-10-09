@@ -240,6 +240,7 @@ tests/vim_test: tests/vim_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
 check-vim: tests/vim_test tfile
 	python3 tests/vim_tools.py
 	python3 tests/vim_pty.py
+	python3 tests/editor_shutdown_pty.py
 check-isolated: check-vim
 .PHONY: check-vim
 

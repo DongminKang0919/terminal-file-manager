@@ -13,6 +13,7 @@ Result core_media_open(const char *path,PreviewMediaKind kind,bool text,unsigned
 Result core_media_poll(MediaPreview *m,bool *done,char **data,size_t *len) { return platform_media_poll(m->job,done,data,len); }
 void core_media_close(MediaPreview *m) { if(m) { platform_media_close(m->job); free(m); } }
 void core_media_reap(void) { platform_media_reap(); }
+void core_media_pause(void) { platform_media_pause(); }
 void core_media_shutdown(void) { platform_media_shutdown(); }
 bool core_terminal_pixels(unsigned *width,unsigned *height) { return platform_terminal_pixels(width,height); }
 

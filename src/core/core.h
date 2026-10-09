@@ -133,6 +133,7 @@ void editor_command_free(EditorCommand *command);
 Result core_vim_check(const char *path,bool *read_only);
 Result core_vim_run(const char *path);
 Result core_editor_run(const char *path);
+bool core_editor_shutdown_requested(void);
 typedef struct ExternalJob ExternalJob;
 Result core_external_open(const char *path,ExternalJob **out);
 Result core_external_poll(ExternalJob *job,bool *done);
@@ -186,6 +187,7 @@ Result core_media_poll(MediaPreview *media, bool *done, char **data, size_t *len
 void core_media_close(MediaPreview *media);
 void core_media_reap(void);
 void core_media_shutdown(void);
+void core_media_pause(void);
 bool core_media_cleanup_pending(void);
 void core_media_install_signals(void);
 bool core_media_shutdown_requested(void);
