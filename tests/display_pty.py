@@ -84,6 +84,7 @@ class Screen:
 
     def csi(self, params, command):
         if params.startswith('?'): return
+        if params.startswith('>') and command=='m': return  # XTMODKEYS keyboard mode; no painted cells
         args = [int(n) if n else 0 for n in params.split(';')] if params else [0]
         n = args[0] or 1
         if command in 'Hf':

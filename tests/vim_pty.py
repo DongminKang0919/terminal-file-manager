@@ -8,8 +8,9 @@ from vim_tools import VIM_STUB
 
 class VimScreen(Screen):
  def __init__(self,*args):
-  super().__init__(*args);self.mouse_modes={}
+  super().__init__(*args);self.mouse_modes={};self.modify_other_keys=0
  def csi(self,params,command):
+  if params.startswith(">4;") and command=="m":self.modify_other_keys=int(params.split(";")[-1] or 0)
   if params.startswith("?") and command in ("h","l"):
    for mode in params[1:].split(";"):
     if mode.isdigit():self.mouse_modes[int(mode)]=command=="h"
@@ -37,6 +38,8 @@ def restored(t):
  wait(t,lambda:not children(t) and 'Space: Mark' in text(t))
  assert 'e: Vim' in text(t) and 'Marked: 1' in text(t)
  assert t.screen.mouse_modes.get(1000) and t.screen.mouse_modes.get(1006),t.screen.mouse_modes
+ assert not any(t.screen.mouse_modes.get(n) for n in [2004,1004,1002,1003]),t.screen.mouse_modes
+ assert not t.screen.modify_other_keys,t.screen.modify_other_keys
  flags=termios.tcgetattr(t.master)[3]
  assert not flags&(termios.ICANON|termios.ECHO)
  # A menu immediately after return must not consume a leftover resize event.

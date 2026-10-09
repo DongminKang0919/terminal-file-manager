@@ -31,6 +31,11 @@ void external_entry(UiContext *ui,bool edit) {
         if(stdscr) {def_prog_mode();endwin();fflush(stdout);}
         Result r=core_vim_run(path);outcome=r;
         if(stdscr) {
+            /* A killed Vim cannot send its normal terminal teardown. Restore
+               legacy keyboard/paste/focus and motion modes before curses
+               restores its own keypad and SGR mouse reporting. These are
+               mode resets, not new input protocols enabled by this app. */
+            fputs("\033[>4;0m\033[?2004l\033[?1004l\033[?1002l\033[?1003l",stdout);fflush(stdout);
             reset_prog_mode();unsigned rows=0,cols=0;if(core_terminal_size(&rows,&cols)) resizeterm((int)rows,(int)cols);
             cbreak();noecho();keypad(stdscr,TRUE);curs_set(0);input_init();terminal_input_reset();flushinp();
             /* A SIGWINCH received while the editor owned the terminal may

@@ -155,3 +155,6 @@ copy/move/delete/Trash의 exactly-one-mark 우선 정책은 이미 구현되어 
 
 
 두 번째 전체 검사(`/tmp/tfile-vim-marks-final-check-2.log`)는 navigation_pty에서 최소 폭의 기본 Shown/Marked/Dotfiles 요약이 줄어든 회귀를 잡았다. 최초 기본 target hint는 80열 이상에만 추가하고, 최소 폭에서는 기존 요약을 그대로 보존했다. 명시적 마킹/해제 후 대상 hint는 계속 표시한다. 기존 navigation/settings 기대값 그대로 PASS(`/tmp/tfile-vim-marks-metadata-navigation.log`, `/tmp/tfile-marking-menu-hint-settings.log`). F9 첫 화면의 예약 안내 행에도 a 전체 마킹 / u 해제 / e Vim cursor를 표시해, 아래로 스크롤하지 않아도 찾을 수 있게 했다. 메뉴 순서는 유지한다. 해당 discovery PTY PASS(`/tmp/tfile-marking-menu-hint-pty.log`).
+
+
+Vim 입력 모드 복귀 보강: 실제 Vim SIGKILL 뒤 mode state를 추가 검사하니 bracketed paste(2004), focus reporting(1004), motion mouse(1002) 등이 남아 있었다(`/tmp/tfile-vim-keyboard-return.log`). termios/화면 복귀만으로 전체 입력 정책이 복구된다는 주장은 부족했다. [xterm 공식 control sequences](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html)를 확인하고, 복귀 시 modifyOtherKeys=0 및 2004/1004/1002/1003 해제 후 curses의 기존 keypad/SGR mouse를 복구한다. 새 키보드/그래픽 프로토콜을 활성화하거나 파서를 추가한 것이 아니다. PTY 판독기는 기존에 무시하던 비그리기 keyboard/style 시퀀스를 이해하도록 확장했고, 실제 Vim 검사에는 종료 후 모드 상태 assertions를 추가했다(내부 함수 호출 순서 고정 없음). 정상/강제 종료/missing/exec-error에서도 전체 관련 검사 PASS(`/tmp/tfile-vim-keyboard-return-final.log`, `/tmp/tfile-vim-keyboard-external.log`). TERM=xterm-256color/Vim9.1/controlled .vimrc 범위이며, 다른 실제 터미널과 임의 Vim 설정의 모든 모드 변경을 검증한 것은 아니다. 사람이 보는 육안 검사는 여전히 미검증이다.
