@@ -49,7 +49,7 @@ bool open_search_result(UiContext *ui, const char *path) {
     if (r.code != RESULT_OK) { show_failure(ui, "Cannot open search result", r); return false; }
     ui_panel(ui)->stale=false;
     ui_panel(ui)->selected = selected; ui_panel(ui)->top = 0; preview_reset(ui);
-    message(ui, revealed ? "Opened search result; hidden files shown" : "Opened search result");
+    message(ui, revealed ? "Opened search result; filters cleared / hidden files shown" : "Opened search result");
     return true;
 }
 static void refresh_after_operation(UiContext *ui, const char *highlight, const char *success) {

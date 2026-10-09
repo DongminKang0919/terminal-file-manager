@@ -38,12 +38,14 @@ Result favorites_remove(Favorites *store,size_t index);
 /* Owned history data; positions are logical list ordinals, never terminal coordinates. */
 typedef struct { char *directory, *selected_name; size_t selected, top; } HistoryEntry;
 typedef struct { char *name; bool seen; } SelectionName;
+typedef enum { FILTER_NONE, FILTER_CONTAINS, FILTER_GLOB } FilterKind;
 typedef struct {
     SelectionName *marks; size_t marks_len, marks_cap;
     SortSettings sort;
     char *directory;
     FileList files;
     bool show_hidden;
+    FilterKind filter_kind; char *filter; size_t unfiltered_count;
     HistoryEntry *history;
     size_t history_len, history_at;
 } AppState;
@@ -64,6 +66,8 @@ Result app_init_settings(AppState *app, const char *directory, const StartupSett
 void app_free(AppState *app);
 Result app_navigate(AppState *app, const char *directory);
 Result app_refresh(AppState *app);
+/* Successful filter apply (including clear/reapply) clears all marks. */
+Result app_set_filter(AppState *app,FilterKind kind,const char *pattern);
 Result app_history(AppState *app, bool forward);
 /* No filesystem I/O. Allocation failure leaves the previous saved state intact. */
 Result app_remember_selection(AppState *app, size_t selected, size_t top);

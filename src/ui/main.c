@@ -87,6 +87,7 @@ int main(int argc, char **argv) {
         if (key == 'q' || key == KEY_F(10)) break;
         if (panel_key(ui, key, h)) continue;
         switch (key) {
+            case 'f': case UI_FILTER: show_filter(ui); break;
             case 'b': case UI_FAVORITES: show_favorites(ui); break;
             case UI_MODE_PREVIEW: ui_set_mode(ui,UI_LIST_PREVIEW); break;
             case UI_MODE_FILES: ui_set_mode(ui,UI_LIST_ONLY); break;

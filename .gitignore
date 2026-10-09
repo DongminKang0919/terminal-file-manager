@@ -74,3 +74,4 @@ __pycache__/
 /tests/graphics_probe_test
 
 /tests/favorites_test
+/tests/filter_test

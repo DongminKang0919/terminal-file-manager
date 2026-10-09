@@ -42,6 +42,28 @@ static Result read_list(const char *directory, bool hidden, bool directories_onl
     if (r.code != RESULT_OK) file_list_free(out);
     return r;
 }
+static void filter_list(FileList *list,FilterKind kind,const char *pattern) {
+    if(kind==FILTER_NONE) return;
+    size_t kept=0;
+    for(size_t i=0;i<list->len;i++) {
+        FileInfo *f=&list->entries[i];
+        bool match=kind==FILTER_CONTAINS ? text_contains(f->name,pattern) : platform_name_glob(f->name,pattern);
+        if(match) list->entries[kept++]=*f; else file_info_free(f);
+    }
+    list->len=kept;
+}
+Result app_set_filter(AppState *app,FilterKind kind,const char *pattern) {
+    if(kind<FILTER_NONE||kind>FILTER_GLOB || !pattern || strlen(pattern)>4095) return result_make(RESULT_INVALID_NAME,"Invalid/oversized list filter");
+    if(!*pattern) kind=FILTER_NONE;
+    char *copy=kind==FILTER_NONE?NULL:text_copy(pattern);
+    if(kind!=FILTER_NONE&&!copy) return result_make(RESULT_NO_MEMORY,"Out of memory");
+    FileList list; Result r=read_list(app->directory,app->show_hidden,false,&list);
+    if(r.code!=RESULT_OK) { free(copy); return r; }
+    size_t count=list.len;filter_list(&list,kind,copy); main_list_sort(&list,app->sort);
+    file_list_free(&app->files);free(app->filter);app_marks_clear(app);
+    app->files=list;app->filter=copy;app->filter_kind=kind;app->unfiltered_count=count;
+    return r;
+}
 /* Pickers retain their legacy order; the main list applies its own comparator
    directly to the read list, including the raw-name tie breaker. */
 Result core_list(const char *directory, bool hidden, bool directories_only, FileList *out) {
@@ -71,13 +93,16 @@ Result app_remember_selection(AppState *app, size_t selected, size_t top) {
     entry->selected = selected; entry->top = top;
     return result_make(RESULT_OK, NULL);
 }
-static Result navigate_to(AppState *app, const char *directory, bool record, bool hidden, const char *required_name, size_t *selected) {
+static Result navigate_to(AppState *app, const char *directory, bool record, bool hidden, const char *required_name, size_t *selected,bool reveal_filter) {
     char *resolved = NULL;
     Result r = core_resolve_directory(app->directory, directory, &resolved);
     if (r.code != RESULT_OK) return r;
     FileList list;
     r = read_list(resolved, hidden, false, &list);
     if (r.code != RESULT_OK) { free(resolved); return r; }
+    bool changing_filter=reveal_filter && app->filter_kind!=FILTER_NONE;
+    size_t unfiltered=list.len;
+    if(!reveal_filter) filter_list(&list,app->filter_kind,app->filter);
     main_list_sort(&list, app->sort);
     size_t choice = 0;
     if (required_name) {
@@ -100,13 +125,14 @@ static Result navigate_to(AppState *app, const char *directory, bool record, boo
     }
     bool changed = !app->directory || strcmp(app->directory, resolved);
     free(app->directory); file_list_free(&app->files);
-    app->directory = resolved; app->files = list;
-    if (changed) app_marks_clear(app); else app_marks_reconcile(app);
+    app->directory = resolved; app->files = list; app->unfiltered_count=unfiltered;
+    if(reveal_filter) { free(app->filter); app->filter=NULL; app->filter_kind=FILTER_NONE; }
+    if (changed || changing_filter) app_marks_clear(app); else app_marks_reconcile(app);
     app->show_hidden = hidden;
     if (selected) *selected = choice;
     return r;
 }
-Result app_navigate(AppState *app, const char *directory) { return navigate_to(app, directory, true, app->show_hidden, NULL, NULL); }
+Result app_navigate(AppState *app, const char *directory) { return navigate_to(app, directory, true, app->show_hidden, NULL, NULL,false); }
 Result app_init(AppState *app, const char *directory) {
     StartupSettings defaults=settings_defaults();
     return app_init_settings(app,directory,&defaults);
@@ -117,11 +143,11 @@ Result app_init_settings(AppState *app, const char *directory, const StartupSett
 }
 void app_free(AppState *app) {
     app_marks_clear(app);
-    free(app->directory); file_list_free(&app->files);
+    free(app->directory); free(app->filter); file_list_free(&app->files);
     for (size_t i = 0; i < app->history_len; i++) history_free(&app->history[i]);
     free(app->history); *app = (AppState){0};
 }
-Result app_refresh(AppState *app) { return navigate_to(app, app->directory, false, app->show_hidden, NULL, NULL); }
+Result app_refresh(AppState *app) { return navigate_to(app, app->directory, false, app->show_hidden, NULL, NULL,false); }
 char *core_path_join(const char *directory, const char *name) { return platform_path_join(directory, name); }
 char *core_path_parent(const char *path) { return platform_path_parent(path); }
 char *core_path_name(const char *path) { return platform_path_name(path); }
@@ -133,7 +159,7 @@ Result app_history(AppState *app, bool forward) {
     if (!app->history_len || (forward ? app->history_at + 1 >= app->history_len : app->history_at == 0))
         return result_make(RESULT_NOT_FOUND, forward ? "No forward history" : "No back history");
     size_t next = forward ? app->history_at + 1 : app->history_at - 1;
-    Result r = navigate_to(app, app->history[next].directory, false, app->show_hidden, NULL, NULL);
+    Result r = navigate_to(app, app->history[next].directory, false, app->show_hidden, NULL, NULL,false);
     if (r.code == RESULT_OK) app->history_at = next;
     return r;
 }
@@ -147,8 +173,8 @@ Result app_open_search_result(AppState *app, const char *path, size_t *selected,
     bool hidden = app->show_hidden || (!directory && info.hidden);
     char *parent = directory ? text_copy(path) : platform_path_parent(path);
     if (!parent) { file_info_free(&info); return result_make(RESULT_NO_MEMORY, "Out of memory"); }
-    bool was_hidden = app->show_hidden;
-    r = navigate_to(app, parent, true, hidden, directory ? NULL : info.name, selected);
-    if (r.code == RESULT_OK) *revealed = !was_hidden && hidden;
+    bool was_hidden = app->show_hidden,was_filtered=app->filter_kind!=FILTER_NONE;
+    r = navigate_to(app, parent, true, hidden, directory ? NULL : info.name, selected,true);
+    if (r.code == RESULT_OK) *revealed = (!was_hidden && hidden) || was_filtered;
     free(parent); file_info_free(&info); return r;
 }

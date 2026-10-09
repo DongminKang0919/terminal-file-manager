@@ -14,7 +14,7 @@
 
 /* Existing terminal form input limit; core/platform paths are dynamically allocated. */
 #define UI_INPUT_CAP 4096
-enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE, UI_RENAME, UI_QUICK_FIND, UI_RESULT, UI_SELECT_ALL, UI_CLEAR_SELECTION, UI_MODE_PREVIEW, UI_MODE_FILES, UI_MODE_DUAL, UI_FAVORITES };
+enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE, UI_RENAME, UI_QUICK_FIND, UI_RESULT, UI_SELECT_ALL, UI_CLEAR_SELECTION, UI_MODE_PREVIEW, UI_MODE_FILES, UI_MODE_DUAL, UI_FAVORITES, UI_FILTER };
 void input_init(void);
 void input_terminal_begin(TerminalReply *reply);
 void input_terminal_begin_timed(TerminalReply *reply,uint64_t deadline);
@@ -194,6 +194,8 @@ attr_t ui_notice_style(NoticeKind kind);
 void init_theme(void);
 void show_help(UiContext *ui);
 void show_favorites(UiContext *ui);
+void show_filter(UiContext *ui);
+int ui_choices(UiContext *ui,const char *title,const char **labels,int count);
 void graphics_init(UiContext *ui);
 void graphics_probe_poll(UiContext *ui);
 void graphics_probe_prepare(UiContext *ui, int rows);

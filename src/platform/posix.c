@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <fnmatch.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -615,3 +616,5 @@ Result platform_favorites_path(char **out) {
 Result platform_favorites_read(const char *p,char *d,size_t c,size_t *n) { return config_read(p,"favorites.conf",d,c,n); }
 Result platform_favorites_write(const char *p,const char *d,size_t n) { return config_write(p,"favorites.conf",d,n); }
 bool platform_path_absolute(const char *p) { return p && p[0]=='/'; }
+
+bool platform_name_glob(const char *name,const char *pattern) { return fnmatch(pattern,name,0)==0; }

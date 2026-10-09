@@ -113,9 +113,13 @@ static void draw_file_panel(UiContext *ui,UiFilePanel *p,unsigned index,int x,in
                  p->app.sort.key==SORT_MODIFIED?"Time":sort_label(p->app.sort.key),p->app.sort.descending?'-':'+',
                  p->app.marks_len,p->app.show_hidden?"on":"off");
     } else if(p->stale) snprintf(title,sizeof title," Files STALE - refresh before writes ");
+    if(p->app.filter_kind!=FILTER_NONE) snprintf(title,sizeof title," %s Filter: %s (%zu/%zu) ",
+        ui->mode==UI_LIST_LIST ? (index?"Right":"Left") : "Files",
+        p->app.filter_kind==FILTER_CONTAINS?"contains":"glob",p->app.files.len,p->app.unfiltered_count);
     draw_box(x, 2, mid, panel_h, title, focused);
     attron(COLOR_PAIR(UI_MUTED));
     draw_text(3, x+2, mid - 4, "[Parent]  [Open]");
+    if(p->app.filter_kind!=FILTER_NONE) draw_text(3,x+21,mid-23,p->app.filter);
     int date_x = mid >= 72 ? mid - 18 : 0;
     int size_x = mid >= 48 ? (date_x ? date_x - 11 : mid - 12) : 0;
     int kind_x = size_x ? size_x - 6 : ui->mode==UI_LIST_LIST && mid<48 ? 0 : mid - 7;
@@ -172,9 +176,9 @@ static void draw_file_panel(UiContext *ui,UiFilePanel *p,unsigned index,int x,in
         attrset(A_NORMAL);
     }
     if (!p->app.files.len) {
-        draw_text(layout.list_y, x+2, mid - 4, "No visible items");
+        draw_text(layout.list_y, x+2, mid - 4, p->app.filter_kind!=FILTER_NONE && p->app.unfiltered_count ? "No filter matches" : "No visible items");
         attron(COLOR_PAIR(UI_MUTED));
-        draw_text(layout.list_y + 1, x+2, mid - 4, p->app.show_hidden ? "F2: New" : "F7: Show hidden files");
+        draw_text(layout.list_y + 1, x+2, mid - 4, p->app.filter_kind!=FILTER_NONE ? "f: Change / clear filter" : p->app.show_hidden ? "F2: New" : "F7: Show hidden files");
         attroff(COLOR_PAIR(UI_MUTED));
     }
 }
@@ -276,6 +280,7 @@ static void draw_screen(UiContext *ui, bool prepare) {
         }
     }
     attrset(A_NORMAL);
+    if(ui_panel(ui)->app.filter_kind!=FILTER_NONE) { attrset(COLOR_PAIR(UI_MUTED)); draw_text(h-1,1,w-2,"Filter active | f: change / clear | apply clears marks"); }
     if (ui->modal_depth) {
         /* Change cell attributes only; keep wide glyphs and ACS border characters. */
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
