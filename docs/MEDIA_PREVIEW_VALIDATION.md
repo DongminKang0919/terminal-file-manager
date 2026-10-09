@@ -82,7 +82,7 @@ README·core/preview·UI/preview·main 이벤트 루프·panel_key·draw/draw_ca
 - UI → core → platform 경계를 유지했다. `src/platform/posix_media.c`만 native 파일·fork/execv/waitpid·signal·rlimit·ioctl을 호출한다. UI는 Sixel 문자열 검증과 화면 출력 순서를 관리한다.
 - 정규 파일을 읽기 전용/nonblocking/no-follow FD로 열고 fstat·signature를 확인한다. 원래 이름을 셸에 조합하지 않으며 converter에는 인자 배열과 `/proc/self/fd/N` 또는 private raster 경로를 넘긴다. 공백·한글·따옴표·선행 하이픈·ImageMagick의 `[0]` 문법과 원래 파일명이 충돌하지 않는다.
 - 한 변환 자식만 실행한다. 취소하면 process group에 SIGKILL을 보내고 WNOHANG으로 회수한다. 이전 자식이 회수되기 전에는 새 자식을 시작하지 않는다. 입력 처리는 변환 완료를 기다리지 않으며 main loop가 40 ms 간격으로 pending 상태만 확인한다. 일반 입력/폼/텍스트의 기존 blocking 정책은 복원한다.
-- main/cached redraw는 이전 그래픽 지우기 → curses repaint/refresh → 검증된 Sixel 출력 순서다. 모달 동안 출력하지 않는다. cursor와 Sixel scrolling mode를 저장/복원한다. 전체 화면 ED2와 curses clearok를 사용하므로 미확인 터미널의 픽셀 삭제 호환성과 깜빡임은 남은 검증 대상이다.
+- 초기 구현의 main/cached redraw는 이전 그래픽 지우기 → curses repaint/refresh → 검증된 Sixel 출력 순서였다. 현재는 [2026-10-09 재전송 계측·개선](MEDIA_REDRAW_VALIDATION_2026-10-09.md)에 기록한 제한적인 화면 유지 경로를 추가했으며 아래 전체 지우기는 복구 경로로 남긴다. 모달 동안 출력하지 않는다. cursor와 Sixel scrolling mode를 저장/복원한다. 전체 화면 ED2와 curses clearok를 사용하므로 미확인 터미널의 픽셀 삭제 호환성과 깜빡임은 남은 검증 대상이다.
 - 캐시는 현재 선택 한 개의 결과만 메모리에 유지한다. path/reader의 dev·inode·size·mtime·ctime 변경, 출력 pixel size, 첫 페이지 고정, text/image 경로를 고려한다. 선택 변경/명시적 새로고침/Off/모드 전환은 폐기한다. 완료 직전에도 열린 FD와 현재 path의 identity를 비교한다. 초점 변경/같은 화면 redraw는 변환을 반복하지 않는다.
 - 정상 종료와 SIGINT/SIGTERM/SIGHUP은 입력/모달을 풀고 같은 정리 경로를 거친다. 부모의 비정상 종료는 Linux parent-death SIGKILL로 직접 변환 자식을 종료한다. SIGKILL/시스템 중단에서는 임시 파일 정리 코드를 실행할 수 없으므로 private 디렉터리가 남을 수 있다.
 

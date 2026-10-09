@@ -71,6 +71,10 @@ typedef struct {
     uint64_t preview_checked;
     bool preview_ready, preview_directory_empty;
     bool image_auto, sixel_confirmed, graphics_visible;
+    /* Converted data and pixels surviving on the terminal are separate states. */
+    uint64_t media_generation, graphics_generation;
+    int graphics_x, graphics_y, graphics_rows, graphics_columns;
+    unsigned graphics_width, graphics_height, graphics_cell_width, graphics_cell_height;
     enum { IMAGE_UNCONFIRMED, IMAGE_CHECKING, IMAGE_ENABLED, IMAGE_NO_RESPONSE, IMAGE_NO_CELLS, IMAGE_UNSUPPORTED, IMAGE_QUERY_FAILED, IMAGE_CANCELLED } image_status;
     /* Capability belongs to this process/terminal, never to a selected file or settings. */
     enum { IMAGE_PROBE_IDLE, IMAGE_PROBE_WAITING, IMAGE_PROBE_DONE } image_probe;
@@ -196,6 +200,7 @@ const char *image_status_label(const UiContext *ui);
 bool image_setup(UiContext *ui,char *result,size_t capacity);
 void graphics_clear(UiContext *ui);
 void graphics_present(UiContext *ui);
+void graphics_refresh(UiContext *ui);
 typedef struct { int x, y, columns, rows; } UiMediaArea;
 UiMediaArea ui_media_area(int width, int height);
 bool graphics_inspect(const char *data, size_t len, unsigned width, unsigned height, unsigned *output_width, unsigned *output_height);

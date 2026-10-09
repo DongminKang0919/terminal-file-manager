@@ -82,6 +82,7 @@ check-isolated: tests/picker_test tests/media_test tests/panels_ui_test tests/tf
 	python3 tests/media_tools.py
 	python3 tests/media_pty.py
 	python3 tests/media_fit_pty.py
+	python3 tests/media_redraw_measure.py --verify
 	python3 tests/media_real_fit.py
 	./tests/panels_ui_test
 	./tests/batch_ui_test
@@ -149,6 +150,7 @@ check-media: tests/media_test tests/picker_test tfile
 	python3 tests/media_tools.py
 	python3 tests/media_pty.py
 	python3 tests/media_fit_pty.py
+	python3 tests/media_redraw_measure.py --verify
 	python3 tests/media_real_fit.py
 
 .PHONY: check-media

@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 import termios
 import time
+import unicodedata
 from display_pty import Screen
 from media_tools import STUB
 
@@ -26,11 +27,38 @@ def assert_artifacts_removed(log):
 
 class GraphicsScreen(Screen):
     def __init__(self,h,w):
-        super().__init__(h,w); self.raw=b''; self.images=[]; self.image=None; self.clears=0; self.saved=(0,0)
+        super().__init__(h,w); self.raw=b''; self.images=[]; self.image=None; self.clears=0; self.saved=(0,0); self.damage_events=0
+    def intersects(self,x,y,end_x,end_y):
+        if self.image is None: return False
+        ix,iy,w,h=self.image
+        return x<ix+(w+7)//8 and end_x>ix and y<iy+(h+15)//16 and end_y>iy
+    def damage(self):
+        self.damage_events+=1; self.image=None
+    def put(self,char):
+        x,y=self.x,self.y
+        if x>=self.width: x=0; y=min(self.height-1,y+1)
+        cells=2 if unicodedata.east_asian_width(char) in ('W','F') else 1
+        if self.intersects(x,y,x+cells,y+1): self.damage()
+        super().put(char)
+    def index(self,reverse=False):
+        if ((reverse and self.y==self.scroll_top) or (not reverse and self.y==self.scroll_bottom)) and self.intersects(0,self.scroll_top,self.width,self.scroll_bottom+1): self.damage()
+        super().index(reverse)
     def csi(self,params,command):
         if command=='s': self.saved=(self.y,self.x); return
         if command=='u': self.y,self.x=self.saved; return
-        if command=='J' and params=='2': self.image=None; self.clears+=1
+        if not params.startswith('?'):
+            n=int(params.split(';')[0] or 0) if params else 0
+            if command=='J' and n==2: self.image=None; self.clears+=1
+            elif command=='J' and n==0:
+                if self.intersects(self.x,self.y,self.width,self.y+1) or self.intersects(0,self.y+1,self.width,self.height): self.damage()
+            elif command=='K':
+                start,end=(0,self.width) if n==2 else (0,self.x+1) if n==1 else (self.x,self.width)
+                if self.intersects(start,self.y,end,self.y+1): self.damage()
+            elif command in ('X','P','@'):
+                end=self.x+(n or 1) if command=='X' else self.width
+                if self.intersects(self.x,self.y,end,self.y+1): self.damage()
+            elif command in ('S','T','M','L'):
+                if self.intersects(0,self.scroll_top if command in ('S','T') else self.y,self.width,self.scroll_bottom+1): self.damage()
         super().csi(params,command)
     def cells(self,data):
         super().feed(data.replace(b'\x1b7',b'\x1b[s').replace(b'\x1b8',b'\x1b[u'))
@@ -59,10 +87,10 @@ class GraphicsScreen(Screen):
         assert self.y+(height+15)//16<=self.height-4
 
 class Terminal:
-    def __init__(self,root,tools,log,w=100,h=24):
+    def __init__(self,root,tools,log,w=100,h=24,term="xterm-256color"):
         self.master,slave=pty.openpty();self.screen=GraphicsScreen(h,w); self.output=b''
         fcntl.ioctl(slave,termios.TIOCSWINSZ,struct.pack('HHHH',h,w,w*8,h*16))
-        env={**os.environ,'PATH':str(tools),'LC_ALL':'C.UTF-8','TERM':'xterm-256color',
+        env={**os.environ,'PATH':str(tools),'LC_ALL':'C.UTF-8','TERM':term,
              'TFILE_SIXEL':'1','TFILE_CELL_PIXELS':'8x16','TFILE_MEDIA_TEST_LOG':str(log)}
         self.proc=subprocess.Popen([BINARY,str(root)],stdin=slave,stdout=slave,stderr=slave,env=env)
         os.close(slave);self.log=log
@@ -93,6 +121,8 @@ class Terminal:
             if self.proc.poll() is None:
                 self.send('q'); result=self.proc.wait(timeout=2)
                 assert result==0,(result,self.output[-2000:].decode(errors='replace'))
+            if type(self.screen) is GraphicsScreen:
+                assert not self.screen.damage_events, ('text/erase damaged retained image',self.screen.damage_events)
         finally:
             if self.proc.poll() is None: self.proc.kill();self.proc.wait()
             if self.master>=0:os.close(self.master);self.master=-1

@@ -11,6 +11,32 @@ static uint64_t clock_offset;
 uint64_t __real_platform_monotonic_ms(void);
 uint64_t __wrap_platform_monotonic_ms(void) { return __real_platform_monotonic_ms()+clock_offset; }
 static void pause_tick(void) { struct timespec ts={0,10000000}; nanosleep(&ts,NULL); }
+/* Exercise physical-screen invalidation, not a private call sequence. Curses
+   text goes to newterm's stream; capture the separate Sixel stdout stream. */
+static off_t graphics_bytes(FILE *stream) {
+    struct stat st; assert(!fflush(stdout)); assert(!fstat(fileno(stream),&st)); return st.st_size;
+}
+static void screen_recovery(UiContext *ui) {
+    FILE *pixels=tmpfile(); assert(pixels); assert(!fflush(stdout));
+    int saved=dup(STDOUT_FILENO); assert(saved>=0);
+    assert(dup2(fileno(pixels),STDOUT_FILENO)>=0);
+    draw_cached(ui); off_t initial=graphics_bytes(pixels); assert(initial>0);
+    /* Full cchar_t needs one extra wchar for getcchar's extracted NUL. */
+    wchar_t combined[CCHARW_MAX+1]={L'x',0x300,0x301,0x302,0x303,0};
+    cchar_t cell; assert(setcchar(&cell,combined,A_NORMAL,0,NULL)!=ERR);
+    assert(mvadd_wch(ui->graphics_y,0,&cell)!=ERR); graphics_refresh(ui);
+    off_t styled=graphics_bytes(pixels); graphics_refresh(ui);
+    assert(graphics_bytes(pixels)==styled);
+    draw_cached(ui); initial=graphics_bytes(pixels);
+    message(ui,"Status only"); draw_cached(ui);
+    assert(graphics_bytes(pixels)==initial);
+    clearok(stdscr,TRUE); draw_cached(ui);
+    off_t recovered=graphics_bytes(pixels); assert(recovered>initial);
+    clearok(curscr,TRUE); draw_cached(ui);
+    assert(graphics_bytes(pixels)>recovered);
+    graphics_clear(ui); assert(!fflush(stdout));
+    assert(dup2(saved,STDOUT_FILENO)>=0); close(saved); fclose(pixels);
+}
 static size_t count(const char *path,const char *prefix) {
     DIR *d=opendir(path); assert(d); size_t n=0; struct dirent *e;
     while((e=readdir(d))) if(strcmp(e->d_name,".")&&strcmp(e->d_name,"..")&&(!prefix||!strncmp(e->d_name,prefix,strlen(prefix)))) n++;
@@ -182,6 +208,7 @@ int main(int argc,char **argv) {
     resizeterm(24,100); prepared(&ui);
     assert(ui.media_data==cache && !ui.media_job);
     for(int i=0;i<100;i++) { preview_prepare(&ui,17); assert(ui.media_data==cache && !ui.media_job); }
+    screen_recovery(&ui);
     ui.focus=UI_FOCUS_PREVIEW; preview_prepare(&ui,17); assert(ui.media_data==cache);
     ui.modal_depth=1; draw_cached(&ui); assert(!ui.graphics_visible && ui.media_data==cache);
     ui.modal_depth=0; /* Suppress actual stdout graphics in this cell test. */

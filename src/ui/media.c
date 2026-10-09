@@ -24,6 +24,7 @@ void graphics_init(UiContext *ui) {
     if(stdscr) getmaxyx(stdscr,ui->image_rows,ui->image_columns);
 }
 void media_reset(UiContext *ui) {
+    ui->media_generation++;
     core_media_close(ui->media_job); ui->media_job=NULL;
     free(ui->media_data); ui->media_data=NULL; ui->media_len=0;
     ui->media_kind=PREVIEW_NOT_MEDIA; ui->media_done=false; ui->media_text=false; ui->media_fallback=false; ui->media_fallback_detail[0]=0;
@@ -201,35 +202,83 @@ void media_prepare(UiContext *ui,int rows,bool changed) {
 bool media_pending(const UiContext *ui) {
     return ui->media_resize_due || ui->image_probe==IMAGE_PROBE_WAITING || (ui->media_kind!=PREVIEW_NOT_MEDIA && !ui->media_done);
 }
-/* Every main/cached frame uses the same ordering: erase previous graphics,
-   force curses repaint, refresh cells, then emit graphics. ED2 is intentionally
-   conservative; ncurses' cell model cannot track sixel pixels. */
+/* Keep ED2 as the recovery path. Curses does not model Sixel pixels. */
 void graphics_clear(UiContext *ui) {
     if(!ui->graphics_visible) return;
     fputs("\033[0m\033[2J\033[H",stdout); fflush(stdout);
     if(stdscr) clearok(stdscr,TRUE);
     ui->graphics_visible=false;
 }
-void graphics_present(UiContext *ui) {
-    if(ui->image_probe==IMAGE_PROBE_WAITING || ui->modal_depth || !ui_preview_enabled(ui) || !ui->image_auto || !ui->sixel_confirmed ||
-       !ui->media_done || ui->media_text || !ui->media_data || ui->media_result.code!=RESULT_OK || ui->preview_offset) return;
+static bool placement(UiContext *ui,int *x,int *y) {
+    if(!stdscr || ui->image_probe==IMAGE_PROBE_WAITING || ui->modal_depth || !ui_preview_enabled(ui) || !ui->image_auto || !ui->sixel_confirmed ||
+       !ui->media_done || ui->media_text || !ui->media_data || ui->media_result.code!=RESULT_OK || ui->preview_offset) return false;
     if(!ui->preview_path || ui_panel(ui)->selected>=ui_panel(ui)->app.files.len ||
-       strcmp(ui->preview_path,ui_panel(ui)->app.files.entries[ui_panel(ui)->selected].path)) return;
+       strcmp(ui->preview_path,ui_panel(ui)->app.files.entries[ui_panel(ui)->selected].path)) return false;
     int h,w; getmaxyx(stdscr,h,w);
-    /* Cached modal restoration must wait for the resize preparation pass,
-       even when both old/new pixel limits happen to hit the same caps. */
-    if(ui->image_columns && (w!=ui->image_columns || h!=ui->image_rows)) return;
+    if(ui->image_columns && (w!=ui->image_columns || h!=ui->image_rows)) return false;
     UiMediaArea area=ui_media_area(w,h);
     unsigned width=ui->media_output_width,height=ui->media_output_height;
     if(w<50 || h<9 || !width || !height || !ui->cell_width || !ui->cell_height ||
        area.columns<12 || area.rows<3 || width>(unsigned)area.columns*ui->cell_width ||
-       ((height+5)/6*6)>(unsigned)area.rows*ui->cell_height) return;
-    int x=area.x+(int)(((unsigned)area.columns*ui->cell_width-width)/2/ui->cell_width);
+       ((height+5)/6*6)>(unsigned)area.rows*ui->cell_height) return false;
+    *x=area.x+(int)(((unsigned)area.columns*ui->cell_width-width)/2/ui->cell_width);
     unsigned band_height=(height+5)/6*6;
-    int y=area.y+(int)(((unsigned)area.rows*ui->cell_height-band_height)/2/ui->cell_height);
-    /* Save/restore cursor and use cursor-relative Sixel placement;
-       the validated image bounds prevent scrolling. */
+    *y=area.y+(int)(((unsigned)area.rows*ui->cell_height-band_height)/2/ui->cell_height);
+    return true;
+}
+/* Protect entire occupied rows, not just the pixel rectangle: ncurses may use
+   EL/ECH for a list edit left of the image. Any such row change falls back to
+   erase/repaint/present. Disable insert/delete optimizations so other row edits
+   cannot scroll or shift the protected rows. A forced repaint/resize also
+   invalidates retention, even if placement happens to be unchanged. */
+static bool retained(UiContext *ui) {
+    int x,y,h,w;
+    if(!ui->graphics_visible || !curscr || !newscr || !placement(ui,&x,&y)) return false;
+    /* Retention has a protocol oracle for this terminfo profile only. Other
+       profiles keep the conservative redraw policy; TERM is never evidence
+       of Sixel support (placement still requires confirmed capability). */
+    const char *profile=termname();
+    if(!profile || strcmp(profile,"xterm-256color")) return false;
+    getmaxyx(stdscr,h,w);
+    if(is_cleared(stdscr) || is_cleared(curscr) || is_cleared(newscr) ||
+       is_wintouched(newscr) || isendwin() || h!=ui->graphics_rows || w!=ui->graphics_columns ||
+       x!=ui->graphics_x || y!=ui->graphics_y || ui->media_generation!=ui->graphics_generation ||
+       ui->media_output_width!=ui->graphics_width || ui->media_output_height!=ui->graphics_height ||
+       ui->cell_width!=ui->graphics_cell_width || ui->cell_height!=ui->graphics_cell_height) return false;
+    int rows=(int)((((ui->graphics_height+5)/6*6)+ui->cell_height-1)/ui->cell_height);
+    int sy,sx,cy,cx; getyx(stdscr,sy,sx); getyx(curscr,cy,cx);
+    bool same=true;
+    for(int row=y; row<y+rows && same; row++) for(int col=0; col<w; col++) {
+        cchar_t a,b; wchar_t ac[CCHARW_MAX+1]={0},bc[CCHARW_MAX+1]={0}; attr_t aa,ba; short ap,bp;
+        if(mvwin_wch(stdscr,row,col,&a)==ERR || mvwin_wch(curscr,row,col,&b)==ERR ||
+           getcchar(&a,ac,&aa,&ap,NULL)==ERR || getcchar(&b,bc,&ba,&bp,NULL)==ERR ||
+           aa!=ba || ap!=bp || wcscmp(ac,bc)) { same=false; break; }
+    }
+    wmove(stdscr,sy,sx); wmove(curscr,cy,cx);
+    return same;
+}
+void graphics_refresh(UiContext *ui) {
+    bool keep=ui->graphics_visible && retained(ui);
+    if(ui->graphics_visible && !keep) graphics_clear(ui);
+    bool lines=is_idlok(stdscr), characters=is_idcok(stdscr);
+    if(keep) { idlok(stdscr,FALSE); idcok(stdscr,FALSE); }
+    int updated=refresh();
+    if(keep) { idlok(stdscr,lines); idcok(stdscr,characters); }
+    if(updated==ERR) { graphics_clear(ui); return; }
+    graphics_present(ui);
+}
+void graphics_present(UiContext *ui) {
+    int x,y;
+    if(ui->graphics_visible || !placement(ui,&x,&y)) return;
     fprintf(stdout,"\0337\033[?80s\033[?80l\033[%d;%dH",y+1,x+1);
-    fwrite(ui->media_data,1,ui->media_len,stdout);
-    fputs("\033[?80r\0338",stdout); fflush(stdout); ui->graphics_visible=true;
+    size_t written=fwrite(ui->media_data,1,ui->media_len,stdout);
+    int end=fputs("\033[?80r\0338",stdout), flushed=fflush(stdout);
+    /* A short/failed write leaves uncertain pixels: next frame must recover. */
+    ui->graphics_visible=true;
+    if(written!=ui->media_len || end==EOF || flushed==EOF) { graphics_clear(ui); return; }
+    ui->graphics_generation=ui->media_generation;
+    ui->graphics_x=x; ui->graphics_y=y;
+    getmaxyx(stdscr,ui->graphics_rows,ui->graphics_columns);
+    ui->graphics_width=ui->media_output_width; ui->graphics_height=ui->media_output_height;
+    ui->graphics_cell_width=ui->cell_width; ui->graphics_cell_height=ui->cell_height;
 }

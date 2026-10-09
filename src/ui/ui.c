@@ -195,12 +195,11 @@ static void draw_location(UiFilePanel *p,int x,int w,bool dual) {
 
 static void draw_screen(UiContext *ui, bool prepare) {
     if (!ui_preview_enabled(ui)) ui->focus = UI_FOCUS_FILES;
-    graphics_clear(ui);
     erase(); int h, w; getmaxyx(stdscr, h, w);
     if (prepare) preview_prepare(ui, h >= 9 && w >= 50 ? h - 7 : 0);
     UiLayout preview_layout = ui_layout(w, h, ui_preview_enabled(ui));
     preview_update_actions(ui, w - preview_layout.list_width, h >= 9 && w >= 50 ? preview_layout.panel_height : 0);
-    if (h < 9 || w < 50) { mvaddstr(0, 0, "Terminal too small (minimum 50x9)"); refresh(); return; }
+    if (h < 9 || w < 50) { mvaddstr(0, 0, "Terminal too small (minimum 50x9)"); graphics_clear(ui); refresh(); return; }
     attrset(ui_bar()); mvhline(0, 0, ' ', w);
     for (size_t i = 0; i < sizeof actions / sizeof actions[0]; ++i) {
         const char *label = action_label(i, w);
@@ -285,7 +284,7 @@ static void draw_screen(UiContext *ui, bool prepare) {
             mvchgat(y, x, 1, (attr & A_ALTCHARSET) | A_DIM, has_colors() ? UI_INACTIVE : 0, NULL);
         }
     }
-    refresh(); graphics_present(ui);
+    graphics_refresh(ui);
 }
 
 /* Modal focus changes consume prepared data only: no metadata poll or reader I/O. */

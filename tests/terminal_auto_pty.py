@@ -50,6 +50,7 @@ class AutoTerminal(Terminal):
         start=ticks();self.read(1.1)
         assert before==(len(self.output),len(self.screen.images),self.screen.clears),'idle redraw'
         assert ticks()-start<=2,'idle CPU polling'
+        assert not self.screen.damage_events,'text/erase damaged retained Auto image'
     def close(self):
         if sys.exc_info()[0] is not None:
             self.proc.kill();self.proc.wait();os.close(self.master);return

@@ -25,7 +25,8 @@ failed=[]
 for name,command in [('media',[os.environ.get('PYTHON','python3'),'tests/media_tools.py']),
                      ('preview',[str(out/'preview_test')]),
                      ('picker',[str(out/'picker_test')]),
-                     ('media_pty',[os.environ.get('PYTHON','python3'),'tests/media_pty.py'])]:
+                     ('media_pty',[os.environ.get('PYTHON','python3'),'tests/media_pty.py']),
+                     ('media_redraw',[os.environ.get('PYTHON','python3'),'tests/media_redraw_measure.py','--verify'])]:
     with (out/f'{name}.log').open('w') as log:
         result=subprocess.run(command,env=env,stdout=log,stderr=subprocess.STDOUT)
     print(('PASS' if result.returncode==0 else 'FAIL')+f': {name}, {out/name}.log',flush=True)
