@@ -44,7 +44,9 @@ int main(int argc, char **argv) {
     ok(core_info(created, &info)); file_info_free(&info);
     assert(create_named_entry(&ui, true, "created-dir", warning, sizeof warning));
     preserved(&ui, files, len, "Directory created");
+    ok(app_mark_toggle(&ui_panel(&ui)->app,"created.txt"));
     assert(transfer_path(&ui, false, created, root, "copy.txt", warning, sizeof warning));
+    assert(!app_marked(&ui_panel(&ui)->app,"created.txt"));
     preserved(&ui, files, len, "Copied");
     cancel_operation = true;
     assert(!transfer_path(&ui, false, created, root, "cancelled-copy", warning, sizeof warning));
@@ -64,7 +66,9 @@ int main(int argc, char **argv) {
     for (size_t i = 1; i < ui_panel(&ui)->app.files.len; i++)
         assert(main_file_compare(&ui_panel(&ui)->app.files.entries[i - 1], &ui_panel(&ui)->app.files.entries[i], ui_panel(&ui)->app.sort) <= 0);
     files = ui_panel(&ui)->app.files.entries; len = ui_panel(&ui)->app.files.len; fail_refresh = true;
+    ok(app_mark_toggle(&ui_panel(&ui)->app,"moved.txt"));
     delete_entry(&ui); preserved(&ui, files, len, "Deleted");
+    assert(!app_marked(&ui_panel(&ui)->app,"moved.txt"));
     char *moved = core_path_join(root, "moved.txt"); assert(core_info(moved, &info).code == RESULT_NOT_FOUND);
     /* Failed deletion and failed refresh must both survive in the message. */
     delete_entry(&ui); assert(strstr(ui.status, "Delete: No changes") && strstr(ui.status, "list refresh failed"));
@@ -91,7 +95,9 @@ int main(int argc, char **argv) {
     assert(!strcmp(ui_panel(&ui)->app.files.entries[ui_panel(&ui)->selected].name,"renamed\xff\n"));
     free(raw); raw=core_path_join(root,"renamed\xff\n");
     files=ui_panel(&ui)->app.files.entries; len=ui_panel(&ui)->app.files.len; fail_refresh=true;
+    ok(app_mark_toggle(&ui_panel(&ui)->app,"renamed\xff\n"));
     assert(rename_named_entry(&ui,raw,"after-refresh-failure",warning,sizeof warning));
+    assert(!app_marked(&ui_panel(&ui)->app,"renamed\xff\n"));
     preserved(&ui,files,len,"Renamed"); free(raw);
     fail_refresh=false;
     assert(!transfer_path(&ui,false,"/missing-source",root,"copy.txt",warning,sizeof warning));

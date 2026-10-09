@@ -27,6 +27,26 @@ void platform_test_hook(const char *stage, int parent, const char *name) {
         assert(setrlimit(RLIMIT_FSIZE, &limit) == 0);
     }
 }
+/* Intercept the final syscall after the implementation has pinned parents.
+   The old AT_FDCWD implementation instead follows these replacement links. */
+static const char *move_parent, *move_saved, *move_outside;
+static int move_error;
+static bool move_collision;
+int __real_renameat2(int, const char *, int, const char *, unsigned);
+int __wrap_renameat2(int sp, const char *sn, int dp, const char *dn, unsigned flags) {
+    assert(flags == RENAME_NOREPLACE);
+    if (move_parent) {
+        assert(!rename(move_parent, move_saved));
+        assert(!symlink(move_outside, move_parent));
+        move_parent = NULL;
+    }
+    if (move_error) { errno=move_error; return -1; }
+    if (move_collision) {
+        int fd=openat(dp,dn,O_WRONLY|O_CREAT|O_EXCL,0600); assert(fd>=0);
+        assert(write(fd,"late",4)==4); close(fd); move_collision=false;
+    }
+    return __real_renameat2(sp, sn, dp, dn, flags);
+}
 static char *join(const char *a, const char *b) {
     char *p = platform_path_join(a, b); assert(p); return p;
 }
@@ -226,8 +246,40 @@ static void deep_limits(const char *root) {
     assert(read(leaf, text, 11) == 11 && !strcmp(text, "deep marker")); close(leaf); close(fd);
     free(src); free(base);
 }
+static void move_parent_swap(const char *root, bool source, bool same_parent) {
+    char *base=case_dir(root), *parent=join(base,"parent"), *saved=join(base,"saved");
+    char *outside=join(base,"outside");
+    assert(!mkdir(parent,0700)); assert(!mkdir(outside,0700));
+    char *src=join(source || same_parent ? parent : base,"payload");
+    char *dst=join(!source || same_parent ? parent : base,"moved");
+    char *decoy=join(outside,"payload"), *unexpected=join(outside,"moved");
+    put(src,"original"); put(decoy,"decoy");
+    move_parent=parent; move_saved=saved; move_outside=outside;
+    int before=fd_count(); ok(platform_move(src,dst));
+    assert(!move_parent && fd_count()==before);
+    char *actual=join(!source || same_parent ? saved : base,"moved");
+    content(actual,"original"); content(decoy,"decoy"); assert(access(unexpected,F_OK));
+    char *old=join(source || same_parent ? saved : base,"payload"); assert(access(old,F_OK));
+    free(old); free(actual); free(unexpected); free(decoy); free(dst); free(src);
+    free(outside); free(saved); free(parent); free(base);
+}
+static void move_failures(const char *root) {
+    char *base=case_dir(root), *src=join(base,"source"), *dst=join(base,"destination");
+    put(src,"original"); int before=fd_count();
+    move_error=EXDEV; Result r=platform_move(src,dst); move_error=0;
+    assert(r.code==RESULT_CROSS_DEVICE && !r.partial && fd_count()==before);
+    content(src,"original"); assert(access(dst,F_OK));
+    move_collision=true; r=platform_move(src,dst);
+    assert(r.code==RESULT_EXISTS && !r.partial && fd_count()==before);
+    content(src,"original"); content(dst,"late");
+    free(dst); free(src); free(base);
+}
 int main(int argc, char **argv) {
     assert(argc == 2 && geteuid() != 0);
+    move_parent_swap(argv[1],true,false);
+    move_parent_swap(argv[1],false,false);
+    move_parent_swap(argv[1],true,true);
+    move_failures(argv[1]);
     signal(SIGXFSZ, SIG_IGN);
     mode_t saved = umask(0022);
     int before = fd_count();
@@ -243,5 +295,5 @@ int main(int argc, char **argv) {
     links_and_conflicts(argv[1]); write_failure(argv[1], false); write_failure(argv[1], true);
     deep_success(argv[1]); deep_limits(argv[1]); unsupported_partial(argv[1]);
     assert(fd_count() == before); umask(saved);
-    puts("PASS: controlled source/destination swaps, outside markers, non-root 0555/umask, links, no-clobber, partial failures, depth/FD limits and FD cleanup");
+    puts("PASS: pinned move parents, late no-clobber/EXDEV, controlled source/destination swaps, outside markers, non-root 0555/umask, links, no-clobber, partial failures, depth/FD limits and FD cleanup");
 }

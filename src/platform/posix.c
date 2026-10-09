@@ -449,8 +449,20 @@ Result platform_remove_progress(const char *path, OperationCallback callback, vo
     free(name); return operation_result(&op);
 }
 Result platform_move(const char *src, const char *dst) {
-    /* Linux/WSL backend: guarantee no replacement even if a target appears after validation. */
-    return renameat2(AT_FDCWD, src, AT_FDCWD, dst, RENAME_NOREPLACE) < 0 ? failure() : result_make(RESULT_OK, NULL);
+    Operation op = {0};
+    char *sn = NULL, *dn = NULL;
+    int sp = operation_parent(&op, src, &sn), dp = -1;
+    if (sp >= 0) dp = operation_parent(&op, dst, &dn);
+    Result r = op.error;
+    if (dp >= 0) {
+        /* Pin both parents; NOREPLACE also covers a late destination leaf.
+           The source leaf itself is not atomically bound to earlier metadata. */
+        r = renameat2(sp, sn, dp, dn, RENAME_NOREPLACE) < 0 ? failure() : result_make(RESULT_OK, NULL);
+    }
+    if (sp >= 0) close(sp);
+    if (dp >= 0) close(dp);
+    free(sn); free(dn);
+    return r;
 }
 struct PlatformReader { FILE *handle; struct stat version; };
 Result platform_reader_open(const char *path, PlatformReader **out) {

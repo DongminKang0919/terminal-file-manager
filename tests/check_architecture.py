@@ -4,6 +4,14 @@ import re
 
 root = Path(__file__).resolve().parents[1] / 'src'
 errors = []
+def native_path_rule(code):
+    return re.search(r"(?:strrchr|strchr)\s*\([^\n]*['\"]/|\bPATH_MAX\b", code)
+
+# Keep the narrow separator guard effective for both layers.
+assert native_path_rule("strrchr(source, '/')")
+assert native_path_rule("strchr(path,'/')")
+assert not native_path_rule("core_path_name(source)")
+
 for path in root.rglob('*'):
     if path.suffix not in ('.c', '.h'):
         continue
@@ -26,7 +34,7 @@ for path in root.rglob('*'):
     banned = r'\b(?:opendir|readdir|closedir|stat|lstat|fstat|mkdir|open|rename|renameat2|unlink|rmdir|readlink|symlink|realpath|getcwd|chdir|fopen|fread|fgets|read|write|clock_gettime|system|popen|strcasecmp|strdup)\s*\('
     if re.search(banned, code):
         errors.append(f'{rel}: filesystem/OS call outside platform')
-    if layer == 'core' and re.search(r"(?:strrchr|strchr)\s*\([^\n]*['\"]/|\bPATH_MAX\b", code):
-        errors.append(f'{rel}: native path rule in core')
+    if layer in ('core', 'ui') and native_path_rule(code):
+        errors.append(f'{rel}: native path rule in {layer}')
 assert not errors, '\n'.join(errors)
 print('PASS: UI -> core -> platform dependency boundaries')

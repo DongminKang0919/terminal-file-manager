@@ -21,6 +21,7 @@ targets={
  'panels_ui_test':(['app_init','app_refresh','platform_directory_open','platform_reader_line','qsort','newwin','delwin','input_key','input_wide','confirm','malloc','calloc','realloc','free'],ui),
  'batch_test':(['malloc','calloc','realloc','platform_move'],core),
  'batch_ui_test':(['app_refresh','platform_directory_open','platform_reader_line','qsort','core_monotonic_ms','wrefresh','input_key','input_wide','batch_prepare','newwin','delwin','malloc','calloc','realloc'],ui),
+ 'operations_test':(['renameat2'],core),
  'sort_test':([],core), 'progress_test':([],core),
  'search_test':(['lstat','platform_directory_open','platform_directory_next'],core),
  'controller_test':(['app_refresh','confirm','run_file_operation'],ui),
@@ -42,6 +43,7 @@ for name in ['startup_ui_test','search_progress_ui_test','ownership_test']:
 def build(item):
  name,(wraps,sources)=item
  cmd=['cc',*flags,'-o',str(a.output_directory/name),str(root/'tests'/f'{name}.c'),*map(str,sources)]
+ if name=='operations_test': cmd+=['-DTFILE_TEST_HOOKS']
  if sources==ui or name=='text_window_test': cmd+=['-lncursesw']
  if wraps: cmd+=['-Wl,'+','.join('--wrap='+x for x in wraps)]
  r=subprocess.run(cmd,text=True,capture_output=True)
@@ -53,7 +55,10 @@ env={**os.environ,'ASAN_OPTIONS':f'detect_leaks={0 if a.disable_leaks else 1}:ha
 failed=[]
 for name in targets:
  binary=str(a.output_directory/name)
- if name in ['search_test','controller_test']:
+ if name=='operations_test':
+  cmd=['python3',str(root/'tests/run_operations.py')]
+  case_env={**env,'TFILE_OPERATIONS_TEST':binary}
+ elif name in ['search_test','controller_test']:
   variables={'search_test':'TFILE_SEARCH_TEST','controller_test':'TFILE_CONTROLLER_TEST'}
   target='search' if name=='search_test' else 'controller'
   cmd=['python3',str(root/'tests/run_regressions.py'),target]

@@ -20,7 +20,7 @@ tests/platform_test: tests/platform_test.c src/model.c $(PLATFORM_SOURCES) $(HEA
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/platform_test.c src/model.c $(PLATFORM_SOURCES)
 
 tests/operations_test: tests/operations_test.c src/model.c $(PLATFORM_SOURCES) $(HEADERS)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -DTFILE_TEST_HOOKS -o $@ tests/operations_test.c src/model.c $(PLATFORM_SOURCES)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DTFILE_TEST_HOOKS -o $@ tests/operations_test.c src/model.c $(PLATFORM_SOURCES) -Wl,--wrap=renameat2
 
 tests/search_test: tests/search_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/search_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) -Wl,--wrap=lstat,--wrap=platform_directory_open,--wrap=platform_directory_next
