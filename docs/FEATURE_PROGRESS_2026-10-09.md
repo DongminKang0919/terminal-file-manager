@@ -1,6 +1,6 @@
 # 로컬 기능 확장 진행 — 2026-10-09
 
-최신 후속 상태: Vim `8198947`/`82b9134`, 마킹 `bbab3a2`/`949ac61`/`d862b9e` 관련 검증과 로컬 커밋 완료. 최신 전체 및 ASan/UBSan 통합 검사 PASS; 상세 범위와 미검증 수동 항목은 아래 후속 절에 기록한다. 기존 1–5/6단계 기록은 최초 확장의 이력이다.
+최신 후속 상태: 휴지통 umask `fa7d198` / Vim 부모 종료 `0c63415` 안정화 완료(아래 후속 절). 이전 Vim `8198947`/`82b9134`, 마킹 `bbab3a2`/`949ac61`/`d862b9e` 관련 검증과 로컬 커밋 완료. 최신 전체 및 ASan/UBSan 통합 검사 PASS; 상세 범위와 미검증 수동 항목은 아래 후속 절에 기록한다. 기존 1–5/6단계 기록은 최초 확장의 이력이다.
 
 기준: `85ae0dd`. 최초 작업 트리 clean. Linux/WSL 로컬만 다루며 원격 푸시/릴리스/시스템 설정 변경은 하지 않는다. 모든 테스트 데이터는 전용 임시 디렉터리다.
 
@@ -197,3 +197,26 @@ python3 tests/isolated_check.py env \
 
 
 후속 종료 상태: 요청한 Vim/마킹 두 항목은 코드·관련/전체 회귀·문서·로컬 커밋 완료. 원격 푸시/릴리스/시스템 전역 설정 변경 및 실제 사용자 파일 삭제 테스트 없음. 기존 즐겨찾기/필터/GUI/Trash 구조를 재사용했고 추가 개발은 이 두 항목에 한정했다. Cross-FS는 앞선 보류 설계를 유지한다. 다음 실행에서는 git log/작업 트리와 이 최신 검증 절을 대조한 뒤, 본인 터미널의 최소 육안/수동 LSan 검사를 진행한다. 후속 최종 검증은 `Record Vim and marking integration validation` 문서 커밋으로 남긴다.
+
+## 후속 안정화: 휴지통 umask / 부모 종료 요청
+
+기준 `98546d2`, 시작 작업 트리 clean, uid 1000(비 root). 두 지적은 최신 기준 소스에서도 실행 재현됐다. 이번 범위는 권한/종료 수명 관리이며 신규 기능과 광범위한 분리는 하지 않는다. 원격 푸시는 하지 않는다.
+
+- 휴지통: 기존 정상 Trash + umask 0400에서 이동 후 닫은 메타데이터의 fopen 재열기 실패를 수정 전 HEAD 별도 빌드로 확인했다. 최초 생성 + umask 0200에서는 준비 단계 Permission denied가 재현됐다. 수정 후 새 디렉터리의 mkdirat 한 syscall에만 umask 0을 적용하고 성공/EEXIST/오류 직후 이전 mask와 errno를 복원한다. 현재 단일 스레드 전제가 필요하며 향후 스레드 도입 시 이 전역 mask 변경을 재검토해야 한다. 기존 디렉터리를 chmod하지 않고 NOFOLLOW/소유자/0700 검증을 유지한다. O_EXCL로 확보한 메타데이터 FD만 fchmod(0600)하며 실패 시 원본 이동 전에 본인 메타데이터를 정리한다.
+- 종료: 대기하는 fixture Vim을 실행하고 부모 PID만 SIGTERM으로 종료하면 수정 전 부모는 종료되고 자식은 신호를 받지 않고 남았다(회귀 검사 실패 후 테스트에서 자식 정리). 수정 후 SIGTERM/SIGHUP 처리기는 sig_atomic_t 요청만 기록한다. 일반 대기 코드가 해당 자식 PID에 각 종류를 한 번 전달하고 waitpid로 회수한다. 관계없는 PID/프로세스 그룹 신호, 자동 SIGKILL, 기한은 없다. 무시/지연하는 편집기는 부모도 무기한 기다린다. SIGKILL로 부모를 강제 종료하는 경우는 정리 보장 밖이다. 반환 후 터미널을 복원하고 메인 루프에서 종료 요청을 처리해 앱을 정리한다. 종료 코드는 기존 정리 종료와 같은 0이며 저장 성공을 의미하지 않는다.
+- 미디어 pause는 취소된 converter 회수만 수행하며 앱 종료 처리기를 유지한다. editor 임시 처리기는 정상/exec 실패/신호 종료/설치 실패 rollback에서 이전 상태로 복원한다. 종료 대기 중 waitpid(WNOHANG)+20ms 대기로 요청 확인과 blocking wait 사이의 lost wakeup을 피한다. 종료 이후 반복 요청은 이미 전달한 종류의 신호를 반복 전송하지 않는다.
+
+회귀: trash_test는 비 root만 허용한다. 0022/0077/0200/0400 각각 기존/최초 Trash, 디렉터리 0700·메타데이터 0600·닫은 뒤 재읽기·umask 복원·mkdir/fchmod 오류 주입·원본/메타데이터 정리·재시도·최종 FD 개수를 확인한다. editor_shutdown_pty는 부모 TERM/HUP 각각을 전달하고 fixture가 정상 종료 기회를 가진 동안 부모가 기다리는지, 종료 후 child /proc 소멸(살아 있는 자식/좀비 없음), canonical/echo 셸 입력 복원을 확인한다. 기존 real Vim 자동 PTY의 저장/취소/읽기 전용/자식 SIGKILL/리사이즈/마우스 복귀를 유지한다. 실제 터미널 육안 확인, 실제 데스크톱 휴지통 복원, 모든 Vim 설정·터미널 에뮬레이터는 미검증이다.
+
+최종 제품 코드 `0c63415` 검사: `make -j4 check` PASS(exit 0), 로그 `/tmp/tfile-stability-full-verified.log`. 이 전체 검사는 후속 terminal_pty 동기화 수정 전이며 그 수정의 최신 관련 결과는 별도 기록한다. 관련 `check-trash/check-vim`, 실행 직전 종료 요청을 추가한 `check-external/check-vim` PASS(`/tmp/tfile-stability-related.log`, `/tmp/tfile-stability-handoff.log`). 기본 ASan/UBSan 25개 PASS(`/tmp/tfile-stability-sanitizers-final.log`, `/tmp/tfile-sanitizers-stability-final`), media 5개 PASS(`/tmp/tfile-stability-media-sanitizers-final.log`), terminal 5개 PASS(`/tmp/tfile-stability-terminal-sanitizers-final.log`), 모두 detect_leaks=0. 최신 media sanitizer tfile로 editor_shutdown_pty 및 실제 Vim vim_pty를 추가 실행해 각각 PASS(`/tmp/tfile-stability-editor-sanitized-final.log`, `/tmp/tfile-stability-vim-sanitized-final.log`); tfile만 계측되며 시스템 Vim은 sanitizer 빌드가 아니다. architecture, Python 53개 AST, diff whitespace 검사 PASS.
+
+로컬 커밋: `fa7d198` 휴지통 신규 생성 권한/umask, `0c63415` Vim 부모 종료/터미널 인계. 사용자 변경은 없었던 clean 기준에서 이번 범위만 변경했으며 원격 푸시는 하지 않았다. LSan은 알려진 ptrace 제약으로 이번에 실행/재시도하지 않는다. 시스템 보안 설정을 변경하지 않는다. 아래 명령을 일반 사용자 WSL/Linux 셸에서 실행하고 개별 로그를 확인한다(최신 코드 기준; 명령 제공은 통과 기록이 아님).
+
+```sh
+python3 tests/isolated_check.py python3 tests/run_sanitizers.py --output-directory /tmp/tfile-sanitizers-stability-manual-lsan
+python3 tests/isolated_check.py python3 tests/run_media_sanitizers.py --output-directory /tmp/tfile-media-sanitizers-stability-manual-lsan
+python3 tests/isolated_check.py python3 tests/run_terminal_sanitizers.py --output-directory /tmp/tfile-terminal-sanitizers-stability-manual-lsan
+python3 tests/isolated_check.py env TFILE_BINARY=/tmp/tfile-media-sanitizers-stability-manual-lsan/tfile ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 python3 tests/editor_shutdown_pty.py
+```
+
+수동 최소 검사: 임시 텍스트에서 e로 Vim 진입→수정/:wq→마우스/메뉴/리사이즈를 확인한다. 다시 Vim 진입 후 별도 셸에서 정확한 tfile PID에 kill -TERM 또는 kill -HUP을 보내 Vim 종료와 셸 입력 복구를 확인한다(저장하지 않은 내용은 Vim의 신호 처리/복구 파일 정책을 따름). 전용 임시 XDG_DATA_HOME에서 umask 0400으로 실행→t 휴지통→종료 후 .trashinfo 읽기와 데스크톱 복원은 별도로 확인한다. 실제 사용자 파일은 검사에 사용하지 않는다.
