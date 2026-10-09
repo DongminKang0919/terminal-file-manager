@@ -241,7 +241,7 @@ static void draw_screen(UiContext *ui, bool prepare) {
             w>=90 ? ": " : "",w>=90 ? n->action : "");
         alert_kind=refresh_issue ? NOTICE_WARNING : n->kind;
     } else if(ui->status[0]) snprintf(alert,sizeof alert,"%s",ui->status);
-    else if(ui_panel(ui)->app.files.len) {
+    else if(w>=80 && ui_panel(ui)->app.files.len) {
         snprintf(alert,sizeof alert,"%s",ui_panel(ui)->app.marks_len?"Targets: marks; cursor ignored":"Target: cursor (no marks)");target_hint=true;
     }
     if(ui->settings_warning[0]) { snprintf(alert,sizeof alert,"%s",ui->settings_warning); alert_kind=NOTICE_WARNING; }

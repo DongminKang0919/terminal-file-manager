@@ -152,3 +152,6 @@ copy/move/delete/Trash의 exactly-one-mark 우선 정책은 이미 구현되어 
 
 
 후속 최초 통합 전체 검사 실패(`/tmp/tfile-vim-marks-final-check.log`): 새 target hint의 공간 예약이 50열에서 `Right*` active panel label을 밀어냈고 기존 settings_pty가 이를 잡았다. 제품 회귀로 인정하고 target hint만 최소 폭의 예약 공간을 줄여 패널과 Shown/Marked를 우선 보존했다. 기존 settings/sort 기대값은 그대로 유지하고 discovery PTY에도 50열 Right*/Left* assertions를 추가했다. settings_pty/discovery_pty/sort_pty PASS(`/tmp/tfile-vim-marks-narrow-*.log`). 최종 전체는 두 번째 로그로 재실행하며 이전 실패를 통과로 덮어쓰지 않는다.
+
+
+두 번째 전체 검사(`/tmp/tfile-vim-marks-final-check-2.log`)는 navigation_pty에서 최소 폭의 기본 Shown/Marked/Dotfiles 요약이 줄어든 회귀를 잡았다. 최초 기본 target hint는 80열 이상에만 추가하고, 최소 폭에서는 기존 요약을 그대로 보존했다. 명시적 마킹/해제 후 대상 hint는 계속 표시한다. 기존 navigation/settings 기대값 그대로 PASS(`/tmp/tfile-vim-marks-metadata-navigation.log`, `/tmp/tfile-marking-menu-hint-settings.log`). F9 첫 화면의 예약 안내 행에도 a 전체 마킹 / u 해제 / e Vim cursor를 표시해, 아래로 스크롤하지 않아도 찾을 수 있게 했다. 메뉴 순서는 유지한다. 해당 discovery PTY PASS(`/tmp/tfile-marking-menu-hint-pty.log`).

@@ -292,7 +292,7 @@ static int choice_dialog(WINDOW *win, const char *title, const char **labels, in
             wattron(win,ui_notice_style(warning_kind));
             draw_window_text(win,h-3,2,w-4,warning);
             wattroff(win,ui_notice_style(warning_kind));
-        }
+        } else if(shortcuts) draw_window_text(win,h-3,2,w-4,"a: Mark all | u: Clear | e: Vim cursor");
         draw_window_text(win, h - 2, 2, w - 4, "Tab/Arrows  Enter: choose  Esc: close"); dialog_refresh(win);
         int key = input_key(win);
         if (key == KEY_MOUSE) {

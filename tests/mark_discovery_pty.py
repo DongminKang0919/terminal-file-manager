@@ -40,7 +40,8 @@ for w,h in [(50,9),(100,24)]:
   for name in ['a visible','b filtered','c visible']:(src/name).write_text(name)
   t=Terminal(str(src),w,h)
   try:
-   t.send(F9+DOWN*15);assert 'Select all visible' in body(t) and 'Clear all marks' in body(t)
+   t.send(F9);assert 'a: Mark all' in body(t) and 'u: Clear' in body(t) and 'e: Vim cursor' in body(t)
+   t.send(DOWN*15);assert 'Select all visible' in body(t) and 'Clear all marks' in body(t)
    t.send('a');marks(t,3);t.send(F9+'u');marks(t,0)
    t.send('a');marks(t,3);t.send('u');marks(t,0)
    # Filtering clears marks and limits select-all and delete to the visible list.
