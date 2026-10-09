@@ -1,6 +1,6 @@
 # 로컬 기능 확장 진행 — 2026-10-09
 
-최신 후속 상태: Vim `8198947` 및 마킹 보완 관련 검증 완료, 마킹 단위 커밋 후 최신 전체/sanitizer 통합 결과를 아래 후속 절에 기록한다. 기존 1–5/6단계 기록은 최초 확장의 이력이다.
+최신 후속 상태: Vim `8198947`/`82b9134`, 마킹 `bbab3a2`/`949ac61`/`d862b9e` 관련 검증과 로컬 커밋 완료. 최신 전체 및 ASan/UBSan 통합 검사 PASS; 상세 범위와 미검증 수동 항목은 아래 후속 절에 기록한다. 기존 1–5/6단계 기록은 최초 확장의 이력이다.
 
 기준: `85ae0dd`. 최초 작업 트리 clean. Linux/WSL 로컬만 다루며 원격 푸시/릴리스/시스템 설정 변경은 하지 않는다. 모든 테스트 데이터는 전용 임시 디렉터리다.
 
@@ -81,12 +81,12 @@ printf 'demo\n' > "$tfile_feature_demo/left/한글.txt"
 printf 'conflict\n' > "$tfile_feature_demo/right/한글.txt"
 printf 'second\n' > "$tfile_feature_demo/left/second.txt"
 XDG_CONFIG_HOME="$tfile_feature_demo/config" XDG_DATA_HOME="$tfile_feature_demo/data" \
-  VISUAL=vi ./tfile "$tfile_feature_demo/left"
+  ./tfile "$tfile_feature_demo/left"
 ```
 
 1. `b` → `a` 이름 지정, 재시작 후 보존 확인, 이동/방문 back 확인, `d` 후 실제 디렉터리는 남는지 확인. F7의 미저장 변경을 즐겨찾기 저장이 settings.conf로 저장하지 않는지 확인한다.
 2. Space로 마킹 후 `f` contains/glob 적용·해제: marks cleared, 필터 표식, no matches를 확인. F9 이중 목록과 Tab으로 패널마다 독립 동작 확인. 반대편 패널을 위 `right`로 열고 두 파일 마킹→F5→Skip this/Skip all/Stop의 파일·결과·마킹 확인.
-3. F9 Edit in editor에서 현재 커서(다른 마킹 항목 아님)를 편집/복귀하며 터미널 resize/한글 입력/이미지 잔상·선택·마킹을 확인한다. 실제 xdg-open은 사용 가능할 때 임시 파일 하나로만 확인하며 “requested/returned”가 실제 표시·저장 완료 안내가 아닌지 확인한다.
+3. e / F9 Edit with Vim에서 현재 커서(다른 마킹 항목 아님)를 편집/복귀하며 터미널 resize/한글 입력/이미지 잔상·선택·마킹을 확인한다. 실제 xdg-open은 사용 가능할 때 임시 파일 하나로만 확인하며 “requested/returned”가 실제 표시·저장 완료 안내가 아닌지 확인한다.
 4. `t` 기본 Cancel, 실제 Trash 이동, `!`의 위치/메타데이터를 확인. `F8`은 별도 permanent warning인지 확인. 데스크톱 복원은 일반 사용자 Trash에서 하는 별도 수동 환경 확인이 필요하며 이 임시 XDG Trash를 자동 인식한다고 가정하지 않는다. 앱 내 복원은 없다.
 
 실제 terminal pixel/깜빡임/GUI 표시/vi 상호 작용, desktop Trash restore, 실제 별도 device mount-top 및 WSL/DrvFS에서의 거부 동작은 자동 PTY 결과로 대체하지 않는다. 교차 FS 이동은 보류여서 성공을 기대하는 수동 이동 검사는 하지 않는다.
@@ -106,7 +106,7 @@ ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
   python3 tests/isolated_check.py make check-settings-sanitize
 ```
 
-기본 runner는 기존 18개에 favorites/filter/batch_conflict/external/trash 5개를 추가해 총 23개이다. media runner 5개, terminal runner 5개, settings native sanitizer 1개는 서로 별도 범위이며 중복 흐름이 있다. 이 합계를 모든 제품 흐름의 완전한 검사라고 표현하지 않는다.
+최초 1–5 완료 시 기본 runner는 기존 18개에 favorites/filter/batch_conflict/external/trash 5개를 추가해 23개였다. 후속 Vim/mark_policy native를 추가한 현재 runner는 25개이다. media runner 5개, terminal runner 5개, settings native sanitizer 1개는 서로 별도 범위이며 중복 흐름이 있다. 이 합계를 모든 제품 흐름의 완전한 검사라고 표현하지 않는다.
 
 
 ## 최종 검증 (실제 실행)
@@ -134,8 +134,8 @@ LSan은 이번 세션에서 실행/재시도하지 않았다. 위 ASan/UBSan 결
 
 | 후속 작업 | 상태 | 커밋 | 검증 |
 | --- | --- | --- | --- |
-| Vim 명시 편집 | 완료 | `8198947` | native fixture + 실제 설치 Vim 9.1 PTY + 기존 external 회귀 PASS |
-| 마킹/일괄 작업 발견 가능성 | 완료 | `bbab3a2` | native/discovery PTY + batch/panels/controller/filter/Vim 관련 회귀 PASS |
+| Vim 명시 편집 | 완료 | `8198947` + `82b9134` | native fixture + 실제 설치 Vim 9.1 PTY + 기존 external 회귀 PASS |
+| 마킹/일괄 작업 발견 가능성 | 완료 | `bbab3a2` + `949ac61` + `d862b9e` | native/discovery PTY + batch/panels/controller/filter/Vim 관련 회귀 PASS |
 
 Vim: `e`/F9 Edit with Vim, 커서 일반 텍스트 하나, marks/VISUAL/EDITOR 무시. 현재 파일을 실행 직전 다시 읽고 version 변경을 검사한다. 첫 64KiB(+UTF-8 경계 최대3바이트) UTF-8/ASCII, NUL/일부 control/media signature 거부. empty/extensionless/config/source/BOM 지원. SVG/XML처럼 텍스트 형식은 텍스트로 취급. 샘플 밖 바이너리와 UTF-8으로 우연히 해석 가능한 바이너리를 완전히 판별하지 못하며 다른 encoding 텍스트는 거부될 수 있다. 링크는 항상 거부, 대상 확인 후 편집 경로 없음. readable but not writable/mode write bits 없는 파일은 `-R`; no privilege escalation. `-R`은 :w!로 사용자가 바꿀 수 있는 advisory Vim 옵션이며 filesystem 권한은 별도다. argv `vim [-R] -- absolute-path`, 실행 missing/ENOEXEC/nonzero/signal은 오류, 다른 도구 fallback 없음. 기존 suspend/endwin/media cleanup/waitpid/signal restore/geometry/input/mouse/list/preview 복구를 재사용한다. 성공 종료는 save 완료가 아니다. 최종 경로를 Vim이 다시 열기 때문에 샘플 검사 이후 leaf/내용 교체 레이스는 남는다.
 
@@ -158,3 +158,42 @@ copy/move/delete/Trash의 exactly-one-mark 우선 정책은 이미 구현되어 
 
 
 Vim 입력 모드 복귀 보강: 실제 Vim SIGKILL 뒤 mode state를 추가 검사하니 bracketed paste(2004), focus reporting(1004), motion mouse(1002) 등이 남아 있었다(`/tmp/tfile-vim-keyboard-return.log`). termios/화면 복귀만으로 전체 입력 정책이 복구된다는 주장은 부족했다. [xterm 공식 control sequences](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html)를 확인하고, 복귀 시 modifyOtherKeys=0 및 2004/1004/1002/1003 해제 후 curses의 기존 keypad/SGR mouse를 복구한다. 새 키보드/그래픽 프로토콜을 활성화하거나 파서를 추가한 것이 아니다. PTY 판독기는 기존에 무시하던 비그리기 keyboard/style 시퀀스를 이해하도록 확장했고, 실제 Vim 검사에는 종료 후 모드 상태 assertions를 추가했다(내부 함수 호출 순서 고정 없음). 정상/강제 종료/missing/exec-error에서도 전체 관련 검사 PASS(`/tmp/tfile-vim-keyboard-return-final.log`, `/tmp/tfile-vim-keyboard-external.log`). TERM=xterm-256color/Vim9.1/controlled .vimrc 범위이며, 다른 실제 터미널과 임의 Vim 설정의 모든 모드 변경을 검증한 것은 아니다. 사람이 보는 육안 검사는 여전히 미검증이다.
+
+
+## 후속 실제 검증·수동 명령
+
+| 검사 | 결과 | 실제 범위 |
+| --- | --- | --- |
+| 최종 make -j4 check | PASS, exit 0 | 최신 코드의 기존 전체 + Vim/marking/실제 미디어 변환; `/tmp/tfile-vim-marks-final-check-3.log` |
+| ASan/UBSan 기본 runner | PASS, 25개 | 최신 코드, --disable-leaks; `/tmp/tfile-vim-marks-sanitizers-3.log` 및 `/tmp/tfile-sanitizers-vim-marks-final-3/*.run.log` |
+| ASan/UBSan media runner | PASS, 5개 | media/preview/picker/media_pty/media_redraw, 누수 제외; `/tmp/tfile-vim-marks-media-sanitizers-3.log` |
+| ASan/UBSan terminal runner | PASS, 5개 | terminal/input/probe/pty/auto_pty, 누수 제외; `/tmp/tfile-vim-marks-terminal-sanitizers-3.log` |
+| ASan/UBSan 실제 Vim/마킹 PTY | PASS, 2 시나리오 묶음 | 최신 sanitized tfile + 실제 Vim 프로세스/VT 출력 모드 상태/파일·termios·mouse/input 복귀 및 marked-target 작업; `/tmp/tfile-vim-marks-vim-sanitized-pty-3.log`, `/tmp/tfile-vim-marks-marking-sanitized-pty-3.log` |
+| 계층 / diff / Python AST | PASS | 좁은 architecture guard, whitespace, Python 52개 파일 **문법만** |
+| 변경 문서 상대 파일 링크 | 누락 0 | README/진행 기록; anchors/렌더링 미검증 |
+
+sanitizer로 빌드한 것은 tfile이며 시스템 Vim 자체를 sanitizer로 빌드한 것은 아니다. 위 sanitizer는 모두 detect_leaks=0이며 이번 후속에서도 LSan을 실행/반복하지 않았다. 최초 결과 및 실패 전체 로그는 별도로 남기고, 위 최신 실행으로 최종 범위를 구분했다. 설정 전용 sanitizer는 이번 후속에서 재실행하지 않았으며 settings native/PTY는 전체 검사에 포함했다. 실제 desktop GUI 표시·물리 터미널의 폰트/픽셀/깜빡임은 미검증이며 real-Vim **자동 PTY**와 사람이 보는 터미널 검사를 같다고 주장하지 않는다. GUI 기능은 기존 것을 유지했으며 추가 개발하지 않았다.
+
+ptrace가 없는 터미널에서 최신 LSan을 수동 확인하려면 별도 결과 디렉터리를 사용한다(이 명령은 이번 실행 결과가 아니다):
+
+```sh
+python3 tests/isolated_check.py python3 tests/run_sanitizers.py \
+  --output-directory /tmp/tfile-sanitizers-vim-marks-manual-lsan
+python3 tests/isolated_check.py python3 tests/run_media_sanitizers.py \
+  --output-directory /tmp/tfile-media-sanitizers-vim-marks-manual-lsan
+python3 tests/isolated_check.py python3 tests/run_terminal_sanitizers.py \
+  --output-directory /tmp/tfile-terminal-sanitizers-vim-marks-manual-lsan
+python3 tests/isolated_check.py env \
+  TFILE_BINARY=/tmp/tfile-media-sanitizers-vim-marks-manual-lsan/tfile \
+  ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  python3 tests/vim_pty.py
+python3 tests/isolated_check.py env \
+  TFILE_BINARY=/tmp/tfile-media-sanitizers-vim-marks-manual-lsan/tfile \
+  ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 \
+  python3 tests/mark_discovery_pty.py
+```
+
+최소 육안 확인은 위 임시 데이터 실행 예시로 본인 Vim 설정/실제 Linux·WSL 터미널에서 한다: 다른 파일을 Space로 마킹하고 커서를 텍스트로 옮겨 e 실행 → 한글 입력/resize/:wq → 커서·마킹·내용·마우스·Tab 초점 복귀 확인. F9 첫 화면 a/u 안내와 기본 Cancel/실제 대상 목록도 확인한다. 강제 종료는 실제 사용자 파일 대신 임시 파일의 테스트 Vim에서만 수행한다. Ctrl-C/Shift-Tab/붙여넣기와 이미지 잔상은 실제 사용하는 터미널에서 확인한다.
+
+
+후속 종료 상태: 요청한 Vim/마킹 두 항목은 코드·관련/전체 회귀·문서·로컬 커밋 완료. 원격 푸시/릴리스/시스템 전역 설정 변경 및 실제 사용자 파일 삭제 테스트 없음. 기존 즐겨찾기/필터/GUI/Trash 구조를 재사용했고 추가 개발은 이 두 항목에 한정했다. Cross-FS는 앞선 보류 설계를 유지한다. 다음 실행에서는 git log/작업 트리와 이 최신 검증 절을 대조한 뒤, 본인 터미널의 최소 육안/수동 LSan 검사를 진행한다. 후속 최종 검증은 `Record Vim and marking integration validation` 문서 커밋으로 남긴다.
