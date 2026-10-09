@@ -251,3 +251,23 @@ bool panel_key(UiContext *ui, int key, int height) {
         default: return false;
     }
 }
+
+void trash_entry(UiContext *ui) {
+    if(!ui_operation_allowed(ui,NULL,0)) return;
+    if(ui_panel(ui)->app.marks_len>1) { batch_entry(ui,BATCH_TRASH);return; }
+    if(ui_panel(ui)->selected>=ui_panel(ui)->app.files.len) return;
+    const FileInfo *it=&ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
+    if(ui_panel(ui)->app.marks_len) for(size_t i=0;i<ui_panel(ui)->app.files.len;i++)
+        if(app_marked(&ui_panel(ui)->app,ui_panel(ui)->app.files.entries[i].name)) {it=&ui_panel(ui)->app.files.entries[i];break;}
+    char *path=text_copy(it->path),*name=text_copy(it->name);
+    if(!path||!name) {free(path);free(name);message(ui,"Out of memory; no changes");return;}
+    if(!confirm_trash(ui,name,it->kind==FILE_DIRECTORY)) {free(path);free(name);message(ui,"Trash cancelled; no changes");return;}
+    OperationNotice prepared;
+    Result r=notice_prepare(&prepared,"Move to Trash",path,NULL);
+    if(r.code!=RESULT_OK) {free(path);free(name);message(ui,r.detail);return;}
+    char *destination=NULL;r=run_trash_operation(ui,path,&destination);
+    prepared.destination=destination;notice_commit(ui,&prepared,r);
+    if(r.completed_items==1) app_unmark(&ui_panel(ui)->app,name);
+    free(path);free(name);
+    refresh_after_operation(ui,NULL,r.detail);
+}

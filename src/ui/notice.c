@@ -95,6 +95,7 @@ void show_result(UiContext *ui) {
                 const BatchTarget *t=&n->batch.targets[i];
                 snprintf(counts,sizeof counts,"Target %zu/%zu: %s%s",i+1,n->batch.len,labels[t->status],t->result.partial?" | Partial changes":"");
                 add_text(&text,counts,false); add_text(&text,t->source,false);
+                if(t->destination) { add_text(&text,"Trash payload:",false); add_text(&text,t->destination,false); }
                 if(t->status!=BATCH_UNEXECUTED) {
                     result_rows(&text,"Target result",t->result);
                     snprintf(counts,sizeof counts,"Recursive completed items: %llu | Copied bytes: %llu",(unsigned long long)t->result.completed_items,(unsigned long long)t->result.copied_bytes);

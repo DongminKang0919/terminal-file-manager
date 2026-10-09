@@ -7,8 +7,8 @@
 | 1 즐겨찾기 | 완료 | `eea1a18` | native favorites/settings + favorites PTY 통과; 실제 육안 미검증 |
 | 2 목록 필터 | 완료 | `3c6b290` | filter native/PTY + batch/search/navigation/favorites 회귀 PASS |
 | 3 충돌 건너뛰기 | 완료 | `d83cb11` + `a0a425b` + `5b53d1f` | copy/move native late collision + PTY/기존 batch 진행 회귀 PASS |
-| 4 외부 도구 | 완료 | `Connect cursor files to external editors and viewers` 커밋 | parser/process native + cooked terminal/resize restore PTY PASS |
-| 5 휴지통 | 미착수 | — | 공식 Trash 명세 확인 후 지원 범위 결정 |
+| 4 외부 도구 | 완료 | `45cf11d` | parser/process native + cooked terminal/resize restore PTY PASS |
+| 5 휴지통 | 완료 | `Move selected items to standards-based local Trash` 커밋 | native/PTY PASS; 실제 별도 mount/desktop 복원 미검증 |
 | 6 교차 FS 이동 | 미착수 | — | 삭제 조건/identity/복사 완전성 설계가 먼저; 안전하지 않으면 보류 |
 
 완료는 코드·관련 회귀·문서·로컬 커밋까지 포함한다. 단계별 검사 및 통합/최종 전체 검사를 기록한다. PTY/정적 확인을 실제 터미널 육안 확인과 구분한다. 알려진 ptrace 제약의 LSan은 반복하지 않으며 ASan/UBSan 실제 범위와 최신 수동 명령을 별도로 남긴다.
@@ -44,3 +44,21 @@ F9 append-only Edit in editor / Open externally(커서 일반 파일; marks 무�
 Editor: graphics/probe/preview/converter를 정리하고 curses program mode 저장/endwin; child 기본 신호, parent INT/QUIT 임시 ignore; 직접 waitpid(사용자 제어 수명, no deadline/RLIMIT/parent-death kill). 복귀 시 실제 ioctl geometry와 curses/input/queued resize를 복구하고 선택 이름 우선·marks·초점 정책·필터를 보존하며 active/peer refresh와 preview reset. 반환/refresh 실패는 별도 안내, 기존 retained file-operation notice는 덮어쓰지 않는다. GUI launcher: /dev/null stdin/out/err, exec ack + WNOHANG polling, 최대 하나, 종료 상태 안내. launcher가 계속 실행 중이어도 입력을 받을 수 있고 GUI-only polling은 main draw를 반복하지 않는다. 닫을 때 살아 있는 launcher는 죽이지 않고 nonblocking reap 추적; 앱 종료 후는 OS가 reparent한다. GUI 자체의 자식 프로세스 완료/문서 save/display는 추적하지 않는다. 기존 converter cleanup과 분리한다.
 
 직접 실행: native parser/actual fork+exec(quoted argv/priority/vi, raw shell-looking executable filename, 실제 ENOEXEC script shell 미실행, parent INT restoration, inherited user AS limit, 추가 FD 없음, GUI exec/exit failure/live close→reap, FD baseline), PTY cooked editor/100x24→120x30 resize/직후 메뉴 입력/다른 marked file 보존/actual edited content/xdg request PASS. 복귀 후 남은 SIGWINCH의 KEY_RESIZE가 다음 F9를 닫던 문제를 재현하고 non-dispatch input drain으로 수정했다. 로그 `/tmp/tfile-stage4-*.log`. architecture/diff PASS. 실제 vi/desktop 문서 표시/실제 화면 육안 검사는 미검증. 다음 행동: 1–4 통합 검사와 5단계 Trash 지원 범위 구현.
+
+## 5단계 구현 전 지원 범위 결정
+
+공식 [freedesktop.org Trash Specification v1.0](https://specifications.freedesktop.org/trash/1.0/)을 2026-10-09 확인했다. 구현은 home Trash(절대 XDG_DATA_HOME, 아니면 HOME/.local/share)와 다른 device의 mount-top `.Trash/uid`(sticky/no-symlink 검사) → `.Trash-uid`를 다룬다. info의 O_EXCL 예약/Path percent encoding/local DeletionDate를 파일 이동보다 먼저 기록한다. source/files/info 부모 FD를 고정하고 NOREPLACE 이동; EXDEV는 copy-delete로 대체하지 않는다. UID/0700와 local filesystem 확인 실패는 원본을 보존하고 거부한다. 사용자별 생성된 setup 디렉터리는 실패 후에도 남을 수 있다. metadata 잔여물/이동 후 sync 실패는 부분 상태와 복구 위치를 보고한다. Crash-atomic한 2파일 transaction, in-app Trash explorer/restore, directorysizes cache는 이번 범위 밖이다. 기존 F8 영구 삭제는 그대로 별도 경고/확인을 유지하고 새 t/F9 Trash는 default Cancel 확인으로 구분한다.
+
+## 5단계 정책/검증 및 복구 한계
+
+`t`/F9 Move to Trash는 기본 Cancel 확인, F8/Delete는 기존 별도 영구 삭제 경고/확인이다. 마킹이 있으면 마킹 대상, 없으면 커서 항목; batch는 목록/경로를 고정한다. home Trash가 유효하고 동일 device이면 이를 사용한다. 다른 device이면 mount-top의 sticky/non-symlink `.Trash/uid`를 먼저 시도하고 `.Trash-uid`로 대체한다. home Trash가 불안전하거나 접근 불가능하면 자동 대체하지 않고 거부한다. mode 0700/user-owned root/files/info, 0600 info, NOFOLLOW ancestor, 같은 device를 확인한다. Linux ext4/btrfs/xfs/tmpfs/overlay만 허용하며 unknown/remote/DrvFS는 거부한다. regular/directory/symlink만 지원하고 mount-root/special type은 거부한다. 디렉터리는 inode 이동이므로 하위 내용을 복사/삭제하지 않는다. 링크 자체를 이동하며 링크 대상을 따라가지 않는다.
+
+고유 tfile-time-pid-sequence 이름(원래 이름은 메타데이터에 보존), info O_EXCL 예약/완전 기록/file+info-dir fsync 뒤 검증된 부모 FD와 NOREPLACE rename. 같은 이름을 다시 버려도 덮어쓰지 않는다. Path는 canonical parent+original leaf, home는 absolute/mount-top은 relative, 바이트 percent encoding, local DeletionDate. source/files/info FD를 고정한 후 부모 경로 교체 테스트는 원래 디렉터리에서 작업하고 decoy를 보존했다. 최종 leaf identity 확인과 rename 사이에는 같은 UID의 교체 레이스가 남는다. home/top 디렉터리의 외부 이름 변경 뒤 보고된 문자열 경로가 낡을 수 있다. FD 고정이 모든 leaf 원자 검증이나 hostile same-UID 방어를 보장한다고 주장하지 않는다.
+
+이동 전 기록/검증/취소 실패: 원본 보존, 자신이 예약한 info만 inode 확인 후 제거. 제거 실패는 orphan info 경로를 partial로 보고. metadata 기록 후 프로세스가 죽으면 원본과 orphan info가 함께 남을 수 있다. 이동 후 최종 fsync 실패는 completed_items=1/partial/error, 목적지+info 유지, 원본 위치에는 없다고 정확히 기록하며 마킹을 제거한다. payload와 info의 2-file crash transaction, 전원 장애 내구성, 자동 복구/rollback은 보장하지 않는다. directorysizes 캐시는 만들지 않으며(용량 탐색 기능 없음), 앱 내 Trash explorer/restore는 제외한다.
+
+수동 복구: 먼저 `!`에서 completed/partial와 원본·목적지·diagnostic 경로를 확인한다. Original kept/orphan info이면 원본 존재와 대응 payload 부재를 직접 확인한 후 해당 info만 정리한다. Moved to Trash/final sync failed이면 payload와 대응 `.trashinfo`를 보존하고 데스크톱 복원을 사용한다. 같은 이름의 새 원본을 덮어쓰는 복원은 하지 않는다. setup 디렉터리는 실패 후 남을 수 있다. 실제 desktop restore/실제 별도 device mount-top/DrvFS 거부의 실환경 육안 검사는 미검증이다.
+
+5단계 직접 검사: native 실제 파일/디렉터리/링크 이동·원래 inode/mode·percent metadata/date·동일 원래 이름 재등록·권한/링크/unknown FS 거부·기록/metadata fsync/최종 fsync/cleanup 오류 주입·NOREPLACE 늦은 충돌·취소·metadata-first 프로세스 crash·원본 부모 경로 교체·최종 leaf 사전 교체 거부·FD baseline·commit 후 sync-error mark 제거. filesystem별 shared/private fallback은 전용 임시 top FD를 주입한 **모의 routing 검사**이며 실제 다른 device 통과가 아니다. PTY 50x9/100x24: 기본 Cancel/마킹 batch/cancel/실제 payload+info/실패 후 원본 보존/별도 영구 삭제/resize 취소/활성 right panel. PASS(`/tmp/tfile-stage5-related-final.log`). 최초 새 테스트의 time.h 누락과 마킹 입력/작은 화면 알림 확인 오류는 테스트 코드에서 수정했고, actual filesystem assertions와 상세 결과 이유 검사를 유지했다. architecture/diff PASS. 다음: 로컬 5단계 커밋 후 6단계 보류 설계 및 최종 전체/sanitizer 검사.
+
+1–4 통합 전체 검사 PASS: `/tmp/tfile-features-integration-1-4.log`. 앞선 두 실패를 위 3단계에 원인/수정 근거로 남겼다.

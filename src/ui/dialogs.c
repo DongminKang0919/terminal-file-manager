@@ -213,15 +213,17 @@ void rename_entry(UiContext *ui) {
     }
     free(source); free(name);
 }
-bool confirm(UiContext *ui, const char *name, bool directory) {
-    WINDOW *win = dialog_open(ui, "Confirm deletion", 8, 78);
+static bool confirm_action(UiContext *ui, const char *name, bool directory, bool trash) {
+    const char *title=trash ? "Confirm Trash" : "Confirm deletion";
+    const char *button=trash ? "[ Trash ]" : "[ Delete ]";
+    WINDOW *win = dialog_open(ui, title, 8, 78);
     if (!win) return false;
     bool yes = false, result = false;
     size_t start = 0;
     for (;;) {
         int h, w; getmaxyx(win, h, w);
-        dialog_frame(win, "Confirm deletion");
-        draw_window_text(win, 1, 2, w - 4, directory ? "Delete directory and all its contents?" : "Permanently delete this file?");
+        dialog_frame(win, title);
+        draw_window_text(win, 1, 2, w - 4, trash ? "Move this item and its contents to Trash?" : directory ? "Delete directory and all its contents?" : "Permanently delete this file?");
         size_t pages = 0, page = 0;
         for (size_t at = 0;;) {
             if (at == start) page = pages;
@@ -239,9 +241,9 @@ bool confirm(UiContext *ui, const char *name, bool directory) {
             draw_window_text(win, h - 3, 7, w - 14, hint);
         }
         wattron(win,ui_notice_style(NOTICE_WARNING));
-        draw_window_text(win,3,2,w-4,"[!] Permanent deletion; cannot be undone.");
+        draw_window_text(win,3,2,w-4,trash ? "No permanent-delete fallback; restore using desktop tools." : "[!] Permanent deletion; cannot be undone.");
         wattroff(win,ui_notice_style(NOTICE_WARNING));
-        dialog_button(win, h - 2, 2, "[ Delete ]", yes, true);
+        dialog_button(win, h - 2, 2, button, yes, true);
         dialog_button(win, h - 2, 14, "[ Cancel ]", !yes, true); dialog_refresh(win);
         int key = input_key(win);
         if (key == KEY_MOUSE) {
@@ -253,7 +255,7 @@ bool confirm(UiContext *ui, const char *name, bool directory) {
                 else if (e.x >= x + w - 5 && e.x < x + w - 2) key = KEY_NPAGE;
             }
             if (mouse_click(&e) && e.y == y + h - 2) {
-                if (dialog_button_hit(win,&e,h-2,2,"[ Delete ]",true)) { result = true; break; }
+                if (dialog_button_hit(win,&e,h-2,2,button,true)) { result = true; break; }
                 if (dialog_button_hit(win,&e,h-2,14,"[ Cancel ]",true)) break;
             }
         }
@@ -270,6 +272,9 @@ bool confirm(UiContext *ui, const char *name, bool directory) {
     }
     dialog_close(ui, win); return result;
 }
+
+bool confirm(UiContext *ui,const char *name,bool directory) { return confirm_action(ui,name,directory,false); }
+bool confirm_trash(UiContext *ui,const char *name,bool directory) { return confirm_action(ui,name,directory,true); }
 
 static int choice_dialog(WINDOW *win, const char *title, const char **labels, int total, int *selection, int *scroll, const char *warning, NoticeKind warning_kind, unsigned disabled) {
     int selected_row = *selection, offset = *scroll, result = -1;
@@ -320,13 +325,13 @@ int ui_choices(UiContext *ui,const char *title,const char **labels,int count) {
     dialog_close(ui,win);return result;
 }
 int show_menu(UiContext *ui) {
-    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list", "Rename selected item", "!    Recent operation result", "z    Dismiss notification", "Select all visible items", "Clear selection", "View: Files + Preview", "View: Files only", "View: Left + Right files", "b    Favorite directories", "f    Filter / Clear current list", "Edit in editor (cursor file)", "Open externally (cursor file)"};
+    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Permanent delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list", "Rename selected item", "!    Recent operation result", "z    Dismiss notification", "Select all visible items", "Clear selection", "View: Files + Preview", "View: Files only", "View: Left + Right files", "b    Favorite directories", "f    Filter / Clear current list", "Edit in editor (cursor file)", "Open externally (cursor file)", "t    Move to Trash"};
     if(ui_panel(ui)->app.marks_len > 1) labels[11]="[disabled] Rename: multiple marked items";
-    const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r', UI_QUICK_FIND, UI_RENAME, UI_RESULT, 'z', UI_SELECT_ALL, UI_CLEAR_SELECTION, UI_MODE_PREVIEW, UI_MODE_FILES, UI_MODE_DUAL, UI_FAVORITES, UI_FILTER, UI_EDIT, UI_EXTERNAL};
+    const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r', UI_QUICK_FIND, UI_RENAME, UI_RESULT, 'z', UI_SELECT_ALL, UI_CLEAR_SELECTION, UI_MODE_PREVIEW, UI_MODE_FILES, UI_MODE_DUAL, UI_FAVORITES, UI_FILTER, UI_EDIT, UI_EXTERNAL, UI_TRASH};
     WINDOW *win = dialog_open(ui, "Menu", 14, 52);
     if (!win) return 0;
     int selected = 0, offset = 0;
-    int i = choice_dialog(win,"Menu",labels,23,&selected,&offset,NULL,NOTICE_INFO,ui_panel(ui)->app.marks_len>1 ? 1u<<11 : 0);
+    int i = choice_dialog(win,"Menu",labels,24,&selected,&offset,NULL,NOTICE_INFO,ui_panel(ui)->app.marks_len>1 ? 1u<<11 : 0);
     dialog_close(ui, win);
     if (i == 11 && ui_panel(ui)->app.marks_len > 1) { message(ui, "Rename unavailable: multiple marked items"); return 0; }
     return i < 0 ? 0 : keys[i];

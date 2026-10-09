@@ -42,3 +42,5 @@ Result core_transfer_progress(bool move, const char *source, const char *directo
 done:
     free(resolved); free(dst); return r;
 }
+
+Result core_trash_progress(const char *p,char **d,OperationCallback cb,void *ctx) { return platform_trash_progress(p,d,cb,ctx); }

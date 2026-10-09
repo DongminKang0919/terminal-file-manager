@@ -18,6 +18,11 @@ ui=[*core,*sorted(x for x in (root/'src/ui').glob('*.c') if x.name!='main.c')]
 flags=['-D_XOPEN_SOURCE=700','-O1','-g','-Wall','-Wextra','-Wpedantic','-std=c11',
        '-fno-omit-frame-pointer','-fsanitize=address,undefined','-fno-pie','-no-pie']
 targets={
+ 'favorites_test':(['platform_favorites_write'],core),
+ 'filter_test':([],core),
+ 'batch_conflict_test':(['platform_move','platform_copy_progress'],core),
+ 'external_test':([],core),
+ 'trash_test':(['fsync','write','unlinkat','fstatfs'],core),
  'panels_ui_test':(['app_init','app_refresh','platform_directory_open','platform_reader_line','qsort','newwin','delwin','input_key','input_wide','confirm','malloc','calloc','realloc','free'],ui),
  'batch_test':(['malloc','calloc','realloc','platform_move'],core),
  'batch_ui_test':(['app_refresh','platform_directory_open','platform_reader_line','qsort','core_monotonic_ms','wrefresh','input_key','input_wide','batch_prepare','newwin','delwin','malloc','calloc','realloc'],ui),
@@ -44,6 +49,7 @@ def build(item):
  name,(wraps,sources)=item
  cmd=['cc',*flags,'-o',str(a.output_directory/name),str(root/'tests'/f'{name}.c'),*map(str,sources)]
  if name=='operations_test': cmd+=['-DTFILE_TEST_HOOKS']
+ if name=='trash_test': cmd+=['-DTFILE_TRASH_TEST_HOOKS']
  if sources==ui or name=='text_window_test': cmd+=['-lncursesw']
  if wraps: cmd+=['-Wl,'+','.join('--wrap='+x for x in wraps)]
  r=subprocess.run(cmd,text=True,capture_output=True)
@@ -58,6 +64,9 @@ for name in targets:
  if name=='operations_test':
   cmd=['python3',str(root/'tests/run_operations.py')]
   case_env={**env,'TFILE_OPERATIONS_TEST':binary}
+ elif name=='external_test':
+  cmd=['python3',str(root/'tests/external_tools.py')]
+  case_env={**env,'TFILE_EXTERNAL_TEST':binary}
  elif name in ['search_test','controller_test']:
   variables={'search_test':'TFILE_SEARCH_TEST','controller_test':'TFILE_CONTROLLER_TEST'}
   target='search' if name=='search_test' else 'controller'

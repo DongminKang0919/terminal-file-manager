@@ -14,7 +14,7 @@
 
 /* Existing terminal form input limit; core/platform paths are dynamically allocated. */
 #define UI_INPUT_CAP 4096
-enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE, UI_RENAME, UI_QUICK_FIND, UI_RESULT, UI_SELECT_ALL, UI_CLEAR_SELECTION, UI_MODE_PREVIEW, UI_MODE_FILES, UI_MODE_DUAL, UI_FAVORITES, UI_FILTER, UI_EDIT, UI_EXTERNAL };
+enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE, UI_RENAME, UI_QUICK_FIND, UI_RESULT, UI_SELECT_ALL, UI_CLEAR_SELECTION, UI_MODE_PREVIEW, UI_MODE_FILES, UI_MODE_DUAL, UI_FAVORITES, UI_FILTER, UI_EDIT, UI_EXTERNAL, UI_TRASH };
 void input_init(void);
 void input_terminal_begin(TerminalReply *reply);
 void input_terminal_begin_timed(TerminalReply *reply,uint64_t deadline);
@@ -243,5 +243,10 @@ bool batch_review(UiContext *ui, const BatchJob *job);
 bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *result, bool *resized);
 
 bool prompt_value_status(UiContext *ui, const char *label, char *out, size_t size, const char *initial, bool *resized);
+
+
+void trash_entry(UiContext *ui);
+bool confirm_trash(UiContext *ui,const char *name,bool directory);
+Result run_trash_operation(UiContext *ui,const char *source,char **destination);
 
 #endif

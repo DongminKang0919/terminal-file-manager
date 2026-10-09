@@ -122,7 +122,7 @@ check-isolated: tests/picker_test tests/media_test tests/panels_ui_test tests/tf
 	python3 tests/batch_progress_pty.py
 
 clean:
-	rm -f tests/external_test tests/batch_conflict_test tests/filter_test tests/favorites_test tests/graphics_probe_test tests/terminal_test tests/terminal_input_test tests/settings_sanitize tests/settings_core_test tests/settings_test tfile tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_test tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/ownership_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
+	rm -f tests/trash_test tests/external_test tests/batch_conflict_test tests/filter_test tests/favorites_test tests/graphics_probe_test tests/terminal_test tests/terminal_input_test tests/settings_sanitize tests/settings_core_test tests/settings_test tfile tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_test tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/ownership_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
 
 .PHONY: all clean check check-core
 
@@ -226,3 +226,11 @@ check-external: tests/external_test tfile
 	python3 tests/external_pty.py
 check-isolated: check-external
 .PHONY: check-external
+
+tests/trash_test: tests/trash_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DTFILE_TRASH_TEST_HOOKS -o $@ tests/trash_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) -Wl,--wrap=fsync,--wrap=write,--wrap=unlinkat,--wrap=fstatfs
+check-trash: tests/trash_test tfile
+	./tests/trash_test
+	python3 tests/trash_pty.py
+check-isolated: check-trash
+.PHONY: check-trash

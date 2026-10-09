@@ -10,7 +10,7 @@ static void review_text(WINDOW *w,const char *text,size_t top,size_t page,size_t
     } while(text[at]);
 }
 static bool review(UiContext *ui,const BatchJob *job,bool *resized) {
-    const char *title=job->action==BATCH_DELETE ? "Batch delete confirmation" : job->action==BATCH_MOVE ? "Batch move confirmation" : "Batch copy confirmation";
+    const char *title=job->action==BATCH_TRASH ? "Batch Trash confirmation" : job->action==BATCH_DELETE ? "Batch delete confirmation" : job->action==BATCH_MOVE ? "Batch move confirmation" : "Batch copy confirmation";
     WINDOW *w=dialog_open(ui,title,LINES-2,88); if(!w) return false;
     bool run=false,accepted=false; size_t top=0;
     size_t kinds[4]={0}; for(size_t i=0;i<job->len;i++) kinds[job->targets[i].kind]++;
@@ -19,7 +19,7 @@ static bool review(UiContext *ui,const BatchJob *job,bool *resized) {
         dialog_frame(w,title); char summary[160];
         snprintf(summary,sizeof summary,"Targets: %zu | Files: %zu Dirs: %zu Links: %zu Other: %zu",job->len,kinds[FILE_REGULAR],kinds[FILE_DIRECTORY],kinds[FILE_LINK],kinds[FILE_OTHER]);
         review_text(w,summary,top,page,&line,width-4);
-        review_text(w,job->action==BATCH_DELETE ? "Directories include all contents. Deleted items cannot be restored." : "Original names; no overwrite. Name collisions: Stop/Skip/Skip all. Other errors stop.",top,page,&line,width-4);
+        review_text(w,job->action==BATCH_TRASH ? "Move whole items to Trash; no permanent-delete fallback. Restore with desktop tools." : job->action==BATCH_DELETE ? "Directories include all contents. Deleted items cannot be restored." : "Original names; no overwrite. Name collisions: Stop/Skip/Skip all. Other errors stop.",top,page,&line,width-4);
         if(job->directory) { review_text(w,"Destination directory:",top,page,&line,width-4); review_text(w,job->directory,top,page,&line,width-4); }
         for(size_t i=0;i<job->len;i++) {
             snprintf(summary,sizeof summary,"Target %zu/%zu:",i+1,job->len); review_text(w,summary,top,page,&line,width-4);
@@ -28,7 +28,7 @@ static bool review(UiContext *ui,const BatchJob *job,bool *resized) {
         size_t max=line>page?line-page:0; if(top>max) { top=max; continue; }
         snprintf(summary,sizeof summary,"Lines %zu-%zu/%zu  PgUp/PgDn",top+1,top+page<line?top+page:line,line);
         draw_window_text(w,h-3,2,width-4,summary);
-        const char *label=job->action==BATCH_DELETE ? "[ Delete ]" : "[ Execute ]";
+        const char *label=job->action==BATCH_TRASH ? "[ Trash ]" : job->action==BATCH_DELETE ? "[ Delete ]" : "[ Execute ]";
         dialog_button(w,h-2,2,"[ Cancel ]",!run,true); dialog_button(w,h-2,14,label,run,true);
         draw_window_text(w,h-2,28,width-30,"Tab: focus"); dialog_refresh(w);
         int key=input_key(w);
@@ -60,7 +60,7 @@ bool batch_review(UiContext *ui,const BatchJob *job) { return review(ui,job,NULL
 void batch_finish(UiContext *ui,BatchJob *job) {
     /* Remove successes before refresh: even a failed refresh cannot retain them. */
     app_marks_apply_result(&ui_panel(ui)->app,job);
-    notice_record(ui,job->action==BATCH_DELETE?"Batch delete":job->action==BATCH_MOVE?"Batch move":"Batch copy",job->result,NULL,NULL);
+    notice_record(ui,job->action==BATCH_TRASH?"Batch Trash":job->action==BATCH_DELETE?"Batch delete":job->action==BATCH_MOVE?"Batch move":"Batch copy",job->result,NULL,NULL);
     if(job->skipped && job->result.code==RESULT_OK) ui->notice.kind=NOTICE_WARNING;
     ui->notice.batch=*job; *job=(BatchJob){0}; /* transfer ownership, no result allocation */
     if(ui->notice.batch.executed) {
@@ -150,9 +150,9 @@ void batch_entry(UiContext *ui,BatchAction action) {
     if(!ui_operation_allowed(ui,NULL,0)) return;
     BatchJob job; Result r=batch_prepare(&ui_panel(ui)->app,ui_panel(ui)->selected,action,&job);
     if(r.code!=RESULT_OK) {
-        notice_record(ui,action==BATCH_DELETE?"Batch delete":action==BATCH_MOVE?"Batch move":"Batch copy",r,NULL,NULL);return;
+        notice_record(ui,action==BATCH_TRASH?"Batch Trash":action==BATCH_DELETE?"Batch delete":action==BATCH_MOVE?"Batch move":"Batch copy",r,NULL,NULL);return;
     }
-    if(action!=BATCH_DELETE) {
+    if(action!=BATCH_DELETE && action!=BATCH_TRASH) {
         batch_transfer_form(ui,&job);
         batch_free(&job);
         return;

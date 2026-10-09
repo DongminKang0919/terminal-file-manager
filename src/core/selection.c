@@ -78,7 +78,7 @@ void app_marks_reconcile(AppState *app) {
 
 void app_marks_apply_result(AppState *app,const BatchJob *job) {
     for(size_t i=0;i<app->marks_len;i++) app->marks[i].seen=true;
-    for(size_t i=0;i<job->len;i++) if(job->targets[i].status==BATCH_SUCCESS) {
+    for(size_t i=0;i<job->len;i++) if(job->targets[i].status==BATCH_SUCCESS || (job->action==BATCH_TRASH && job->targets[i].result.completed_items==1)) {
         const char *name=job->targets[i].name; size_t at=lower(app,name);
         if(at<app->marks_len && !strcmp(app->marks[at].name,name)) app->marks[at].seen=false;
     }

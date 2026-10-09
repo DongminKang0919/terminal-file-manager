@@ -4,7 +4,7 @@
    It never dispatches commands. Drawing is throttled; polling is not. */
 typedef struct {
     WINDOW *win;
-    bool copy, drawn, cancelled;
+    bool copy, trash, drawn, cancelled;
     int height, width;
     uint64_t last_draw;
     bool batch; BatchAction action; size_t index, total, succeeded, skipped;
@@ -15,7 +15,7 @@ static bool operation_progress(const OperationProgress *progress, void *context)
     uint64_t now = core_monotonic_ms();
     if (!view->cancelled && (!view->drawn || now - view->last_draw >= 100)) {
         int h, w; getmaxyx(view->win, h, w);
-        dialog_frame(view->win, view->batch ? (view->action==BATCH_MOVE ? "Batch moving" : view->action==BATCH_COPY ? "Batch copying" : "Batch deleting") : view->copy ? "Copying" : "Deleting");
+        dialog_frame(view->win, view->batch ? (view->action==BATCH_TRASH ? "Moving to Trash" : view->action==BATCH_MOVE ? "Batch moving" : view->action==BATCH_COPY ? "Batch copying" : "Batch deleting") : view->trash ? "Moving to Trash" : view->copy ? "Copying" : "Deleting");
         if (view->batch) {
             char counts[120];
             snprintf(counts,sizeof counts,"Target %zu/%zu | Succeeded: %zu | Skipped: %zu",view->index+1,view->total,view->succeeded,view->skipped);
@@ -31,7 +31,7 @@ static bool operation_progress(const OperationProgress *progress, void *context)
             snprintf(text, sizeof text, "Completed items: %llu", (unsigned long long)progress->completed_items);
             draw_window_text(view->win, 2, 2, w - 4, text);
             if (view->copy) snprintf(text, sizeof text, "Copied bytes: %llu", (unsigned long long)progress->copied_bytes);
-            else snprintf(text, sizeof text, "Deleted items cannot be restored");
+            else snprintf(text, sizeof text, "%s",view->trash ? "No permanent-delete fallback" : "Deleted items cannot be restored");
             draw_window_text(view->win, 3, 2, w - 4, text);
             draw_window_text(view->win, 4, 2, w - 4, "Cancel stops here; changes are kept");
         }
@@ -102,8 +102,20 @@ void run_batch_operation(UiContext *ui,BatchJob *job) {
         wtimeout(view.win,0);
     }
     CollisionView collision={ui,&view};
-    if(view.win && job->action!=BATCH_DELETE) { job->conflict=batch_conflict;job->conflict_context=&collision; }
+    if(view.win && (job->action==BATCH_COPY || job->action==BATCH_MOVE)) { job->conflict=batch_conflict;job->conflict_context=&collision; }
     batch_execute(job,view.win?batch_progress:NULL,&view);
     job->conflict=NULL;job->conflict_context=NULL;
     if(view.win) { flushinp();dialog_close(ui,view.win); }
+}
+
+Result run_trash_operation(UiContext *ui,const char *source,char **destination) {
+    OperationView view={.trash=true,.height=LINES,.width=COLS};
+    if(stdscr) {
+        view.win=dialog_open(ui,"Moving to Trash",7,76);
+        if(!view.win) return result_make(RESULT_CANCELLED,"Cannot open progress window; no changes");
+        wtimeout(view.win,0);
+    }
+    Result r=core_trash_progress(source,destination,view.win?operation_progress:NULL,&view);
+    if(view.win) { flushinp();dialog_close(ui,view.win); }
+    return r;
 }

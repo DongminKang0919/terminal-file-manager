@@ -4,12 +4,12 @@
 #include <string.h>
 
 void batch_free(BatchJob *job) {
-    for(size_t i=0;i<job->len;i++) { free(job->targets[i].source); free(job->targets[i].name); }
+    for(size_t i=0;i<job->len;i++) { free(job->targets[i].source); free(job->targets[i].name); free(job->targets[i].destination); }
     free(job->targets); free(job->directory); *job=(BatchJob){0};
 }
 Result batch_prepare(const AppState *app,size_t cursor,BatchAction action,BatchJob *out) {
     *out=(BatchJob){.action=action};
-    if(action<BATCH_COPY || action>BATCH_DELETE) return result_make(RESULT_UNSUPPORTED,"Invalid batch action");
+    if(action<BATCH_COPY || action>BATCH_TRASH) return result_make(RESULT_UNSUPPORTED,"Invalid batch action");
     size_t count=app->marks_len ? app->marks_len : cursor<app->files.len ? 1 : 0;
     if(!count) return result_make(RESULT_NOT_FOUND,"No targets");
     if(count>SIZE_MAX/sizeof *out->targets) return result_make(RESULT_NO_MEMORY,"Too many targets");
@@ -28,6 +28,7 @@ Result batch_prepare(const AppState *app,size_t cursor,BatchAction action,BatchJ
 }
 Result batch_destination(BatchJob *job,const char *directory) {
     if(job->executed) return result_make(RESULT_UNSUPPORTED,"Batch already executed");
+    if(job->action==BATCH_TRASH) return result_make(RESULT_UNSUPPORTED,"Trash location is chosen per filesystem");
     char *copy=text_copy(directory);
     if(!copy) return result_make(RESULT_NO_MEMORY,"Out of memory");
     free(job->directory); job->directory=copy;
@@ -49,7 +50,7 @@ static bool progress(const OperationProgress *p,void *context) {
 }
 Result batch_execute(BatchJob *job,BatchCallback callback,void *context) {
     if(job->executed) return result_make(RESULT_UNSUPPORTED,"Batch already executed");
-    if(!job->len || (job->action!=BATCH_DELETE && !job->directory))
+    if(!job->len || ((job->action==BATCH_COPY||job->action==BATCH_MOVE) && !job->directory))
         return result_make(RESULT_NOT_DIRECTORY,"No batch destination");
     job->executed=true; job->result=result_make(RESULT_OK,NULL);
     Run run={job,callback,context,0}; bool changed=false,skip_all=false;
@@ -59,6 +60,9 @@ Result batch_execute(BatchJob *job,BatchCallback callback,void *context) {
         Result r;
         if(!progress(&before,&run)) r=result_make(RESULT_CANCELLED,i ? "Cancelled before next target; target not started" : "Cancelled before first target; no changes");
         else if(job->action==BATCH_DELETE) r=core_delete_progress(target->source,callback?progress:NULL,&run);
+        else if(job->action==BATCH_TRASH) {
+            char *destination=NULL;r=core_trash_progress(target->source,&destination,callback?progress:NULL,&run);target->destination=destination;
+        }
         else {
             char *destination=NULL;
             r=core_transfer_progress(job->action==BATCH_MOVE,target->source,job->directory,target->name,
@@ -67,7 +71,7 @@ Result batch_execute(BatchJob *job,BatchCallback callback,void *context) {
         }
         /* Only a no-change collision can be skipped. A recursive partial copy
            must stop even if its last error was EXISTS. No retry/overwrite. */
-        if(job->action!=BATCH_DELETE && r.code==RESULT_EXISTS && !r.partial) {
+        if((job->action==BATCH_COPY||job->action==BATCH_MOVE) && r.code==RESULT_EXISTS && !r.partial) {
             target->result=r;
             BatchConflictDecision decision=skip_all?CONFLICT_SKIP:job->conflict?
                 job->conflict(target,job->directory,job->conflict_context):CONFLICT_STOP;

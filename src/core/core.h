@@ -92,14 +92,15 @@ Result core_delete_progress(const char *path, OperationCallback callback, void *
 Result core_transfer_progress(bool move, const char *source, const char *directory, const char *name,
                               char **destination, OperationCallback callback, void *context);
 Result core_delete(const char *path);
+Result core_trash_progress(const char *path,char **destination,OperationCallback callback,void *context);
 Result core_link_target(const char *path, char **out);
 
 /* Owned target snapshot and fixed results, prepared before any file changes.
    This fixes paths/order, not filesystem identities. Single APIs revalidate. */
-typedef enum { BATCH_COPY, BATCH_MOVE, BATCH_DELETE } BatchAction;
+typedef enum { BATCH_COPY, BATCH_MOVE, BATCH_DELETE, BATCH_TRASH } BatchAction;
 typedef enum { BATCH_UNEXECUTED, BATCH_SUCCESS, BATCH_FAILED, BATCH_CANCELLED, BATCH_SKIPPED } BatchStatus;
 typedef struct {
-    char *source, *name;
+    char *source, *name, *destination;
     FileKind kind;
     BatchStatus status;
     Result result;

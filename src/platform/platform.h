@@ -35,6 +35,7 @@ Result platform_remove_progress(const char *path, OperationCallback callback, vo
 Result platform_copy(const char *source, const char *destination);
 Result platform_move(const char *source, const char *destination);
 Result platform_remove(const char *path);
+Result platform_trash_progress(const char *path,char **destination,OperationCallback callback,void *context);
 Result platform_link_target(const char *path, char **out);
 typedef struct PlatformReader PlatformReader;
 Result platform_reader_open(const char *path, PlatformReader **out);

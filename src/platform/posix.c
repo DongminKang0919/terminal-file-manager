@@ -4,6 +4,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <fnmatch.h>
+#include <linux/magic.h>
+#include <sys/vfs.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -618,3 +620,213 @@ Result platform_favorites_write(const char *p,const char *d,size_t n) { return c
 bool platform_path_absolute(const char *p) { return p && p[0]=='/'; }
 
 bool platform_name_glob(const char *name,const char *pattern) { return fnmatch(pattern,name,0)==0; }
+
+/* Trash keeps payload moves atomic on one filesystem and records recovery
+   metadata first. It never falls back to copy/delete or permanent deletion. */
+#ifdef TFILE_TRASH_TEST_HOOKS
+extern int platform_trash_test_top(int source_parent,char **path);
+extern void platform_trash_test_hook(const char *stage,int parent,const char *name);
+#define TRASH_HOOK(stage,parent,name) platform_trash_test_hook(stage,parent,name)
+#else
+#define TRASH_HOOK(stage,parent,name) ((void)0)
+#endif
+typedef struct { int root,files,info; char *path; bool home; } TrashLocation;
+static TrashLocation trash_empty(void) { return (TrashLocation){.root=-1,.files=-1,.info=-1}; }
+static void trash_location_free(TrashLocation *t) {
+    if(t->info>=0) close(t->info);
+    if(t->files>=0) close(t->files);
+    if(t->root>=0) close(t->root);
+    free(t->path);*t=trash_empty();
+}
+static bool trash_private(Operation *op,int fd,const char *path) {
+    struct stat st;
+    if(fstat(fd,&st)<0) return op_errno(op,path);
+    return (S_ISDIR(st.st_mode)&&st.st_uid==geteuid()&&(st.st_mode&07777)==0700) ||
+        op_error(op,path,RESULT_ACCESS,"Trash directories must be user-owned mode 0700, without links");
+}
+static int trash_child(Operation *op,int parent,const char *name,const struct stat *source,const char *path) {
+    if(S_ISDIR(source->st_mode)&&!outside_source(op,source,parent,path)) return -1;
+    if(mkdirat(parent,name,0700)<0&&errno!=EEXIST) {op_errno(op,path);return -1;}
+    int fd=openat(parent,name,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+    if(fd<0) {op_errno(op,path);return -1;}
+    if(!trash_private(op,fd,path) || (S_ISDIR(source->st_mode)&&!outside_source(op,source,fd,path))) {close(fd);return -1;}
+    return fd;
+}
+static int trash_home_root(Operation *op,const char *path,const struct stat *source) {
+    char *copy=text_copy(path);if(!copy) {op_error(op,path,RESULT_NO_MEMORY,"Out of memory");return -1;}
+    int fd=open("/",O_RDONLY|O_DIRECTORY|O_CLOEXEC);if(fd<0) {free(copy);op_errno(op,path);return -1;}
+    char *save=NULL;
+    for(char *part=strtok_r(copy,"/",&save);part;part=strtok_r(NULL,"/",&save)) {
+        if(!strcmp(part,"..")) {op_error(op,path,RESULT_INVALID_NAME,"Parent components in Trash location");close(fd);fd=-1;break;}
+        if(S_ISDIR(source->st_mode)&&!outside_source(op,source,fd,path)) {close(fd);fd=-1;break;}
+        if(mkdirat(fd,part,0700)<0&&errno!=EEXIST) {op_errno(op,path);close(fd);fd=-1;break;}
+        int next=openat(fd,part,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+        if(next<0) {op_errno(op,path);close(fd);fd=-1;break;}
+        close(fd);fd=next;
+    }
+    free(copy);
+    if(fd>=0 && !trash_private(op,fd,path)) {close(fd);fd=-1;}
+    return fd;
+}
+static bool trash_contents(Operation *op,TrashLocation *t,const struct stat *source) {
+    t->files=trash_child(op,t->root,"files",source,t->path);
+    if(t->files>=0) t->info=trash_child(op,t->root,"info",source,t->path);
+    if(t->info<0) return false;
+    struct stat root,files,info;
+    if(fstat(t->root,&root)<0||fstat(t->files,&files)<0||fstat(t->info,&info)<0) return op_errno(op,t->path);
+    return (root.st_dev==source->st_dev && files.st_dev==source->st_dev && info.st_dev==source->st_dev) ||
+        op_error(op,t->path,RESULT_CROSS_DEVICE,"Trash directories must be on the source filesystem");
+}
+static int trash_top(Operation *op,int source_parent,const char *parent_path,dev_t device,char **out) {
+    *out=text_copy(parent_path);int fd=dup(source_parent);
+    if(!*out||fd<0) {if(fd>=0)close(fd);free(*out);*out=NULL;op_error(op,parent_path,RESULT_IO,"Cannot pin filesystem root");return -1;}
+    for(unsigned i=0;i<4096;i++) {
+        struct stat here,up;
+        int next=openat(fd,"..",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+        if(next<0 || fstat(fd,&here)<0 || fstat(next,&up)<0) {op_errno(op,parent_path);if(next>=0)close(next);close(fd);return -1;}
+        if(here.st_dev!=device) {close(next);close(fd);op_error(op,parent_path,RESULT_UNSUPPORTED,"Mounted entry cannot be trashed");return -1;}
+        if(up.st_dev!=device || same_entry(&here,&up)) {close(next);return fd;}
+        char *parent=platform_path_parent(*out);
+        if(!parent) {close(next);close(fd);op_error(op,parent_path,RESULT_NO_MEMORY,"Out of memory");return -1;}
+        free(*out);*out=parent;close(fd);fd=next;
+    }
+    close(fd);op_error(op,parent_path,RESULT_UNSUPPORTED,"Filesystem ancestry limit reached");return -1;
+}
+static bool trash_top_location(Operation *op,int top,const char *top_path,const struct stat *source,TrashLocation *t) {
+    struct stat st;char uid[32];snprintf(uid,sizeof uid,"%lu",(unsigned long)geteuid());
+    if(fstatat(top,".Trash",&st,AT_SYMLINK_NOFOLLOW)==0 && S_ISDIR(st.st_mode) && (st.st_mode&S_ISVTX)) {
+        int shared=openat(top,".Trash",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+        struct stat pinned;
+        if(shared>=0 && (fstat(shared,&pinned)<0 || !same_entry(&st,&pinned) || !(pinned.st_mode&S_ISVTX))) {close(shared);shared=-1;}
+        if(shared>=0) {
+            char *base=platform_path_join(top_path,".Trash");t->path=base?platform_path_join(base,uid):NULL;free(base);
+            t->root=t->path?trash_child(op,shared,uid,source,t->path):-1;close(shared);
+            if(t->root>=0 && trash_contents(op,t,source)) return true;
+            trash_location_free(t);op->error=result_make(RESULT_OK,NULL);
+        }
+    }
+    char name[48];snprintf(name,sizeof name,".Trash-%lu",(unsigned long)geteuid());
+    t->path=platform_path_join(top_path,name);
+    if(!t->path) return op_error(op,top_path,RESULT_NO_MEMORY,"Out of memory");
+    t->root=trash_child(op,top,name,source,t->path);
+    return t->root>=0 && trash_contents(op,t,source);
+}
+static char *trash_metadata(const char *path) {
+    size_t len=strlen(path);if(len>(SIZE_MAX-128)/3) return NULL;
+    char *data=malloc(len*3+128);if(!data) return NULL;
+    size_t n=(size_t)sprintf(data,"[Trash Info]\nPath=");
+    static const char digits[]="0123456789ABCDEF";
+    for(size_t i=0;i<len;i++) {
+        unsigned char c=(unsigned char)path[i];
+        if((c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9')||strchr("/-_.~",c)) data[n++]=(char)c;
+        else {data[n++]='%';data[n++]=digits[c>>4];data[n++]=digits[c&15];}
+    }
+    time_t now=time(NULL);struct tm local;char date[32];
+    if(!localtime_r(&now,&local)||!strftime(date,sizeof date,"%Y-%m-%dT%H:%M:%S",&local)) {free(data);return NULL;}
+    snprintf(data+n,128,"\nDeletionDate=%s\n",date);return data;
+}
+static bool trash_info_remove(int parent,const char *name,const struct stat *expected) {
+    struct stat now;
+    return fstatat(parent,name,&now,AT_SYMLINK_NOFOLLOW)==0 && same_entry(&now,expected) && unlinkat(parent,name,0)==0;
+}
+Result platform_trash_progress(const char *src,char **destination,OperationCallback callback,void *context) {
+    *destination=NULL;Operation op={.callback=callback,.context=context};
+    TrashLocation location=trash_empty();int sp=-1,source_sync=-1,top=-1,info_fd=-1;
+    char *sn=NULL,*parent=NULL,*canonical=NULL,*original=NULL,*home=NULL,*top_path=NULL,*metadata=NULL,*target_path=NULL,*info_path=NULL;
+    char entry[96]="",info_name[112]="";bool reserved=false,moved=false,orphan=false;
+    struct stat source={0},record={0};
+    if(!op_poll(&op,src)) goto done;
+    parent=platform_path_parent(src);
+    if(!parent) {op_error(&op,src,RESULT_NO_MEMORY,"Out of memory");goto done;}
+    Result resolved=platform_resolve(NULL,parent,&canonical);
+    if(resolved.code!=RESULT_OK) {op_error(&op,src,resolved.code,resolved.detail);goto done;}
+    char *leaf=platform_path_name(src);original=leaf?platform_path_join(canonical,leaf):NULL;free(leaf);
+    if(!original) {op_error(&op,src,RESULT_NO_MEMORY,"Out of memory");goto done;}
+    sp=operation_parent(&op,original,&sn);if(sp<0) goto done;
+    if(fstatat(sp,sn,&source,AT_SYMLINK_NOFOLLOW)<0) {op_errno(&op,src);goto done;}
+    if(!S_ISREG(source.st_mode)&&!S_ISDIR(source.st_mode)&&!S_ISLNK(source.st_mode)) {op_error(&op,src,RESULT_UNSUPPORTED,"Trash supports regular files, directories and links only");goto done;}
+    source_sync=openat(sp,".",O_RDONLY|O_DIRECTORY|O_CLOEXEC);
+    if(source_sync<0) {op_errno(&op,src);goto done;}
+    struct stat parent_st;struct statfs fs;
+    if(fstat(source_sync,&parent_st)<0 || fstatfs(source_sync,&fs)<0) {op_errno(&op,src);goto done;}
+    if(parent_st.st_dev!=source.st_dev) {op_error(&op,src,RESULT_UNSUPPORTED,"Cannot trash a filesystem mount root");goto done;}
+    if(fs.f_type!=EXT4_SUPER_MAGIC && fs.f_type!=BTRFS_SUPER_MAGIC && fs.f_type!=XFS_SUPER_MAGIC && fs.f_type!=TMPFS_MAGIC && fs.f_type!=OVERLAYFS_SUPER_MAGIC) {
+        op_error(&op,src,RESULT_UNSUPPORTED,"Trash requires a supported local POSIX filesystem (no remote/DrvFS)");goto done;
+    }
+#ifdef TFILE_TRASH_TEST_HOOKS
+    top=platform_trash_test_top(sp,&top_path);
+#endif
+    if(top<0) {
+        const char *xdg=getenv("XDG_DATA_HOME"),*env_home=getenv("HOME");
+        if(xdg&&*xdg=='/') home=platform_path_join(xdg,"Trash");
+        else if(env_home&&*env_home=='/') home=platform_path_join(env_home,".local/share/Trash");
+        else {op_error(&op,src,RESULT_ACCESS,"No absolute XDG_DATA_HOME/HOME for Trash");goto done;}
+        if(!home) {op_error(&op,src,RESULT_NO_MEMORY,"Out of memory");goto done;}
+        location.root=trash_home_root(&op,home,&source);if(location.root<0) goto done;
+        struct stat st;if(fstat(location.root,&st)<0) {op_errno(&op,src);goto done;}
+        if(st.st_dev==source.st_dev) {
+            location.path=text_copy(home);location.home=true;
+            if(!location.path) {op_error(&op,src,RESULT_NO_MEMORY,"Out of memory");goto done;}
+            if(!trash_contents(&op,&location,&source)) goto done;
+        } else {
+            trash_location_free(&location);
+            top=trash_top(&op,source_sync,canonical,source.st_dev,&top_path);if(top<0) goto done;
+        }
+    }
+    if(top>=0 && !trash_top_location(&op,top,top_path,&source,&location)) goto done;
+    char *record_path=location.home?text_copy(original):platform_path_relative(top_path,original);
+    if(!record_path) {op_error(&op,src,RESULT_NO_MEMORY,"Out of memory");goto done;}
+    if(!location.home&&platform_path_absolute(record_path)) {free(record_path);op_error(&op,src,RESULT_UNSUPPORTED,"Cannot derive mount-relative Trash path");goto done;}
+    metadata=trash_metadata(record_path);free(record_path);
+    if(!metadata) {op_error(&op,src,RESULT_NO_MEMORY,"Cannot allocate/date Trash metadata");goto done;}
+    static unsigned sequence;
+    for(unsigned attempt=0;attempt<256;attempt++) {
+        snprintf(entry,sizeof entry,"tfile-%lld-%ld-%u",(long long)time(NULL),(long)getpid(),++sequence);
+        snprintf(info_name,sizeof info_name,"%s.trashinfo",entry);
+        struct stat occupied;
+        if(fstatat(location.files,entry,&occupied,AT_SYMLINK_NOFOLLOW)==0) continue;
+        if(errno!=ENOENT) {op_errno(&op,src);goto done;}
+        char *files=platform_path_join(location.path,"files"),*infos=platform_path_join(location.path,"info");
+        target_path=files?platform_path_join(files,entry):NULL;info_path=infos?platform_path_join(infos,info_name):NULL;free(files);free(infos);
+        if(!target_path||!info_path) {op_error(&op,src,RESULT_NO_MEMORY,"Out of memory");goto done;}
+        info_fd=openat(location.info,info_name,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0600);
+        if(info_fd>=0) {reserved=true;break;}
+        int reserve_error=errno;free(target_path);free(info_path);target_path=info_path=NULL;errno=reserve_error;
+        if(errno!=EEXIST) {op_errno(&op,src);goto done;}
+    }
+    if(info_fd<0) {op_error(&op,src,RESULT_EXISTS,"Cannot reserve a unique Trash entry");goto done;}
+    if(fstat(info_fd,&record)<0) {op_errno(&op,src);goto done;}
+    TRASH_HOOK("trash-write",info_fd,info_name);
+    size_t at=0,n=strlen(metadata);
+    while(at<n) {ssize_t written=write(info_fd,metadata+at,n-at);if(written<0&&errno==EINTR)continue;if(written<=0){if(!written)errno=EIO;op_errno(&op,src);goto done;}at+=(size_t)written;}
+    if(fsync(info_fd)<0) {op_errno(&op,src);goto done;}
+    if(close(info_fd)<0) {info_fd=-1;op_errno(&op,src);goto done;}info_fd=-1;
+    if(fsync(location.info)<0) {op_errno(&op,src);goto done;}
+    TRASH_HOOK("trash-ready",sp,sn);
+    if(!op_poll(&op,src) || !verify_name(&op,sp,sn,&source,src) || !verify_name(&op,location.info,info_name,&record,info_path)) goto done;
+    TRASH_HOOK("trash-rename",location.files,entry);
+    if(renameat2(sp,sn,location.files,entry,RENAME_NOREPLACE)<0) {op_errno(&op,src);goto done;}
+    moved=true;TRASH_HOOK("trash-moved",location.files,entry);
+    if(fsync(location.files)<0 || fsync(source_sync)<0) op_errno(&op,src);
+done:
+    if(info_fd>=0) close(info_fd);
+    if(reserved&&!moved) orphan=!trash_info_remove(location.info,info_name,&record);
+    Result r=op.error;r.partial=moved||orphan;r.completed_items=moved?1:0;
+    char reason[112];snprintf(reason,sizeof reason,"%.111s",r.detail);
+    if(moved) {
+        snprintf(r.detail,sizeof r.detail,"%s; metadata kept; %s",r.code==RESULT_OK?"Moved to Trash":"Moved to Trash but final sync failed",entry);
+        diagnostic_path(r.path,sizeof r.path,target_path);*destination=target_path;target_path=NULL;
+        if(r.code==RESULT_OK) r.partial=false;
+    } else if(orphan) {
+        snprintf(r.detail,sizeof r.detail,"Original kept; orphan Trash metadata remains: %s; %.70s",info_name,reason);
+        diagnostic_path(r.path,sizeof r.path,info_path);
+    } else {
+        snprintf(r.detail,sizeof r.detail,"Original kept; Trash setup dirs may remain; %.180s",reason);
+        diagnostic_path(r.path,sizeof r.path,src);
+    }
+    if(sp>=0) close(sp);
+    if(source_sync>=0) close(source_sync);
+    if(top>=0) close(top);
+    trash_location_free(&location);free(sn);free(parent);free(canonical);free(original);free(home);free(top_path);free(metadata);free(target_path);free(info_path);
+    return r;
+}

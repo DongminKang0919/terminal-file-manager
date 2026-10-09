@@ -83,6 +83,7 @@ sudo apt install imagemagick poppler-utils
 | `[` / `]`, `Alt+←` / `Alt+→` | 이전 / 다음 방문 위치 |
 | `Ctrl+F`, `F3` / `/` | 현재 목록 빠른 찾기 / 하위 디렉터리 이름 검색 |
 | `Space` | 커서 항목의 마킹 켜기·끄기 |
+| `t` / F9 Move to Trash | 휴지통 이동 확인; 실패 시 영구 삭제로 대체하지 않음 |
 | `F2`, `F5` / `F6`, `F8` / `Delete` | 생성, 복사 / 이동, 영구 삭제 확인 |
 | `Tab` / `Shift+Tab` | 조작 가능한 미리보기 또는 좌우 목록으로 초점 이동 |
 | `!`, `r` | 최근 작업 결과 상세 / 새로고침 |
@@ -175,8 +176,11 @@ sanitizer 스크립트는 별도 바이너리를 빌드하고 기본으로 ASan/
 - [상세 사용 안내](docs/USER_GUIDE.md): 전체 조작·설정·미디어 진단·검사 방법
 - [설계 참고서](docs/REFERENCE.md): 작업 정책과 구현 구조
 - [UI/UX 검증](docs/UI_UX_VALIDATION.md), [이중 패널 검증](docs/PANELS_VALIDATION.md), [전송 검증](docs/TRANSFER_VALIDATION.md), [일괄 작업 검증](docs/BATCH_VALIDATION.md)
+- [즐겨찾기·필터·일괄 충돌·외부 도구·휴지통 진행/검증](docs/FEATURE_PROGRESS_2026-10-09.md)
 - [이미지 재출력 측정·개선](docs/MEDIA_REDRAW_VALIDATION_2026-10-09.md)
 - [이미지 자동 감지 검증](docs/IMAGE_AUTO_VALIDATION_2026-10-04.md), [이미지/PDF 검증](docs/MEDIA_PREVIEW_VALIDATION.md)
 - [안정화·계측 기록](docs/STABILIZATION_2026-10-03.md), [연속 사용 점검](docs/STABILIZATION_2026-10-04.md): 개발 과정, 재현 조건과 측정 범위
 
 저장소에 `LICENSE` 파일이 없어 명시된 배포·재사용 라이선스가 없습니다.
+
+휴지통은 절대 `XDG_DATA_HOME`(없으면 `HOME/.local/share`)/Trash와 파일시스템별 `.Trash/uid` 또는 `.Trash-uid`를 사용합니다. 일반 파일·디렉터리·심볼릭 링크를 같은 파일시스템 안에서 이동하며 기존 파일을 덮어쓰지 않습니다. 휴지통 디렉터리는 사용자 소유/0700이어야 합니다. 지원하는 로컬 POSIX 파일시스템(ext4/btrfs/xfs/tmpfs/overlay) 외에 원격·DrvFS 등은 거부합니다. 앱 안의 휴지통 탐색/복원은 제공하지 않으며 데스크톱 도구로 복원합니다. 오류 후 이동 완료 여부와 잔여 메타데이터 위치는 `!` 결과에서 확인하세요. 일반 교차 파일시스템 이동은 계속 거부합니다.
