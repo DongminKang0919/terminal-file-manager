@@ -135,7 +135,7 @@ LSan은 이번 세션에서 실행/재시도하지 않았다. 위 ASan/UBSan 결
 | 후속 작업 | 상태 | 커밋 | 검증 |
 | --- | --- | --- | --- |
 | Vim 명시 편집 | 완료 | `8198947` | native fixture + 실제 설치 Vim 9.1 PTY + 기존 external 회귀 PASS |
-| 마킹/일괄 작업 발견 가능성 | 완료 | `Make marking and batch targets easier to discover` 커밋 | native/discovery PTY + batch/panels/controller/filter/Vim 관련 회귀 PASS |
+| 마킹/일괄 작업 발견 가능성 | 완료 | `bbab3a2` | native/discovery PTY + batch/panels/controller/filter/Vim 관련 회귀 PASS |
 
 Vim: `e`/F9 Edit with Vim, 커서 일반 텍스트 하나, marks/VISUAL/EDITOR 무시. 현재 파일을 실행 직전 다시 읽고 version 변경을 검사한다. 첫 64KiB(+UTF-8 경계 최대3바이트) UTF-8/ASCII, NUL/일부 control/media signature 거부. empty/extensionless/config/source/BOM 지원. SVG/XML처럼 텍스트 형식은 텍스트로 취급. 샘플 밖 바이너리와 UTF-8으로 우연히 해석 가능한 바이너리를 완전히 판별하지 못하며 다른 encoding 텍스트는 거부될 수 있다. 링크는 항상 거부, 대상 확인 후 편집 경로 없음. readable but not writable/mode write bits 없는 파일은 `-R`; no privilege escalation. `-R`은 :w!로 사용자가 바꿀 수 있는 advisory Vim 옵션이며 filesystem 권한은 별도다. argv `vim [-R] -- absolute-path`, 실행 missing/ENOEXEC/nonzero/signal은 오류, 다른 도구 fallback 없음. 기존 suspend/endwin/media cleanup/waitpid/signal restore/geometry/input/mouse/list/preview 복구를 재사용한다. 성공 종료는 save 완료가 아니다. 최종 경로를 Vim이 다시 열기 때문에 샘플 검사 이후 leaf/내용 교체 레이스는 남는다.
 
@@ -149,3 +149,6 @@ copy/move/delete/Trash의 exactly-one-mark 우선 정책은 이미 구현되어 
 성공 실제 대상만 unmark, skip/failure/cancel/unexecuted는 남아 있으면 유지, committed Trash의 sync-error는 실제 이동된 항목만 unmark라는 기존 정책을 유지한다. 양쪽 refresh/reconcile도 재사용한다. filter apply/clear가 marks를 전부 해제하고 loaded visible-only list를 사용하므로 감춰진 대상을 batch snapshot에 포함하지 않는다. 좌우 marks 독립, range selection 등 새로운 방식 없음.
 
 직접 관련 검사 PASS: mark_policy native(단일/누락/다중 mark safe selection, filtered visible-only, panel ownership), 새 discovery PTY 50x9/100x24(기호/개수/안내/menu accelerator/direct keys, 실제 exactly-one copy/move/delete/Trash/rename, filter hidden item 보존, default Cancel/대상 목록/영구 label, narrow dual 독립), 기존 batch_ui/panels_ui/controller regressions, batch PTY/filter PTY, 최신 실제 Vim PTY. 로그 `/tmp/tfile-mark-discovery-*.log`. 최초 신규 메뉴 검사에서 화면 밖 Clear 항목을 검사한 입력을 수정했고, 확인 목록의 전체 경로 때문에 파일명이 여러 줄로 갈라지는 문제는 별도 filename 행을 추가해 확인하기 쉽게 만들었다. 실제 파일·대상·Cancel assertions를 유지했다. architecture/diff PASS. 다음: 최종 관련 검사 후 마킹 단위 커밋, 전체/sanitizer 통합.
+
+
+후속 최초 통합 전체 검사 실패(`/tmp/tfile-vim-marks-final-check.log`): 새 target hint의 공간 예약이 50열에서 `Right*` active panel label을 밀어냈고 기존 settings_pty가 이를 잡았다. 제품 회귀로 인정하고 target hint만 최소 폭의 예약 공간을 줄여 패널과 Shown/Marked를 우선 보존했다. 기존 settings/sort 기대값은 그대로 유지하고 discovery PTY에도 50열 Right*/Left* assertions를 추가했다. settings_pty/discovery_pty/sort_pty PASS(`/tmp/tfile-vim-marks-narrow-*.log`). 최종 전체는 두 번째 로그로 재실행하며 이전 실패를 통과로 덮어쓰지 않는다.

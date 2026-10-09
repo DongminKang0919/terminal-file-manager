@@ -229,7 +229,8 @@ static void draw_screen(UiContext *ui, bool prepare) {
     bool refresh_issue=ui->notice.present &&
         ((ui->notice.refresh_attempted && ui->notice.refresh.code!=RESULT_OK) ||
          (ui->notice.peer_refresh_attempted && ui->notice.peer_refresh.code!=RESULT_OK));
-    if(ui->mark_hint && ui->status_priority && ui->status_kind==NOTICE_INFO) mark_targets_message(ui);
+    bool target_hint=ui->mark_hint && ui->status_priority && ui->status_kind==NOTICE_INFO;
+    if(target_hint) mark_targets_message(ui);
     char alert[600]="";
     NoticeKind alert_kind=ui->status_kind;
     if (ui->notice.present && ui->notice.visible && !ui->status_priority) {
@@ -240,7 +241,9 @@ static void draw_screen(UiContext *ui, bool prepare) {
             w>=90 ? ": " : "",w>=90 ? n->action : "");
         alert_kind=refresh_issue ? NOTICE_WARNING : n->kind;
     } else if(ui->status[0]) snprintf(alert,sizeof alert,"%s",ui->status);
-    else if(ui_panel(ui)->app.files.len) snprintf(alert,sizeof alert,"%s",ui_panel(ui)->app.marks_len?"Targets: marks; cursor ignored":"Target: cursor (no marks)");
+    else if(ui_panel(ui)->app.files.len) {
+        snprintf(alert,sizeof alert,"%s",ui_panel(ui)->app.marks_len?"Targets: marks; cursor ignored":"Target: cursor (no marks)");target_hint=true;
+    }
     if(ui->settings_warning[0]) { snprintf(alert,sizeof alert,"%s",ui->settings_warning); alert_kind=NOTICE_WARNING; }
     char summary[128], panel[16]="";
     UiFilePanel *active=ui_panel(ui);
@@ -250,6 +253,8 @@ static void draw_screen(UiContext *ui, bool prepare) {
        Dotfiles is a display setting, never a hidden-entry count. */
     int reserve=ui_text_span(alert,0,w-4).cells;
     if(reserve>32) reserve=32;
+    /* Target guidance must not displace the active panel or counts at 50 cols. */
+    if(target_hint && alert_kind==NOTICE_INFO && w<80 && reserve>12) reserve=12;
     if((int)strlen(summary)>w-reserve-4)
         snprintf(summary,sizeof summary,"%sShown: %zu Marked: %zu",panel,active->app.files.len,active->app.marks_len);
     if((int)strlen(summary)>w-reserve-4)

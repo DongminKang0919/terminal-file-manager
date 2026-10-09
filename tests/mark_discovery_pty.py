@@ -61,8 +61,8 @@ for w,h in [(50,9),(100,24)]:
   t=Terminal(str(src),w,h)
   try:
    t.send(F9+DOWN*18+'\n'+'a');marks(t,2)
-   t.send('\t');marks(t,0);assert 'Target: cursor' in body(t),body(t)
-   t.send(' ');marks(t,1);t.send('\t');marks(t,2);assert 'Targets: 2 marked' in body(t)
+   t.send('\t');marks(t,0);assert 'Right*' in t.screen.row(h-2);assert 'Target: cursor' in body(t),body(t)
+   t.send(' ');marks(t,1);assert 'Right*' in t.screen.row(h-2);t.send('\t');marks(t,2);assert 'Left*' in t.screen.row(h-2);assert 'Targets: 2 marked' in body(t)
    t.send('u');marks(t,0);t.send('\t');marks(t,1)
    t.send('a'+'t');assert 'Batch Trash confirmation' in body(t) and 'Targets: 2' in body(t)
    t.send('\x1bOF');assert '/b' in body(t);t.send('\n');assert len(list(src.iterdir()))==2;marks(t,2)
