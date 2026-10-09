@@ -7,7 +7,7 @@ typedef struct {
     bool copy, drawn, cancelled;
     int height, width;
     uint64_t last_draw;
-    bool batch; BatchAction action; size_t index, total, succeeded;
+    bool batch; BatchAction action; size_t index, total, succeeded, skipped;
 } OperationView;
 static bool operation_progress(const OperationProgress *progress, void *context) {
     OperationView *view = context;
@@ -18,7 +18,7 @@ static bool operation_progress(const OperationProgress *progress, void *context)
         dialog_frame(view->win, view->batch ? (view->action==BATCH_MOVE ? "Batch moving" : view->action==BATCH_COPY ? "Batch copying" : "Batch deleting") : view->copy ? "Copying" : "Deleting");
         if (view->batch) {
             char counts[120];
-            snprintf(counts,sizeof counts,"Target %zu/%zu | Succeeded: %zu",view->index+1,view->total,view->succeeded);
+            snprintf(counts,sizeof counts,"Target %zu/%zu | Succeeded: %zu | Skipped: %zu",view->index+1,view->total,view->succeeded,view->skipped);
             draw_window_text(view->win,1,2,w-4,counts);
             draw_window_text(view->win,2,2,w-4,progress->path);
             snprintf(counts,sizeof counts,"Recursive completed items: %llu",(unsigned long long)progress->completed_items);
@@ -78,8 +78,21 @@ Result run_file_operation(UiContext *ui, bool copy, const char *source,
 }
 
 static bool batch_progress(const BatchProgress *p,void *context) {
-    OperationView *view=context; view->index=p->index; view->total=p->total; view->succeeded=p->succeeded;
+    OperationView *view=context; view->index=p->index; view->total=p->total; view->succeeded=p->succeeded; view->skipped=p->skipped;
     return operation_progress(&p->progress,view);
+}
+typedef struct { UiContext *ui; OperationView *view; } CollisionView;
+static BatchConflictDecision batch_conflict(const BatchTarget *target,const char *directory,void *context) {
+    CollisionView *cv=context; OperationView *view=cv->view;
+    if(LINES!=view->height || COLS!=view->width || core_media_shutdown_requested()) return CONFLICT_CANCEL;
+    char title[160];snprintf(title,sizeof title,"Name collision: %.120s",target->name);
+    const char *choices[]={"Stop batch (no overwrite)","Skip this target","Skip all later name collisions"};
+    /* The frozen source/destination are not modified by this modal. */
+    (void)directory;
+    int selected=ui_choices(cv->ui,title,choices,3);
+    view->drawn=false; if(view->win) touchwin(view->win);
+    if(selected<0 || LINES!=view->height || COLS!=view->width || core_media_shutdown_requested()) return CONFLICT_CANCEL;
+    return selected==1?CONFLICT_SKIP:selected==2?CONFLICT_SKIP_ALL:CONFLICT_STOP;
 }
 void run_batch_operation(UiContext *ui,BatchJob *job) {
     OperationView view={.batch=true,.action=job->action,.height=LINES,.width=COLS};
@@ -88,6 +101,9 @@ void run_batch_operation(UiContext *ui,BatchJob *job) {
         if(!view.win) { batch_cancel(job);return; }
         wtimeout(view.win,0);
     }
+    CollisionView collision={ui,&view};
+    if(view.win && job->action!=BATCH_DELETE) { job->conflict=batch_conflict;job->conflict_context=&collision; }
     batch_execute(job,view.win?batch_progress:NULL,&view);
+    job->conflict=NULL;job->conflict_context=NULL;
     if(view.win) { flushinp();dialog_close(ui,view.win); }
 }

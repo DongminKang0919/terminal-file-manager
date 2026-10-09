@@ -1,5 +1,6 @@
 #include "core.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 void batch_free(BatchJob *job) {
@@ -41,7 +42,7 @@ static uint64_t sum(uint64_t a,uint64_t b) { return UINT64_MAX-a<b ? UINT64_MAX 
 typedef struct { BatchJob *job; BatchCallback callback; void *context; size_t index; } Run;
 static bool progress(const OperationProgress *p,void *context) {
     Run *run=context;
-    BatchProgress bp={.index=run->index,.total=run->job->len,.succeeded=run->job->succeeded,.progress=*p};
+    BatchProgress bp={.index=run->index,.total=run->job->len,.succeeded=run->job->succeeded,.skipped=run->job->skipped,.progress=*p};
     bp.progress.completed_items=sum(run->job->result.completed_items,p->completed_items);
     bp.progress.copied_bytes=sum(run->job->result.copied_bytes,p->copied_bytes);
     return !run->callback || run->callback(&bp,run->context);
@@ -51,7 +52,7 @@ Result batch_execute(BatchJob *job,BatchCallback callback,void *context) {
     if(!job->len || (job->action!=BATCH_DELETE && !job->directory))
         return result_make(RESULT_NOT_DIRECTORY,"No batch destination");
     job->executed=true; job->result=result_make(RESULT_OK,NULL);
-    Run run={job,callback,context,0}; bool changed=false;
+    Run run={job,callback,context,0}; bool changed=false,skip_all=false;
     for(size_t i=0;i<job->len;i++) {
         run.index=i; BatchTarget *target=&job->targets[i];
         OperationProgress before={.path=target->source};
@@ -64,6 +65,17 @@ Result batch_execute(BatchJob *job,BatchCallback callback,void *context) {
                                      &destination,callback?progress:NULL,&run);
             free(destination);
         }
+        /* Only a no-change collision can be skipped. A recursive partial copy
+           must stop even if its last error was EXISTS. No retry/overwrite. */
+        if(job->action!=BATCH_DELETE && r.code==RESULT_EXISTS && !r.partial) {
+            target->result=r;
+            BatchConflictDecision decision=skip_all?CONFLICT_SKIP:job->conflict?
+                job->conflict(target,job->directory,job->conflict_context):CONFLICT_STOP;
+            if(decision==CONFLICT_SKIP || decision==CONFLICT_SKIP_ALL) {
+                skip_all|=decision==CONFLICT_SKIP_ALL;target->status=BATCH_SKIPPED;job->skipped++;continue;
+            }
+            if(decision==CONFLICT_CANCEL) r=result_make(RESULT_CANCELLED,"Cancelled at name collision; this target unchanged");
+        }
         target->result=r;
         target->status=r.code==RESULT_OK ? BATCH_SUCCESS : r.code==RESULT_CANCELLED ? BATCH_CANCELLED : BATCH_FAILED;
         uint64_t items=sum(job->result.completed_items,r.completed_items),bytes=sum(job->result.copied_bytes,r.copied_bytes);
@@ -73,5 +85,6 @@ Result batch_execute(BatchJob *job,BatchCallback callback,void *context) {
         job->result.completed_items=items; job->result.copied_bytes=bytes;
         if(r.code!=RESULT_OK) { job->result.partial=changed; break; }
     }
+    if(job->result.code==RESULT_OK && job->skipped) snprintf(job->result.detail,sizeof job->result.detail,"Succeeded: %zu; skipped name collisions: %zu",job->succeeded,job->skipped);
     return job->result;
 }

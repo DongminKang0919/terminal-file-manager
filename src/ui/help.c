@@ -66,6 +66,7 @@ static const HelpEntry entries[] = {
     {"Wheel on preview", "Scroll metadata and text. Row is the first visible display row; End means no content below."},
     {"", "Changing files resets scroll. Sorting preserves the selected file and preview. Refresh retries a read error. Directory and link details are shown without reading their contents."},
     {"", "Binary files have no text preview. Long lines are split, tabs become spaces, and unsafe characters are escaped. No file editing is provided."},
+    {"Batch collisions", "Copy/move name collisions offer Stop, Skip target or Skip all later collisions. Skipped targets stay marked. Other errors and partial copies stop; no overwrite. ! distinguishes skipped/failed/cancelled/unexecuted."},
     {NULL, "OPTIONS"},
     {"F7", "Change hidden-file display, preview visibility, wheel step (1/3/5), sort and image Auto/Off. Save startup defaults explicitly in Options; sort/hidden defaults come from the active panel. Auto detects Sixel and cell pixels once per session when media needs it. Image display setup is a manual recovery test of display, erasure and session activation."},
     {"Enter / click", "Apply the option immediately and keep its focus and scroll. Esc/Done closes without undoing changes. Read failures retain the old hidden setting and list."},

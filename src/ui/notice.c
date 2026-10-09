@@ -88,8 +88,9 @@ void show_result(UiContext *ui) {
         if (n->batch.len) {
             snprintf(counts,sizeof counts,"Top-level targets: %zu | Succeeded: %zu | Execution: %s",n->batch.len,n->batch.succeeded,n->batch.executed ? "started" : "not started");
             add_text(&text,counts,false);
+            snprintf(counts,sizeof counts,"Skipped name collisions: %zu",n->batch.skipped); add_text(&text,counts,false);
             if(n->batch.directory) { add_text(&text,"Batch destination:",false); add_text(&text,n->batch.directory,false); }
-            const char *labels[]={"Unexecuted","Success","Failed","Cancelled"};
+            const char *labels[]={"Unexecuted","Success","Failed","Cancelled","Skipped"};
             for(size_t i=0;i<n->batch.len;i++) {
                 const BatchTarget *t=&n->batch.targets[i];
                 snprintf(counts,sizeof counts,"Target %zu/%zu: %s%s",i+1,n->batch.len,labels[t->status],t->result.partial?" | Partial changes":"");

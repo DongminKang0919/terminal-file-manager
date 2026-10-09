@@ -97,22 +97,25 @@ Result core_link_target(const char *path, char **out);
 /* Owned target snapshot and fixed results, prepared before any file changes.
    This fixes paths/order, not filesystem identities. Single APIs revalidate. */
 typedef enum { BATCH_COPY, BATCH_MOVE, BATCH_DELETE } BatchAction;
-typedef enum { BATCH_UNEXECUTED, BATCH_SUCCESS, BATCH_FAILED, BATCH_CANCELLED } BatchStatus;
+typedef enum { BATCH_UNEXECUTED, BATCH_SUCCESS, BATCH_FAILED, BATCH_CANCELLED, BATCH_SKIPPED } BatchStatus;
 typedef struct {
     char *source, *name;
     FileKind kind;
     BatchStatus status;
     Result result;
 } BatchTarget;
+typedef enum { CONFLICT_STOP, CONFLICT_SKIP, CONFLICT_SKIP_ALL, CONFLICT_CANCEL } BatchConflictDecision;
+typedef BatchConflictDecision (*BatchConflictCallback)(const BatchTarget *,const char *directory,void *);
 typedef struct {
-    BatchTarget *targets; size_t len, succeeded;
+    BatchTarget *targets; size_t len, succeeded, skipped;
     BatchAction action;
     char *directory;
     Result result;
     bool executed;
+    BatchConflictCallback conflict; void *conflict_context; /* borrowed for execution only */
 } BatchJob;
 typedef struct {
-    size_t index, total, succeeded; /* index is zero-based; recursive counts separate */
+    size_t index, total, succeeded, skipped; /* index is zero-based; recursive counts separate */
     OperationProgress progress;
 } BatchProgress;
 typedef bool (*BatchCallback)(const BatchProgress *, void *);

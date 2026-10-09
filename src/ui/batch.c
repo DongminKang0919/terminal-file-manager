@@ -19,7 +19,7 @@ static bool review(UiContext *ui,const BatchJob *job,bool *resized) {
         dialog_frame(w,title); char summary[160];
         snprintf(summary,sizeof summary,"Targets: %zu | Files: %zu Dirs: %zu Links: %zu Other: %zu",job->len,kinds[FILE_REGULAR],kinds[FILE_DIRECTORY],kinds[FILE_LINK],kinds[FILE_OTHER]);
         review_text(w,summary,top,page,&line,width-4);
-        review_text(w,job->action==BATCH_DELETE ? "Directories include all contents. Deleted items cannot be restored." : "Original names; no overwrite or merge. Stop at first error or cancellation.",top,page,&line,width-4);
+        review_text(w,job->action==BATCH_DELETE ? "Directories include all contents. Deleted items cannot be restored." : "Original names; no overwrite. Name collisions: Stop/Skip/Skip all. Other errors stop.",top,page,&line,width-4);
         if(job->directory) { review_text(w,"Destination directory:",top,page,&line,width-4); review_text(w,job->directory,top,page,&line,width-4); }
         for(size_t i=0;i<job->len;i++) {
             snprintf(summary,sizeof summary,"Target %zu/%zu:",i+1,job->len); review_text(w,summary,top,page,&line,width-4);
@@ -61,6 +61,7 @@ void batch_finish(UiContext *ui,BatchJob *job) {
     /* Remove successes before refresh: even a failed refresh cannot retain them. */
     app_marks_apply_result(&ui_panel(ui)->app,job);
     notice_record(ui,job->action==BATCH_DELETE?"Batch delete":job->action==BATCH_MOVE?"Batch move":"Batch copy",job->result,NULL,NULL);
+    if(job->skipped && job->result.code==RESULT_OK) ui->notice.kind=NOTICE_WARNING;
     ui->notice.batch=*job; *job=(BatchJob){0}; /* transfer ownership, no result allocation */
     if(ui->notice.batch.executed) {
         refresh_operation_lists(ui,NULL);
