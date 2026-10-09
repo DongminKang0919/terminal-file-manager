@@ -81,3 +81,5 @@ __pycache__/
 /tests/trash_test
 
 /tests/vim_test
+
+/tests/mark_policy_test

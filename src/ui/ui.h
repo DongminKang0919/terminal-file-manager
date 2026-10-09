@@ -96,6 +96,7 @@ typedef struct {
     char media_hint[128], media_fallback_detail[256];
     char status[512]; /* Routine/transient guidance, separate from the retained result. */
     NoticeKind status_kind;
+    bool mark_hint; /* Recompute the active-panel target hint while it is displayed. */
     bool status_priority; /* New navigation/search issues can override a retained result display. */
     OperationNotice notice;
 } UiContext;
@@ -245,6 +246,8 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
 bool prompt_value_status(UiContext *ui, const char *label, char *out, size_t size, const char *initial, bool *resized);
 
 
+const FileInfo *ui_operation_item(UiContext *ui);
+void mark_targets_message(UiContext *ui);
 void trash_entry(UiContext *ui);
 bool confirm_trash(UiContext *ui,const char *name,bool directory);
 Result run_trash_operation(UiContext *ui,const char *source,char **destination);

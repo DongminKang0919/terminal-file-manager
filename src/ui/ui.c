@@ -229,6 +229,7 @@ static void draw_screen(UiContext *ui, bool prepare) {
     bool refresh_issue=ui->notice.present &&
         ((ui->notice.refresh_attempted && ui->notice.refresh.code!=RESULT_OK) ||
          (ui->notice.peer_refresh_attempted && ui->notice.peer_refresh.code!=RESULT_OK));
+    if(ui->mark_hint && ui->status_priority && ui->status_kind==NOTICE_INFO) mark_targets_message(ui);
     char alert[600]="";
     NoticeKind alert_kind=ui->status_kind;
     if (ui->notice.present && ui->notice.visible && !ui->status_priority) {
@@ -239,6 +240,7 @@ static void draw_screen(UiContext *ui, bool prepare) {
             w>=90 ? ": " : "",w>=90 ? n->action : "");
         alert_kind=refresh_issue ? NOTICE_WARNING : n->kind;
     } else if(ui->status[0]) snprintf(alert,sizeof alert,"%s",ui->status);
+    else if(ui_panel(ui)->app.files.len) snprintf(alert,sizeof alert,"%s",ui_panel(ui)->app.marks_len?"Targets: marks; cursor ignored":"Target: cursor (no marks)");
     if(ui->settings_warning[0]) { snprintf(alert,sizeof alert,"%s",ui->settings_warning); alert_kind=NOTICE_WARNING; }
     char summary[128], panel[16]="";
     UiFilePanel *active=ui_panel(ui);
@@ -266,10 +268,10 @@ static void draw_screen(UiContext *ui, bool prepare) {
     if (!ui->modal_depth) {
         bool reading = ui->focus == UI_FOCUS_PREVIEW;
         bool has_item=ui_panel(ui)->selected<ui_panel(ui)->app.files.len;
-        const char *keys[] = {reading ? "Esc" : has_item ? "Enter" : "F2", reading ? "Up/Down" : "Space", reading ? "PgUp/PgDn" : "Tab", reading ? "Home" : "e", reading ? "Tab" : "F1", "F9"};
-        const char *labels[] = {reading ? ": Files" : has_item ? ": Open" : ": New", reading ? ": Row" : ": Mark", reading ? ": Page" : ui->mode==UI_LIST_LIST ? ": Other" : ": Preview", reading ? ": Top" : ": Vim", reading ? ": Files" : ": Help", ": Menu"};
+        const char *keys[] = {reading ? "Esc" : has_item ? "Enter" : "F2", reading ? "Up/Down" : "Space", reading ? "PgUp/PgDn" : "Tab", reading ? "Home" : "e", reading ? "Tab" : "F1", "F9", "a", "u"};
+        const char *labels[] = {reading ? ": Files" : has_item ? ": Open" : ": New", reading ? ": Row" : ": Mark", reading ? ": Page" : ui->mode==UI_LIST_LIST ? ": Other" : ": Preview", reading ? ": Top" : ": Vim", reading ? ": Files" : ": Help", ": Menu", ": All", ": Clear"};
         int x = 1;
-        for (size_t i = 0; i < (reading ? 5u : 6u); i++) {
+        for (size_t i = 0; i < (reading ? 5u : 8u); i++) {
             if(!reading && i==1 && !has_item) continue;
             if(!reading && i==2 && ui->mode!=UI_LIST_LIST && !preview_can_focus(ui)) continue;
             int keylen = (int)strlen(keys[i]), len = keylen + (int)strlen(labels[i]);
@@ -280,7 +282,10 @@ static void draw_screen(UiContext *ui, bool prepare) {
         }
     }
     attrset(A_NORMAL);
-    if(ui_panel(ui)->app.filter_kind!=FILTER_NONE) { attrset(COLOR_PAIR(UI_MUTED)); draw_text(h-1,1,w-2,ui->focus==UI_FOCUS_FILES ? "Space: Mark | e: Vim | f: Filter/Clear" : "Filter active | f: change / clear"); }
+    if(!ui->modal_depth && ui->focus==UI_FOCUS_FILES && ui_panel(ui)->app.filter_kind!=FILTER_NONE) {
+        attrset(COLOR_PAIR(UI_MUTED));mvhline(h-1,0,' ',w);
+        draw_text(h-1,1,w-2,w>=80 ? "Space: Mark | e: Vim | f: Filter/Clear | a: All / u: Clear" : "Space: Mark | e: Vim | f: Filter/Clear");
+    }
     if (ui->modal_depth) {
         /* Change cell attributes only; keep wide glyphs and ACS border characters. */
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {

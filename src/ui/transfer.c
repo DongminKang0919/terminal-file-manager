@@ -188,10 +188,9 @@ static void show_transfer_paths(UiContext *ui, const char *source, const char *b
 void transfer_entry(UiContext *ui, bool move_it) {
     if(!ui_operation_allowed(ui,NULL,0)) return;
     if (ui_panel(ui)->app.marks_len > 1) { batch_entry(ui, move_it ? BATCH_MOVE : BATCH_COPY); return; }
-    const FileInfo *initial=ui_panel(ui)->selected<ui_panel(ui)->app.files.len ? &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected] : NULL;
+    const FileInfo *initial=ui_operation_item(ui);
+    if(ui_panel(ui)->app.marks_len&&!initial) return;
     bool fixed_source=ui_panel(ui)->app.marks_len!=0 || ui->mode==UI_LIST_LIST;
-    if(ui_panel(ui)->app.marks_len) for(size_t i=0;i<ui_panel(ui)->app.files.len;i++)
-        if(app_marked(&ui_panel(ui)->app,ui_panel(ui)->app.files.entries[i].name)) { initial=&ui_panel(ui)->app.files.entries[i]; break; }
 
     if(!initial && ui->mode==UI_LIST_LIST) {
         message(ui,"No transfer targets in active panel"); ui->status_priority=true; return;

@@ -1,7 +1,7 @@
 #include "ui.h"
 
 void message(UiContext *ui, const char *text) {
-    ui->status_priority=false;
+    ui->mark_hint=false;ui->status_priority=false;
     ui->status_kind = NOTICE_INFO; snprintf(ui->status, sizeof ui->status, "%s", text); }
 static void show_failure(UiContext *ui, const char *action, Result r) {
     ui->status_priority = true;
@@ -147,13 +147,27 @@ bool rename_named_entry(UiContext *ui, const char *source, const char *name, cha
 void create_entry(UiContext *ui, bool directory) {
     if(!ui_operation_allowed(ui,NULL,0)) return;
     (void)ui; char name[UI_INPUT_CAP]; new_entry_dialog(ui, directory, name, sizeof name); }
+/* Shared single-target policy: marks take priority, including exactly one.
+   A missing marked entry must never silently fall back to the cursor. */
+const FileInfo *ui_operation_item(UiContext *ui) {
+    AppState *app=&ui_panel(ui)->app;
+    if(app->marks_len) {
+        if(app->marks_len==1) for(size_t i=0;i<app->files.len;i++)
+            if(app_marked(app,app->files.entries[i].name)) return &app->files.entries[i];
+        message(ui,"Marked targets unavailable; refresh/reselect; no changes");ui->status_kind=NOTICE_WARNING;ui->status_priority=true;return NULL;
+    }
+    return ui_panel(ui)->selected<app->files.len?&app->files.entries[ui_panel(ui)->selected]:NULL;
+}
+void mark_targets_message(UiContext *ui) {
+    size_t n=ui_panel(ui)->app.marks_len;char text[128];
+    if(n) snprintf(text,sizeof text,"Targets: %zu marked; cursor ignored. a: all / u: clear",n);
+    else snprintf(text,sizeof text,"Target: cursor (no marks). Space: Mark / a: all");
+    message(ui,text);ui->status_priority=true;ui->mark_hint=true;
+}
 void delete_entry(UiContext *ui) {
     if(!ui_operation_allowed(ui,NULL,0)) return;
     if (ui_panel(ui)->app.marks_len > 1) { batch_entry(ui, BATCH_DELETE); return; }
-    if (ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) return;
-    const FileInfo *it = &ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
-    if (ui_panel(ui)->app.marks_len) for (size_t i=0;i<ui_panel(ui)->app.files.len;i++)
-        if (app_marked(&ui_panel(ui)->app,ui_panel(ui)->app.files.entries[i].name)) { it=&ui_panel(ui)->app.files.entries[i]; break; }
+    const FileInfo *it=ui_operation_item(ui);if(!it) return;
     char *path = text_copy(it->path), *original = text_copy(it->name);
     if (!path || !original) { free(path); free(original); message(ui, "Out of memory"); return; }
     if (!confirm(ui, it->name, it->kind == FILE_DIRECTORY)) {
@@ -255,10 +269,7 @@ bool panel_key(UiContext *ui, int key, int height) {
 void trash_entry(UiContext *ui) {
     if(!ui_operation_allowed(ui,NULL,0)) return;
     if(ui_panel(ui)->app.marks_len>1) { batch_entry(ui,BATCH_TRASH);return; }
-    if(ui_panel(ui)->selected>=ui_panel(ui)->app.files.len) return;
-    const FileInfo *it=&ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
-    if(ui_panel(ui)->app.marks_len) for(size_t i=0;i<ui_panel(ui)->app.files.len;i++)
-        if(app_marked(&ui_panel(ui)->app,ui_panel(ui)->app.files.entries[i].name)) {it=&ui_panel(ui)->app.files.entries[i];break;}
+    const FileInfo *it=ui_operation_item(ui);if(!it) return;
     char *path=text_copy(it->path),*name=text_copy(it->name);
     if(!path||!name) {free(path);free(name);message(ui,"Out of memory; no changes");return;}
     if(!confirm_trash(ui,name,it->kind==FILE_DIRECTORY)) {free(path);free(name);message(ui,"Trash cancelled; no changes");return;}

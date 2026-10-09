@@ -203,9 +203,8 @@ bool search_prompt(UiContext *ui, WINDOW *win, char *out, size_t size) {
 void rename_entry(UiContext *ui) {
     if(!ui_operation_allowed(ui,NULL,0)) return;
     if(ui_panel(ui)->app.marks_len>1) { message(ui,"Rename unavailable: multiple marked items");return; }
-    if (ui_panel(ui)->selected >= ui_panel(ui)->app.files.len) return;
-    char *source = text_copy(ui_panel(ui)->app.files.entries[ui_panel(ui)->selected].path);
-    char *name = text_copy(ui_panel(ui)->app.files.entries[ui_panel(ui)->selected].name);
+    const FileInfo *item=ui_operation_item(ui);if(!item)return;
+    char *source=text_copy(item->path),*name=text_copy(item->name);
     if (!source || !name) message(ui, "Rename: Out of memory");
     else {
         char out[UI_INPUT_CAP];
@@ -214,7 +213,7 @@ void rename_entry(UiContext *ui) {
     free(source); free(name);
 }
 static bool confirm_action(UiContext *ui, const char *name, bool directory, bool trash) {
-    const char *title=trash ? "Confirm Trash" : "Confirm deletion";
+    const char *title=trash ? "Confirm Trash (1 target)" : "Confirm deletion (1 target)";
     const char *button=trash ? "[ Trash ]" : "[ Delete ]";
     WINDOW *win = dialog_open(ui, title, 8, 78);
     if (!win) return false;
@@ -276,7 +275,7 @@ static bool confirm_action(UiContext *ui, const char *name, bool directory, bool
 bool confirm(UiContext *ui,const char *name,bool directory) { return confirm_action(ui,name,directory,false); }
 bool confirm_trash(UiContext *ui,const char *name,bool directory) { return confirm_action(ui,name,directory,true); }
 
-static int choice_dialog(WINDOW *win, const char *title, const char **labels, int total, int *selection, int *scroll, const char *warning, NoticeKind warning_kind, unsigned disabled) {
+static int choice_dialog(WINDOW *win, const char *title, const char **labels, int total, int *selection, int *scroll, const char *warning, NoticeKind warning_kind, unsigned disabled, const char *shortcuts) {
     int selected_row = *selection, offset = *scroll, result = -1;
     if(disabled&(1u<<selected_row)) selected_row=dialog_focus_next(selected_row,total,false,disabled);
     for (;;) {
@@ -306,6 +305,10 @@ static int choice_dialog(WINDOW *win, const char *title, const char **labels, in
             else if (mouse_click(&e) && e.x > x && e.x < x + w - 1 && e.y > y && e.y < y + 1 + rows && offset + e.y - y - 1 < total) { int hit=offset+e.y-y-1; if(!(disabled&(1u<<hit))) { result=hit; break; } }
         }
         if (key == 27 || key == KEY_RESIZE) break;
+        if(shortcuts && key>0 && key<128) {
+            for(int i=0;i<total;i++) if(shortcuts[i]==key && !(disabled&(1u<<i))) {result=i;break;}
+            if(result>=0) break;
+        }
         if (key=='\t' || key==KEY_BTAB) selected_row=dialog_focus_next(selected_row,total,key==KEY_BTAB,disabled);
         if (key == KEY_UP && selected_row) {
             do { selected_row--; } while(selected_row && (disabled&(1u<<selected_row)));
@@ -321,17 +324,18 @@ static int choice_dialog(WINDOW *win, const char *title, const char **labels, in
 int ui_choices(UiContext *ui,const char *title,const char **labels,int count) {
     WINDOW *win=dialog_open(ui,title,10,70); if(!win) return -1;
     int selected=0,scroll=0;
-    int result=choice_dialog(win,title,labels,count,&selected,&scroll,NULL,NOTICE_INFO,0);
+    int result=choice_dialog(win,title,labels,count,&selected,&scroll,NULL,NOTICE_INFO,0,NULL);
     dialog_close(ui,win);return result;
 }
 int show_menu(UiContext *ui) {
-    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Permanent delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list", "Rename selected item", "!    Recent operation result", "z    Dismiss notification", "Select all visible items", "Clear selection", "View: Files + Preview", "View: Files only", "View: Left + Right files", "b    Favorite directories", "f    Filter / Clear current list", "e    Edit with Vim (cursor only)", "Open externally (cursor file)", "t    Move to Trash"};
+    const char *labels[] = {"F1   Help", "F2   New...", "F3   Search", "F5   Copy", "F6   Move / Rename", "F7   Options", "F8   Permanent delete", "F10  Quit", "Backspace   Parent directory", "r    Refresh", "Ctrl+F  Find in current list", "Rename one target", "!    Recent operation result", "z    Dismiss notification", "a    Select all visible (mark)", "u    Clear all marks (active panel)", "View: Files + Preview", "View: Files only", "View: Left + Right files", "b    Favorite directories", "f    Filter / Clear current list", "e    Edit with Vim (cursor only)", "Open externally (cursor file)", "t    Move to Trash"};
     if(ui_panel(ui)->app.marks_len > 1) labels[11]="[disabled] Rename: multiple marked items";
     const int keys[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(10), KEY_BACKSPACE, 'r', UI_QUICK_FIND, UI_RENAME, UI_RESULT, 'z', UI_SELECT_ALL, UI_CLEAR_SELECTION, UI_MODE_PREVIEW, UI_MODE_FILES, UI_MODE_DUAL, UI_FAVORITES, UI_FILTER, UI_EDIT, UI_EXTERNAL, UI_TRASH};
     WINDOW *win = dialog_open(ui, "Menu", 14, 52);
     if (!win) return 0;
     int selected = 0, offset = 0;
-    int i = choice_dialog(win,"Menu",labels,24,&selected,&offset,NULL,NOTICE_INFO,ui_panel(ui)->app.marks_len>1 ? 1u<<11 : 0);
+    const char shortcuts[24]={[14]='a',[15]='u',[21]='e',[23]='t'};
+    int i = choice_dialog(win,"Menu",labels,24,&selected,&offset,NULL,NOTICE_INFO,ui_panel(ui)->app.marks_len>1 ? 1u<<11 : 0,shortcuts);
     dialog_close(ui, win);
     if (i == 11 && ui_panel(ui)->app.marks_len > 1) { message(ui, "Rename unavailable: multiple marked items"); return 0; }
     return i < 0 ? 0 : keys[i];
@@ -354,7 +358,7 @@ void show_options(UiContext *ui) {
         snprintf(image,sizeof image,"Image preview: %s (click to change)",ui->image_auto ? "Auto" : "Off");
         snprintf(setup,sizeof setup,"Image display setup: %s",image_status_label(ui));
         const char *labels[] = {hidden, preview_text, wheel, sort, direction, image, replace ? "Confirm: replace existing settings file" : "Save current settings as startup defaults", setup, "Done"};
-        int i = choice_dialog(win,"Options",labels,9,&selected,&offset,warning,warning_kind,0);
+        int i = choice_dialog(win,"Options",labels,9,&selected,&offset,warning,warning_kind,0,NULL);
         if (i < 0 || i == 8) break;
         if(i!=6) replace=false;
         if(i==6) {

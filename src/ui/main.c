@@ -101,13 +101,14 @@ int main(int argc, char **argv) {
             case ' ':
                 if (ui->focus == UI_FOCUS_FILES && ui_panel(ui)->selected < ui_panel(ui)->app.files.len) {
                     Result r = app_mark_toggle(&ui_panel(ui)->app, ui_panel(ui)->app.files.entries[ui_panel(ui)->selected].name);
-                    if (r.code != RESULT_OK) message(ui, r.detail);
+                    if (r.code != RESULT_OK) message(ui, r.detail); else mark_targets_message(ui);
                 }
                 break;
-            case UI_SELECT_ALL: {
-                Result r = app_mark_all(&ui_panel(ui)->app); if (r.code != RESULT_OK) message(ui, r.detail); break;
+            case 'a': case UI_SELECT_ALL: {
+                if(key=='a' && ui->focus!=UI_FOCUS_FILES) break;
+                Result r = app_mark_all(&ui_panel(ui)->app); if (r.code != RESULT_OK) message(ui, r.detail); else mark_targets_message(ui); break;
             }
-            case UI_CLEAR_SELECTION: app_marks_clear(&ui_panel(ui)->app); break;
+            case 'u': case UI_CLEAR_SELECTION: if(key=='u' && ui->focus!=UI_FOCUS_FILES) break; app_marks_clear(&ui_panel(ui)->app); mark_targets_message(ui); break;
             case '!': case UI_RESULT: show_result(ui); break;
             case 'z': notice_dismiss(ui); break;
             case 6: case UI_QUICK_FIND: quick_find(ui); break;

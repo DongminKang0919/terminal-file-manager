@@ -1,5 +1,7 @@
 # 로컬 기능 확장 진행 — 2026-10-09
 
+최신 후속 상태: Vim `8198947` 및 마킹 보완 관련 검증 완료, 마킹 단위 커밋 후 최신 전체/sanitizer 통합 결과를 아래 후속 절에 기록한다. 기존 1–5/6단계 기록은 최초 확장의 이력이다.
+
 기준: `85ae0dd`. 최초 작업 트리 clean. Linux/WSL 로컬만 다루며 원격 푸시/릴리스/시스템 설정 변경은 하지 않는다. 모든 테스트 데이터는 전용 임시 디렉터리다.
 
 | 단계 | 상태 | 커밋 | 검증과 제한 |
@@ -132,9 +134,18 @@ LSan은 이번 세션에서 실행/재시도하지 않았다. 위 ASan/UBSan 결
 
 | 후속 작업 | 상태 | 커밋 | 검증 |
 | --- | --- | --- | --- |
-| Vim 명시 편집 | 완료 | `Edit cursor text files explicitly with Vim` 커밋 | native fixture + 실제 설치 Vim 9.1 PTY + 기존 external 회귀 PASS |
-| 마킹/일괄 작업 발견 가능성 | 미착수 | — | 기존 `>`/`*`, panel marks, exactly-one-mark 경로를 재사용하고 안내/회귀 보강 |
+| Vim 명시 편집 | 완료 | `8198947` | native fixture + 실제 설치 Vim 9.1 PTY + 기존 external 회귀 PASS |
+| 마킹/일괄 작업 발견 가능성 | 완료 | `Make marking and batch targets easier to discover` 커밋 | native/discovery PTY + batch/panels/controller/filter/Vim 관련 회귀 PASS |
 
 Vim: `e`/F9 Edit with Vim, 커서 일반 텍스트 하나, marks/VISUAL/EDITOR 무시. 현재 파일을 실행 직전 다시 읽고 version 변경을 검사한다. 첫 64KiB(+UTF-8 경계 최대3바이트) UTF-8/ASCII, NUL/일부 control/media signature 거부. empty/extensionless/config/source/BOM 지원. SVG/XML처럼 텍스트 형식은 텍스트로 취급. 샘플 밖 바이너리와 UTF-8으로 우연히 해석 가능한 바이너리를 완전히 판별하지 못하며 다른 encoding 텍스트는 거부될 수 있다. 링크는 항상 거부, 대상 확인 후 편집 경로 없음. readable but not writable/mode write bits 없는 파일은 `-R`; no privilege escalation. `-R`은 :w!로 사용자가 바꿀 수 있는 advisory Vim 옵션이며 filesystem 권한은 별도다. argv `vim [-R] -- absolute-path`, 실행 missing/ENOEXEC/nonzero/signal은 오류, 다른 도구 fallback 없음. 기존 suspend/endwin/media cleanup/waitpid/signal restore/geometry/input/mouse/list/preview 복구를 재사용한다. 성공 종료는 save 완료가 아니다. 최종 경로를 Vim이 다시 열기 때문에 샘플 검사 이후 leaf/내용 교체 레이스는 남는다.
 
 실제 실행 `/tmp/tfile-vim-related.log`: native UTF-8/media/invalid encoding/64KiB 경계·샘플 한계·읽기 전용·변경 감지·link/FIFO/dir 거부·환경변수 무시·argv/NO shell·missing/exit/signal/parent signal 복구 PASS. **실제 설치된 Vim 9.1**을 controlled .vimrc/임시 파일의 PTY에서 실행해 edit/:wq/:q!/SIGKILL/readonly -R/resize/커서-vs-mark/미리보기 갱신/직후 메뉴/termios와 mouse enable/실제 마우스 입력 복구 PASS. 사람이 실제 터미널을 보는 육안 검사는 하지 않았다. 기존 external native/PTY도 PASS. 최초 PTY 실패는 ncurses 전용 판독기가 Vim keyboard/device/style 시퀀스를 해석하지 못한 것이었고 Vim 전용 subclass만 해당 비그리기 시퀀스를 처리했다. 모든 실제 파일/argv/신호/복귀 assertions는 유지했다. PDF 거부 fixture는 image=Off로 별도 미디어 질의와 분리했다. architecture/diff PASS. 다음 행동: Vim 로컬 커밋 후 마킹 안내/정확히 한 마킹의 copy/move/delete/Trash 회귀 보강.
+
+
+마킹 후속 정책: 고정 `>` cursor / `*` mark는 이미 구현돼 있어 재작성하지 않았다. Space/Marked 개수는 유지, 첫 화면과 마킹/해제 후 대상 정책 안내를 추가하고 active panel 변경에 맞춰 hint를 재계산한다. `a` 전체 visible mark / `u` active clear는 기존 API를 호출하며 직접 키는 Files focus에서만 동작한다. F9 항목의 같은 accelerator로 바로 실행 가능(메뉴 기존 순서 유지). input/preview에서는 해당 키로 마킹하지 않는다. 필터 footer가 기존 키 안내 위에 짧게 겹쳐 잔여 문자를 남기지 않도록 행을 비우고, Files focus에서는 Space/e/filter-clear, 넓은 화면에서는 a/u를 표시한다. Preview focus의 scroll footer는 유지한다.
+
+copy/move/delete/Trash의 exactly-one-mark 우선 정책은 이미 구현되어 있었다. 이를 single-target helper로 재사용하고 목록에서 사라진 marked name을 cursor로 대체하지 않는다. Rename만 cursor를 사용하던 예외를 확인해 단일 mark 우선으로 맞췄다(다중 mark에서는 기존 disabled 유지). Vim은 cursor-only 예외를 그대로 명시한다. 마킹 없는 single-panel transfer form의 명시적 Source picker는 기존 사용자 선택 기능을 유지하며 초기 대상은 cursor다. batch 삭제 확인은 기존 count/default Cancel/전체 경로 paging을 유지하고 파일명 행과 첫 화면의 `Permanent deletion; no Trash` 안내를 추가했다. Trash는 별도 title/body/button, 영구 삭제 자동 fallback 없음.
+
+성공 실제 대상만 unmark, skip/failure/cancel/unexecuted는 남아 있으면 유지, committed Trash의 sync-error는 실제 이동된 항목만 unmark라는 기존 정책을 유지한다. 양쪽 refresh/reconcile도 재사용한다. filter apply/clear가 marks를 전부 해제하고 loaded visible-only list를 사용하므로 감춰진 대상을 batch snapshot에 포함하지 않는다. 좌우 marks 독립, range selection 등 새로운 방식 없음.
+
+직접 관련 검사 PASS: mark_policy native(단일/누락/다중 mark safe selection, filtered visible-only, panel ownership), 새 discovery PTY 50x9/100x24(기호/개수/안내/menu accelerator/direct keys, 실제 exactly-one copy/move/delete/Trash/rename, filter hidden item 보존, default Cancel/대상 목록/영구 label, narrow dual 독립), 기존 batch_ui/panels_ui/controller regressions, batch PTY/filter PTY, 최신 실제 Vim PTY. 로그 `/tmp/tfile-mark-discovery-*.log`. 최초 신규 메뉴 검사에서 화면 밖 Clear 항목을 검사한 입력을 수정했고, 확인 목록의 전체 경로 때문에 파일명이 여러 줄로 갈라지는 문제는 별도 filename 행을 추가해 확인하기 쉽게 만들었다. 실제 파일·대상·Cancel assertions를 유지했다. architecture/diff PASS. 다음: 최종 관련 검사 후 마킹 단위 커밋, 전체/sanitizer 통합.

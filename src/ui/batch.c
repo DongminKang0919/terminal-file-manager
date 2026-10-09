@@ -19,10 +19,11 @@ static bool review(UiContext *ui,const BatchJob *job,bool *resized) {
         dialog_frame(w,title); char summary[160];
         snprintf(summary,sizeof summary,"Targets: %zu | Files: %zu Dirs: %zu Links: %zu Other: %zu",job->len,kinds[FILE_REGULAR],kinds[FILE_DIRECTORY],kinds[FILE_LINK],kinds[FILE_OTHER]);
         review_text(w,summary,top,page,&line,width-4);
-        review_text(w,job->action==BATCH_TRASH ? "Move whole items to Trash; no permanent-delete fallback. Restore with desktop tools." : job->action==BATCH_DELETE ? "Directories include all contents. Deleted items cannot be restored." : "Original names; no overwrite. Name collisions: Stop/Skip/Skip all. Other errors stop.",top,page,&line,width-4);
+        review_text(w,job->action==BATCH_TRASH ? "Move whole items to Trash; no permanent-delete fallback. Restore with desktop tools." : job->action==BATCH_DELETE ? "Permanent deletion; no Trash. Directories include all contents; cannot be undone." : "Original names; no overwrite. Name collisions: Stop/Skip/Skip all. Other errors stop.",top,page,&line,width-4);
         if(job->directory) { review_text(w,"Destination directory:",top,page,&line,width-4); review_text(w,job->directory,top,page,&line,width-4); }
         for(size_t i=0;i<job->len;i++) {
             snprintf(summary,sizeof summary,"Target %zu/%zu:",i+1,job->len); review_text(w,summary,top,page,&line,width-4);
+            review_text(w,job->targets[i].name,top,page,&line,width-4);
             review_text(w,job->targets[i].source,top,page,&line,width-4);
         }
         size_t max=line>page?line-page:0; if(top>max) { top=max; continue; }
