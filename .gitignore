@@ -72,3 +72,5 @@ __pycache__/
 /tests/terminal_input_test
 
 /tests/graphics_probe_test
+
+/tests/favorites_test

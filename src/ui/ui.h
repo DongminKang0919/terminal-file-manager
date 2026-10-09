@@ -14,7 +14,7 @@
 
 /* Existing terminal form input limit; core/platform paths are dynamically allocated. */
 #define UI_INPUT_CAP 4096
-enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE, UI_RENAME, UI_QUICK_FIND, UI_RESULT, UI_SELECT_ALL, UI_CLEAR_SELECTION, UI_MODE_PREVIEW, UI_MODE_FILES, UI_MODE_DUAL };
+enum { UI_BACK = KEY_MAX + 1, UI_FORWARD, UI_SGR_MOUSE, UI_RENAME, UI_QUICK_FIND, UI_RESULT, UI_SELECT_ALL, UI_CLEAR_SELECTION, UI_MODE_PREVIEW, UI_MODE_FILES, UI_MODE_DUAL, UI_FAVORITES };
 void input_init(void);
 void input_terminal_begin(TerminalReply *reply);
 void input_terminal_begin_timed(TerminalReply *reply,uint64_t deadline);
@@ -53,6 +53,7 @@ typedef struct {
 typedef enum { UI_LIST_ONLY, UI_LIST_PREVIEW, UI_LIST_LIST } UiMode;
 typedef struct {
     SettingsStore settings;
+    Favorites favorites;
     char settings_warning[256];
     UiFilePanel panels[2];
     bool second_initialized;
@@ -192,6 +193,7 @@ attr_t ui_bar(void);
 attr_t ui_notice_style(NoticeKind kind);
 void init_theme(void);
 void show_help(UiContext *ui);
+void show_favorites(UiContext *ui);
 void graphics_init(UiContext *ui);
 void graphics_probe_poll(UiContext *ui);
 void graphics_probe_prepare(UiContext *ui, int rows);

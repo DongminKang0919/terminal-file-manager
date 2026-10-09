@@ -56,6 +56,7 @@ static const HelpEntry entries[] = {
     {"While scanning", "Cancel/Esc/Enter keeps collected results. x or resize stops and closes. Errors, skipped entries and limits are reported."},
     {"Results", "Tab/Shift+Tab switches results, Search and enabled Open. Arrows, wheel or PgUp/PgDn select. Enter/Open or double-click opens; relative paths distinguish matching names."},
     {"F3 or /", "Search again with the previous query ready to edit. Esc/x closes results. Resize closes the search window."},
+    {"b / F9 Favorites", "Add current directory (a), rename (r), unregister (d), Enter to visit in the active panel. Changes persist separately from startup settings; unregister never deletes directories."},
     {NULL, "PREVIEW"},
     {"F7 > Show preview", "Hide the preview panel for a full-width file list. Selection and list scroll stay in place."},
     {"Up/Down, k/j", "With Preview focused, scroll one row. PgUp/PgDn scroll a visible page; Home returns to the start."},

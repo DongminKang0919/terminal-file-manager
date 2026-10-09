@@ -9,6 +9,7 @@ static Result initialize_panel(AppState *app,const char *directory,const Startup
 Result ui_init(UiContext *ui,const char *directory) {
     *ui=(UiContext){.mode=UI_LIST_PREVIEW,.wheel_step=1,.image_auto=true};
     settings_load(&ui->settings);
+    favorites_load(&ui->favorites);
     StartupSettings *s=&ui->settings.defaults;
     ui->wheel_step=s->wheel_step; ui->image_auto=s->image_auto;
     Result r=initialize_panel(&ui_panel(ui)->app,directory,s);
@@ -20,7 +21,7 @@ Result ui_init(UiContext *ui,const char *directory) {
 void ui_free(UiContext *ui) {
     graphics_probe_cancel(ui); graphics_clear(ui); notice_clear(ui); preview_reset(ui); core_media_shutdown();
     for(unsigned i=0;i<2;i++) app_free(&ui->panels[i].app);
-    settings_free(&ui->settings);
+    settings_free(&ui->settings); favorites_free(&ui->favorites);
     *ui=(UiContext){0};
 }
 Result ui_refresh_panel(UiContext *ui,unsigned index,const char *highlight,bool require_fresh) {

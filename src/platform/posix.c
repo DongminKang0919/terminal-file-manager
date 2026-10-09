@@ -541,18 +541,18 @@ static int settings_directory(const char *path,bool create) {
     }
     free(parent); return fd;
 }
-Result platform_settings_read(const char *path,char *data,size_t cap,size_t *len) {
+static Result config_read(const char *path,const char *name,char *data,size_t cap,size_t *len) {
     *len=0;
     int dir=settings_directory(path,false);
     if(dir<0) return failure();
-    int fd=openat(dir,"settings.conf",O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
+    int fd=openat(dir,name,O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC);
     int e=errno; close(dir); errno=e;
     if(fd<0) return failure();
     struct stat st;
     Result r=result_make(RESULT_OK,NULL);
     if(fstat(fd,&st)<0) r=failure();
     else if(!S_ISREG(st.st_mode)) r=result_make(RESULT_UNSUPPORTED,"Settings must be a regular file");
-    else if(st.st_size>4096) r=result_make(RESULT_IO,"Settings file exceeds 4096 bytes");
+    else if(st.st_size>(off_t)(cap-1)) r=result_make(RESULT_IO,cap==4097 ? "Settings file exceeds 4096 bytes" : "Favorites file exceeds 65536 bytes");
     while(r.code==RESULT_OK && *len<cap) {
         ssize_t n=read(fd,data+*len,cap-*len);
         if(n<0 && errno==EINTR) continue;
@@ -560,20 +560,20 @@ Result platform_settings_read(const char *path,char *data,size_t cap,size_t *len
         if(!n) break;
         *len+=(size_t)n;
     }
-    if(r.code==RESULT_OK && *len>4096) r=result_make(RESULT_IO,"Settings file exceeds 4096 bytes");
+    if(r.code==RESULT_OK && *len>cap-1) r=result_make(RESULT_IO,cap==4097 ? "Settings file exceeds 4096 bytes" : "Favorites file exceeds 65536 bytes");
     if(close(fd)<0 && r.code==RESULT_OK) r=failure();
     return r;
 }
-static Result settings_target(int dir) {
+static Result settings_target(int dir,const char *name) {
     struct stat st;
-    if(fstatat(dir,"settings.conf",&st,AT_SYMLINK_NOFOLLOW)<0)
+    if(fstatat(dir,name,&st,AT_SYMLINK_NOFOLLOW)<0)
         return errno==ENOENT ? result_make(RESULT_OK,NULL) : failure();
     return S_ISREG(st.st_mode) ? result_make(RESULT_OK,NULL) : result_make(RESULT_UNSUPPORTED,"Refusing symlink or special settings file");
 }
-Result platform_settings_write(const char *path,const char *data,size_t len) {
+static Result config_write(const char *path,const char *name,const char *data,size_t len) {
     int dir=settings_directory(path,true);
     if(dir<0) return failure();
-    Result r=settings_target(dir);
+    Result r=settings_target(dir,name);
     char temp[80]=""; int fd=-1;
     static unsigned sequence;
     if(r.code==RESULT_OK) {
@@ -595,8 +595,23 @@ Result platform_settings_write(const char *path,const char *data,size_t len) {
         if(r.code==RESULT_OK && fsync(fd)<0) r=failure();
         if(close(fd)<0 && r.code==RESULT_OK) r=failure();
     }
-    if(r.code==RESULT_OK) r=settings_target(dir);
-    if(r.code==RESULT_OK && renameat(dir,temp,dir,"settings.conf")<0) r=failure();
+    if(r.code==RESULT_OK) r=settings_target(dir,name);
+    if(r.code==RESULT_OK && renameat(dir,temp,dir,name)<0) r=failure();
     if(r.code!=RESULT_OK && temp[0]) unlinkat(dir,temp,0);
     close(dir); return r;
 }
+
+Result platform_settings_read(const char *p,char *d,size_t c,size_t *n) { return config_read(p,"settings.conf",d,c,n); }
+Result platform_settings_write(const char *p,const char *d,size_t n) { return config_write(p,"settings.conf",d,n); }
+Result platform_favorites_path(char **out) {
+    *out=NULL; char *settings=NULL;
+    Result r=platform_settings_path(&settings);
+    if(r.code!=RESULT_OK) return r;
+    char *parent=platform_path_parent(settings); free(settings);
+    if(!parent) return oom();
+    *out=platform_path_join(parent,"favorites.conf"); free(parent);
+    return *out ? result_make(RESULT_OK,NULL) : oom();
+}
+Result platform_favorites_read(const char *p,char *d,size_t c,size_t *n) { return config_read(p,"favorites.conf",d,c,n); }
+Result platform_favorites_write(const char *p,const char *d,size_t n) { return config_write(p,"favorites.conf",d,n); }
+bool platform_path_absolute(const char *p) { return p && p[0]=='/'; }

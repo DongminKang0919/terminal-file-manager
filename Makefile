@@ -122,7 +122,7 @@ check-isolated: tests/picker_test tests/media_test tests/panels_ui_test tests/tf
 	python3 tests/batch_progress_pty.py
 
 clean:
-	rm -f tests/graphics_probe_test tests/terminal_test tests/terminal_input_test tests/settings_sanitize tests/settings_core_test tests/settings_test tfile tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_test tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/ownership_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
+	rm -f tests/favorites_test tests/graphics_probe_test tests/terminal_test tests/terminal_input_test tests/settings_sanitize tests/settings_core_test tests/settings_test tfile tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_test tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/ownership_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
 
 .PHONY: all clean check check-core
 
@@ -194,3 +194,11 @@ check-terminal: tests/terminal_test tests/terminal_input_test tests/graphics_pro
 	python3 tests/terminal_auto_pty.py
 check-isolated: check-terminal
 .PHONY: check-terminal
+
+tests/favorites_test: tests/favorites_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/favorites_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) -Wl,--wrap=platform_favorites_write
+check-favorites: tests/favorites_test tfile
+	./tests/favorites_test
+	python3 tests/favorites_pty.py
+check-isolated: check-favorites
+.PHONY: check-favorites

@@ -24,6 +24,17 @@ void settings_load(SettingsStore *store);
 Result settings_save(SettingsStore *store, const StartupSettings *settings, bool replace);
 void settings_free(SettingsStore *store);
 
+#define FAVORITES_MAX 64
+#define FAVORITES_BYTES 65536
+#define FAVORITE_NAME_BYTES 128
+typedef struct { char *name, *directory; } Favorite;
+typedef struct { Favorite *entries; size_t len; char *path; Result load_result; } Favorites;
+void favorites_load(Favorites *store);
+void favorites_free(Favorites *store);
+Result favorites_add(Favorites *store,const char *directory,const char *name);
+Result favorites_rename(Favorites *store,size_t index,const char *name);
+Result favorites_remove(Favorites *store,size_t index);
+
 /* Owned history data; positions are logical list ordinals, never terminal coordinates. */
 typedef struct { char *directory, *selected_name; size_t selected, top; } HistoryEntry;
 typedef struct { char *name; bool seen; } SelectionName;
