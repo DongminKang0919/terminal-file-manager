@@ -78,7 +78,7 @@ for width,height in [(50,9),(80,24),(160,32)]:
             (b/'b-collision').write_text('keep collision')
             t.send('r')
             for name in ['a-partial','b-collision','c-unexecuted']:find(name);t.send(' ')
-            marks(3);t.send(F5+'\n');t.send('\t\n');marks(2)
+            marks(3);t.send(F5+'\n');t.send('\t\n');assert 'Name collision' in body();t.send('\n');marks(2)
             assert (b/'a-partial').read_text()=='x'*400 and (b/'b-collision').read_text()=='keep collision' and not (b/'c-unexecuted').exists()
             assert '[Partial]' in body();result=details()
             for expected in ['Partialcompletion','Target1/3:Success','Target2/3:Failed','Target3/3:Unexecuted']:assert expected in result,result
