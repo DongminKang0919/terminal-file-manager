@@ -80,6 +80,10 @@ int __wrap_input_wide(WINDOW *win,wint_t *key) {
     assert(find_text); *key=(unsigned char)find_text[find_at++]; return OK;
 }
 int __wrap_input_key(WINDOW *win) {
+    /* Preserve the old collision-stop scenario by explicitly choosing Stop
+       in the newly introduced collision modal, rather than sending Esc. */
+    char collision_title[80]; mvwinnstr(win,0,2,collision_title,sizeof collision_title-1);
+    if(strstr(collision_title,"Name collision")) return '\n';
     if(path_resize) return KEY_RESIZE;
     if(form_review) { static bool tab; tab=!tab; return tab?'\t':'\n'; }
     if(inspect_results) {

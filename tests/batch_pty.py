@@ -49,7 +49,7 @@ for w,h in [(50,9),(80,24),(160,32)]:
             t.send(HOME+DOWN+' '+END+F5);assert 'Batch destination' not in body();t.send('\x1b');summary(1)
             t.send(HOME+DOWN+DOWN+' ');summary(2)
             # Collision stops first target; both marks retained, others unexecuted.
-            t.send(F5);destination(dst);t.send('\t\n');summary(2);t.send('!');assert 'Recent operation result' in body();t.send('\x1b')
+            t.send(F5);destination(dst);t.send('\t\n');assert 'Name collision' in body();t.send('\n');summary(2);t.send('!');assert 'Recent operation result' in body();t.send('\x1b')
             # Batch move confirmation executes by mouse. Directory unchanged cursor remains.
             t.send(F6);destination(moved);assert 'Batch move confirmation' in body()
             rw=min(w-8,88);rx=(w-rw)//2;t.click(rx+16,h-3);summary(0);assert len(list(moved.iterdir()))==2

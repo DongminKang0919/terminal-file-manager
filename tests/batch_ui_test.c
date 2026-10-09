@@ -42,6 +42,10 @@ int __real_wrefresh(WINDOW *);
 int __wrap_wrefresh(WINDOW *w) { if(wgetdelay(w)==0)draws++;return __real_wrefresh(w); }
 static short pair(WINDOW *w,int y,int x) { cchar_t c;wchar_t t[CCHARW_MAX];attr_t a;short p;assert(mvwin_wch(w,y,x,&c)==OK);getcchar(&c,t,&a,&p,NULL);return p; }
 int __wrap_input_key(WINDOW *w) {
+    /* Preserve the old collision-stop scenario by explicitly choosing Stop
+       in the newly introduced collision modal, rather than sending Esc. */
+    char collision_title[80]; mvwinnstr(w,0,2,collision_title,sizeof collision_title-1);
+    if(strstr(collision_title,"Name collision")) return '\n';
     if(mode==5) return scripted();
     if(mode==1) { /* Scrolling leaves default Cancel selected. */
         assert(pair(w,getmaxy(w)-2,2)==UI_SELECTED);
