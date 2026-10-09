@@ -9,11 +9,11 @@
 | 3 충돌 건너뛰기 | 완료 | `d83cb11` + `a0a425b` + `5b53d1f` | copy/move native late collision + PTY/기존 batch 진행 회귀 PASS |
 | 4 외부 도구 | 완료 | `45cf11d` | parser/process native + cooked terminal/resize restore PTY PASS |
 | 5 휴지통 | 완료 | `3165cfe` | native/PTY PASS; 실제 별도 mount/desktop 복원 미검증 |
-| 6 교차 FS 이동 | 보류 | 문서 커밋 예정 | [안전 조건과 필요한 결정](CROSS_FILESYSTEM_MOVE_DESIGN_2026-10-09.md); EXDEV 거부 유지 |
+| 6 교차 FS 이동 | 보류 | `a156e10` | [안전 조건과 필요한 결정](CROSS_FILESYSTEM_MOVE_DESIGN_2026-10-09.md); EXDEV 거부 유지 |
 
 완료는 코드·관련 회귀·문서·로컬 커밋까지 포함한다. 단계별 검사 및 통합/최종 전체 검사를 기록한다. PTY/정적 확인을 실제 터미널 육안 확인과 구분한다. 알려진 ptrace 제약의 LSan은 반복하지 않으며 ASan/UBSan 실제 범위와 최신 수동 명령을 별도로 남긴다.
 
-중단 시 다음 행동: 1–5 최종 전체 및 sanitizer 로그를 확인하고 결과/로컬 커밋을 기록한다. 6단계는 보류 설계의 원본 격리·동시 변경·복구 결정을 먼저 받아야 한다. 실제 상태는 위 표와 git log 및 작업 트리를 함께 확인한다.
+세션 종료 상태: 1–5 코드·회귀·문서·로컬 커밋 완료, 1–5 최종 전체 및 ASan/UBSan PASS. 다음 행동은 위 수동 육안/desktop/LSan 검사이며, 6단계는 보류 설계의 원본 격리·동시 변경·복구 결정을 먼저 받아야 한다. 새 실행에서는 이 기록과 실제 git log/작업 트리를 대조한다. 실제 상태는 위 표와 git log 및 작업 트리를 함께 확인한다.
 
 ## 1단계 정책/검증
 
@@ -67,3 +67,60 @@ Editor: graphics/probe/preview/converter를 정리하고 curses program mode 저
 ## 6단계 보류
 
 [교차 파일시스템 이동 설계](CROSS_FILESYSTEM_MOVE_DESIGN_2026-10-09.md)에 원본 삭제 조건, 복사 검증, 메타데이터 범위, 복사/정리 취소, staging 복구 충돌, narrow regular-only 후보를 기록했다. 현재 copy+delete의 identity 확인은 최종 leaf 삭제와 원자 결합이 아니어서 복사하지 않은 대체 항목 삭제를 막는 보장이 부족하다. 원본 staging 격리와 재시작 recovery는 사용자 데이터 위치/복구 정책의 미해결 결정이므로 이 기능 구현을 멈춘다. 기존 EXDEV 거부와 원본 보존을 유지하며 실제 두 filesystem 통과를 주장하지 않는다. 다른 1–5 작업/검증은 독립적으로 완료한다.
+
+## 사용자 최소 수동 확인 (미실행)
+
+실제 사용할 Linux/WSL 터미널에서 **전용 임시 데이터/설정/휴지통**으로 실행한다. shell에서 만든 변수는 터미널을 닫기 전까지만 쓰며 시스템 설정은 바꾸지 않는다.
+
+```sh
+tfile_feature_demo=$(mktemp -d /tmp/tfile-feature-demo-XXXXXX)
+mkdir -p "$tfile_feature_demo"/{left,right,config,data}
+printf 'demo\n' > "$tfile_feature_demo/left/한글.txt"
+printf 'conflict\n' > "$tfile_feature_demo/right/한글.txt"
+printf 'second\n' > "$tfile_feature_demo/left/second.txt"
+XDG_CONFIG_HOME="$tfile_feature_demo/config" XDG_DATA_HOME="$tfile_feature_demo/data" \
+  VISUAL=vi ./tfile "$tfile_feature_demo/left"
+```
+
+1. `b` → `a` 이름 지정, 재시작 후 보존 확인, 이동/방문 back 확인, `d` 후 실제 디렉터리는 남는지 확인. F7의 미저장 변경을 즐겨찾기 저장이 settings.conf로 저장하지 않는지 확인한다.
+2. Space로 마킹 후 `f` contains/glob 적용·해제: marks cleared, 필터 표식, no matches를 확인. F9 이중 목록과 Tab으로 패널마다 독립 동작 확인. 반대편 패널을 위 `right`로 열고 두 파일 마킹→F5→Skip this/Skip all/Stop의 파일·결과·마킹 확인.
+3. F9 Edit in editor에서 현재 커서(다른 마킹 항목 아님)를 편집/복귀하며 터미널 resize/한글 입력/이미지 잔상·선택·마킹을 확인한다. 실제 xdg-open은 사용 가능할 때 임시 파일 하나로만 확인하며 “requested/returned”가 실제 표시·저장 완료 안내가 아닌지 확인한다.
+4. `t` 기본 Cancel, 실제 Trash 이동, `!`의 위치/메타데이터를 확인. `F8`은 별도 permanent warning인지 확인. 데스크톱 복원은 일반 사용자 Trash에서 하는 별도 수동 환경 확인이 필요하며 이 임시 XDG Trash를 자동 인식한다고 가정하지 않는다. 앱 내 복원은 없다.
+
+실제 terminal pixel/깜빡임/GUI 표시/vi 상호 작용, desktop Trash restore, 실제 별도 device mount-top 및 WSL/DrvFS에서의 거부 동작은 자동 PTY 결과로 대체하지 않는다. 교차 FS 이동은 보류여서 성공을 기대하는 수동 이동 검사는 하지 않는다.
+
+## 최신 수동 LSan 명령 (이번 실행 아님)
+
+이번 실행은 알려진 ptrace 제약에 따라 누수 검사를 끈 ASan/UBSan으로만 수행한다. 동일한 LSan 실패를 반복하지 않는다. ptrace가 없는 사용자의 터미널에서 아래 명령을 실행한 뒤 개별 run 로그를 확인해야 LSan 결과를 주장할 수 있다. suppressions는 사용하지 않는다. output 디렉터리는 기존 결과와 섞지 않게 별도 이름을 쓴다.
+
+```sh
+python3 tests/isolated_check.py python3 tests/run_sanitizers.py \
+  --output-directory /tmp/tfile-sanitizers-features-manual-lsan
+python3 tests/isolated_check.py python3 tests/run_media_sanitizers.py \
+  --output-directory /tmp/tfile-media-sanitizers-features-manual-lsan
+python3 tests/isolated_check.py python3 tests/run_terminal_sanitizers.py \
+  --output-directory /tmp/tfile-terminal-sanitizers-features-manual-lsan
+ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+  python3 tests/isolated_check.py make check-settings-sanitize
+```
+
+기본 runner는 기존 18개에 favorites/filter/batch_conflict/external/trash 5개를 추가해 총 23개이다. media runner 5개, terminal runner 5개, settings native sanitizer 1개는 서로 별도 범위이며 중복 흐름이 있다. 이 합계를 모든 제품 흐름의 완전한 검사라고 표현하지 않는다.
+
+
+## 최종 검증 (실제 실행)
+
+| 검사 | 결과 | 실제 범위 / 로그 |
+| --- | --- | --- |
+| 최종 `make -j4 check` | PASS, exit 0 | 최신 1–5 native/PTY·기존 전체·실제 ImageMagick/Poppler fitting 포함; `/tmp/tfile-features-final-check.log` |
+| 기본+새 기능 ASan/UBSan | PASS, 23개 | `--disable-leaks`; `/tmp/tfile-features-sanitizers.log`, `/tmp/tfile-sanitizers-features-final/*.run.log` |
+| 미디어 ASan/UBSan | PASS, 5개 | media/preview/picker/media_pty/media_redraw, 누수 검사 제외; `/tmp/tfile-features-media-sanitizers.log` |
+| 터미널 ASan/UBSan | PASS, 5개 | terminal/input/probe/pty/auto_pty, 누수 검사 제외; `/tmp/tfile-features-terminal-sanitizers.log` |
+| 설정 ASan/UBSan | PASS, 1개 | settings_test, detect_leaks=0; `/tmp/tfile-features-settings-sanitizers.log` |
+| Python AST | PASS, 49 파일 | tests/tools 문법만; 동작/모든 분기 증명 아님 |
+| 계층 검사 / git diff --check | PASS | UI → core → platform, 좁은 native path guard, whitespace |
+| 변경 문서 상대 파일 링크 | 누락 0 | README/진행/교차 FS 설계; 앵커·외부 URL·렌더링 미검증 |
+
+LSan은 이번 세션에서 실행/재시도하지 않았다. 위 ASan/UBSan 결과를 LSan 통과로 확대하지 않는다. 실제 터미널 육안 확인은 하지 않았고 PTY는 출력/입력/파일 상태 검사다.
+
+
+로컬 커밋: `eea1a18` favorites, `3c6b290` filter, `d83cb11` collision skip, `a0a425b`/`5b53d1f` 기존 collision 입력 회귀 보강, `45cf11d` external tools, `3165cfe` Trash, `a156e10` cross-FS 보류 설계. 최종 검증과 README의 삭제 정책 정리는 별도 `Record final feature validation and manual checks` 문서 커밋으로 남긴다. 원격 푸시/릴리스/전역 설정 변경 없음. 전체 완료가 아니라 **1–5 완료 / 6 보류**다.
