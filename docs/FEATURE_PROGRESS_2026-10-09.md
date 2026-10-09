@@ -220,3 +220,9 @@ python3 tests/isolated_check.py env TFILE_BINARY=/tmp/tfile-media-sanitizers-sta
 ```
 
 수동 최소 검사: 임시 텍스트에서 e로 Vim 진입→수정/:wq→마우스/메뉴/리사이즈를 확인한다. 다시 Vim 진입 후 별도 셸에서 정확한 tfile PID에 kill -TERM 또는 kill -HUP을 보내 Vim 종료와 셸 입력 복구를 확인한다(저장하지 않은 내용은 Vim의 신호 처리/복구 파일 정책을 따름). 전용 임시 XDG_DATA_HOME에서 umask 0400으로 실행→t 휴지통→종료 후 .trashinfo 읽기와 데스크톱 복원은 별도로 확인한다. 실제 사용자 파일은 검사에 사용하지 않는다.
+
+## 후속 터미널 idle 회귀 동기화
+
+사용자 수동 LSan의 terminal_pty Python assertion을 조사했다. 제품 코드 `0c63415`는 변경하지 않았다. 고정 settling 시간과 메인 헤더에도 일치하는 Options 문자열 검사 때문에 닫힘/복원 관찰이 약했다. 제어된 지연에서는 일반/ASan·UBSan 모두 정상 복원 출력이 idle에 포함되는 실패를 재현했다. 실제 팝업·텍스트/이미지·입력 모드 복원을 관찰한 뒤 strict idle/CPU assertion을 유지한다. 정상 및 지연 닫기 이후 1.2초 추가 출력/이미지/전체 지우기는 0이었다.
+
+최신 helper를 포함한 `make check-terminal` 및 터미널 ASan/UBSan 5개 PASS. 제품 변경 기준 전체 make check PASS는 이 helper 수정 전의 결과이며 최신 helper 관련 전체 범위는 별도로 실행했다. 사용자 보고 LSan 통과와 이번 detect_leaks=0 직접 실행 결과를 섞지 않는다. 상세 전후 표, 원시 추가 출력 로그, 재현 한계와 정확한 수동 LSan 명령은 [터미널 idle 검증 기록](TERMINAL_IDLE_VALIDATION_2026-10-09.md)에 있다. 제품 안정화 검증 기록 커밋은 `f7be892`; 이번 테스트 변경은 별도 로컬 커밋하며 원격 푸시는 하지 않는다.

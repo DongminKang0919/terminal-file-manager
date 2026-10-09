@@ -1,5 +1,6 @@
 """Protocol/UX/process tests. PTYs cannot confirm actual pixel rendering/erasure."""
 import fcntl
+import json
 import os
 from pathlib import Path
 import pty
@@ -15,7 +16,9 @@ from media_tools import STUB
 
 F7='\x1b[18~'; DOWN='\x1bOB'
 class SetupScreen(GraphicsScreen):
+    application_cursor=None
     def csi(self,params,command):
+        if params=='?1' and command in ('h','l'): self.application_cursor=command=='h'
         if command=='c': return  # DA query, answered by this test's terminal double.
         super().csi(params,command)
     def bounds(self,width,height):
@@ -52,16 +55,58 @@ class SetupTerminal(Terminal):
         if sys.exc_info()[0] is not None:
             self.proc.kill();self.proc.wait();os.close(self.master);return
         super().close()
-    def idle(self):
-        self.read(.25)  # Let conversion and the last screen update settle.
+    def options_visible(self):
+        w=min(52,self.screen.width-4);h=min(10,self.screen.height-2)
+        x=(self.screen.width-w)//2;y=(self.screen.height-h)//2
+        return self.screen.row(y)[x+2:x+9]=='Options'
+    def view(self):
+        return (tuple(self.screen.row(y) for y in range(self.screen.height)),self.screen.image)
+    def wait_main(self,expected=None):
+        # The diagnostic reply filter has armed raw input in these cases.
+        # Observe modal closure, complete text/Sixel restoration and return to
+        # normal raw-key waiting (?1l), rather than a fixed settling sleep.
+        if getattr(self,'resume_on_restore',False):
+            os.kill(self.proc.pid,signal.SIGCONT);self.resume_on_restore=False
+        def ready():
+            w=min(70,self.screen.width-4);h=min(18,self.screen.height-2)
+            x=(self.screen.width-w)//2;y=(self.screen.height-h)//2
+            setup=self.screen.row(y)[x+2:x+13]=='Image displ'
+            return (not self.options_visible() and not setup and
+                not self.screen.raw and self.screen.application_cursor is False and
+                (expected is None or self.view()==expected))
+        self.wait(ready)
+    def idle(self,expected=None,closing=None,delayed=False):
+        self.wait_main(expected)
         before=(len(self.output),len(self.screen.images),self.screen.clears)
+        if closing is not None and os.environ.get('TFILE_TERMINAL_IDLE_TRACE'):
+            print('RESTORE_MEASURE '+json.dumps({'size':[self.screen.width,self.screen.height],
+                'delayed':delayed,'before':closing,'after':before,
+                'additional_output':repr(self.output[closing[0]:])}),flush=True)
         stat=Path(f'/proc/{self.proc.pid}/stat')
         def ticks():
             fields=stat.read_text().split(') ',1)[1].split()
             return int(fields[11])+int(fields[12])
-        start=ticks(); self.read(1.2)
-        assert before==(len(self.output),len(self.screen.images),self.screen.clears), 'idle redraw/output'
+        start=ticks();self.read(1.2)
+        after=(len(self.output),len(self.screen.images),self.screen.clears)
+        if before!=after or os.environ.get('TFILE_TERMINAL_IDLE_TRACE'):
+            print('IDLE_MEASURE '+json.dumps({'size':[self.screen.width,self.screen.height],
+                'before':before,'after':after,'additional_output':repr(self.output[before[0]:]),
+                'options_visible':self.options_visible(),'image':self.screen.image,
+                'converter_count':len(self.records()),'cpu_ticks':ticks()-start}),flush=True)
+        assert before==after, 'idle redraw/output'
         assert ticks()-start<=2, 'idle CPU polling'
+    def options_roundtrip(self,delayed=False):
+        expected=self.view();self.send(F7);self.wait(self.options_visible)
+        closing=(len(self.output),len(self.screen.images),self.screen.clears)
+        if delayed:
+            # Deterministically hold the app across send()'s normal read window.
+            # Release when restoration observation begins, not after a sleep.
+            os.kill(self.proc.pid,signal.SIGSTOP)
+            self.wait(lambda:'State:\tT' in Path(f'/proc/{self.proc.pid}/status').read_text())
+            self.resume_on_restore=True
+        self.send('\x1b')
+        if delayed: assert self.options_visible(), 'controlled close must still be pending'
+        self.idle(expected,closing,delayed)
     def click_close(self):
         w=min(70,self.screen.width-4); h=min(18,self.screen.height-2)
         x=(self.screen.width-w)//2+w-4; y=(self.screen.height-h)//2
@@ -95,7 +140,8 @@ for width,height in [(50,9),(100,24)]:
                 t.wait(lambda:t.screen.image is not None)
                 assert t.screen.image[2:]==(6,6) and t.records()
             t.idle()
-            t.send(b'\x1b[999~');t.send(F7);assert 'Options' in t.text();t.send('\x1b');t.idle()
+            t.send(b'\x1b[999~');t.options_roundtrip()
+            t.send(b'\x1b[999~');t.options_roundtrip(delayed=True)
             t.setup(); t.query(b'\x9b?62;4c\x9b6;16;8t'); t.send('y');t.send('n')  # Failed erase confirmation.
             t.send('\n');assert 'Enabled (8x16)' in t.text();t.send('\x1b');t.close_setup()
             # Normal fields/Unicode/mouse still work after the raw response filter is armed.
@@ -229,6 +275,6 @@ with tempfile.TemporaryDirectory(prefix='tfile-terminal-workflow-') as directory
         assert (destination/'leaf.txt').read_text()=='after F7'
         assert (folder/'leaf.txt').read_text()=='after F7'
         t.send('\x1b[?62;qqF8c\x1b[6;16;8t');t.send(F7)
-        assert 'Options' in t.text();t.send('\x1b');t.idle()
+        t.wait(t.options_visible);t.send('\x1b');t.idle()
     finally:t.close()
 print('PASS: F7 verification followed by navigation, search, explicit mouse copy and late reply isolation')

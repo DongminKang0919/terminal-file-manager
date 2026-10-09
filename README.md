@@ -195,3 +195,5 @@ sanitizer 스크립트는 별도 바이너리를 빌드하고 기본으로 ASan/
 - [안정화·계측 기록](docs/STABILIZATION_2026-10-03.md), [연속 사용 점검](docs/STABILIZATION_2026-10-04.md): 개발 과정, 재현 조건과 측정 범위
 
 저장소에 `LICENSE` 파일이 없어 명시된 배포·재사용 라이선스가 없습니다.
+
+터미널 PTY idle 검사에서 정상 화면 복원과 유휴 출력을 구분하는 계측·회귀 및 수동 LSan 명령은 [터미널 idle 검증 기록](docs/TERMINAL_IDLE_VALIDATION_2026-10-09.md)에 있습니다.
