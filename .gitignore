@@ -76,3 +76,4 @@ __pycache__/
 /tests/favorites_test
 /tests/filter_test
 /tests/batch_conflict_test
+/tests/external_test

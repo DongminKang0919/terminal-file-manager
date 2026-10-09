@@ -21,6 +21,7 @@ Result ui_init(UiContext *ui,const char *directory) {
 void ui_free(UiContext *ui) {
     graphics_probe_cancel(ui); graphics_clear(ui); notice_clear(ui); preview_reset(ui); core_media_shutdown();
     for(unsigned i=0;i<2;i++) app_free(&ui->panels[i].app);
+    core_external_close(ui->external_job);ui->external_job=NULL;
     settings_free(&ui->settings); favorites_free(&ui->favorites);
     *ui=(UiContext){0};
 }

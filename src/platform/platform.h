@@ -45,6 +45,14 @@ Result platform_reader_peek(PlatformReader *reader, unsigned char *buffer, size_
 Result platform_reader_line(PlatformReader *reader, char *buffer, size_t size, bool *end);
 void platform_reader_close(PlatformReader *reader);
 uint64_t platform_monotonic_ms(void);
+Result platform_editor_setting(char **out);
+Result platform_editor_run(char **argv,size_t count,const char *path);
+typedef struct PlatformExternal PlatformExternal;
+Result platform_external_open(const char *path,PlatformExternal **out);
+Result platform_external_poll(PlatformExternal *job,bool *done);
+void platform_external_close(PlatformExternal *job);
+bool platform_external_cleanup_pending(void);
+bool platform_terminal_size(unsigned *rows,unsigned *columns);
 typedef struct PlatformMedia PlatformMedia;
 Result platform_media_open(const char *path, PreviewMediaKind kind, bool text, unsigned width, unsigned height, PlatformMedia **out);
 Result platform_media_poll(PlatformMedia *media, bool *done, char **data, size_t *len);

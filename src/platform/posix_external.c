@@ -1,0 +1,154 @@
+#define _GNU_SOURCE
+#include "platform.h"
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+struct PlatformExternal { pid_t pid; };
+static pid_t active_launcher,detached_launcher;
+static Result external_error(const char *what) {
+    char detail[256];snprintf(detail,sizeof detail,"%s: %s",what,strerror(errno));
+    return result_make(errno==ENOENT?RESULT_NOT_FOUND:errno==EACCES?RESULT_ACCESS:RESULT_IO,detail);
+}
+static char *program(const char *name) {
+    if(strchr(name,'/')) return access(name,X_OK)==0?text_copy(name):NULL;
+    const char *path=getenv("PATH");if(!path) return NULL;
+    char *copy=text_copy(path);if(!copy) return NULL;
+    char *save=NULL,*found=NULL;
+    for(char *dir=strtok_r(copy,":",&save);dir;dir=strtok_r(NULL,":",&save)) {
+        /* Never pick a selected directory's program from relative PATH entries. */
+        if(*dir!='/') continue;
+        char *candidate=platform_path_join(dir,name);struct stat st;
+        if(candidate && access(candidate,X_OK)==0 && stat(candidate,&st)==0 && S_ISREG(st.st_mode)) {found=candidate;break;}
+        free(candidate);
+    }
+    free(copy);return found;
+}
+Result platform_editor_setting(char **out) {
+    *out=NULL;const char *s=getenv("VISUAL");if(!s||!*s) s=getenv("EDITOR");
+    if(!s||!*s) {
+        char *vi=program("vi");if(!vi) return result_make(RESULT_NOT_FOUND,"No VISUAL/EDITOR or available vi");
+        free(vi);s="vi";
+    }
+    *out=text_copy(s);return *out?result_make(RESULT_OK,NULL):result_make(RESULT_NO_MEMORY,"Out of memory");
+}
+static Result target(const char *path,char **out) {
+    *out=NULL;struct stat st;
+    if(lstat(path,&st)<0) return external_error("Cannot inspect external target");
+    if(!S_ISREG(st.st_mode)) return result_make(RESULT_UNSUPPORTED,"External tools accept cursor regular files only; no links/directories/special files");
+    return platform_resolve(NULL,path,out);
+}
+static void child_error(int fd,int error) {
+    size_t at=0;
+    while(at<sizeof error) {ssize_t n=write(fd,(char *)&error+at,sizeof error-at);if(n<0&&errno==EINTR)continue;if(n<=0)break;at+=(size_t)n;}
+    _exit(127);
+}
+static void close_extra(int error_fd) {
+    if(error_fd!=3 && dup2(error_fd,3)<0) child_error(error_fd,errno);
+    if(fcntl(3,F_SETFD,FD_CLOEXEC)<0) child_error(3,errno);
+    DIR *dir=opendir("/proc/self/fd");if(!dir) child_error(3,errno);
+    struct dirent *e;int scan=dirfd(dir);
+    while((e=readdir(dir))) {
+        char *end=NULL;long fd=strtol(e->d_name,&end,10);
+        if(end&&!*end&&fd>3&&fd!=scan) close((int)fd);
+    }
+    closedir(dir);
+}
+static Result spawn(const char *tool,char **argv,bool terminal,pid_t *pid) {
+    int pipefd[2];if(pipe2(pipefd,O_CLOEXEC)<0) return external_error("Cannot create exec acknowledgement");
+    *pid=fork();
+    if(*pid<0) {Result r=external_error("Cannot launch external tool");close(pipefd[0]);close(pipefd[1]);return r;}
+    if(!*pid) {
+        close(pipefd[0]);
+        struct sigaction normal={0};normal.sa_handler=SIG_DFL;sigemptyset(&normal.sa_mask);
+        sigaction(SIGINT,&normal,NULL);sigaction(SIGQUIT,&normal,NULL);sigaction(SIGTERM,&normal,NULL);sigaction(SIGHUP,&normal,NULL);sigaction(SIGPIPE,&normal,NULL);
+        if(!terminal) {
+            int null=open("/dev/null",O_RDWR|O_CLOEXEC);if(null<0) child_error(pipefd[1],errno);
+            for(int i=0;i<3;i++) if(dup2(null,i)<0) child_error(pipefd[1],errno);
+        }
+        close_extra(pipefd[1]);
+        execv(tool,argv); /* No execvp ENOEXEC shell fallback. */
+        child_error(3,errno);
+    }
+    close(pipefd[1]);int error=0;size_t at=0;
+    while(at<sizeof error) {
+        ssize_t n=read(pipefd[0],(char *)&error+at,sizeof error-at);
+        if(n<0&&errno==EINTR) continue;
+        if(n<0) {error=errno;at=sizeof error;break;}
+        if(!n) break;
+        at+=(size_t)n;
+    }
+    close(pipefd[0]);
+    if(at) {while(waitpid(*pid,NULL,0)<0&&errno==EINTR) {} errno=error?error:EIO;return external_error("External exec failed");}
+    return result_make(RESULT_OK,NULL);
+}
+static Result exit_result(int status,const char *tool) {
+    char detail[256];
+    if(WIFEXITED(status)&&WEXITSTATUS(status)==0) return result_make(RESULT_OK,"External tool returned; display/save completion unconfirmed");
+    if(WIFSIGNALED(status)) snprintf(detail,sizeof detail,"%s ended by signal %d",tool,WTERMSIG(status));
+    else snprintf(detail,sizeof detail,"%s exited with status %d",tool,WIFEXITED(status)?WEXITSTATUS(status):-1);
+    return result_make(RESULT_IO,detail);
+}
+Result platform_editor_run(char **configured,size_t count,const char *path) {
+    char *file=NULL;Result r=target(path,&file);if(r.code!=RESULT_OK) return r;
+    char *tool=program(configured[0]);if(!tool) {free(file);return result_make(RESULT_NOT_FOUND,"Editor program unavailable (VISUAL/EDITOR/vi)");}
+    char **argv=calloc(count+2,sizeof *argv);if(!argv) {free(file);free(tool);return result_make(RESULT_NO_MEMORY,"Out of memory");}
+    for(size_t i=0;i<count;i++) argv[i]=configured[i];
+    argv[count]=file;
+    struct sigaction ignored={0},old_int,old_quit;ignored.sa_handler=SIG_IGN;sigemptyset(&ignored.sa_mask);
+    if(sigaction(SIGINT,&ignored,&old_int)<0) {r=external_error("Cannot suspend editor signals");goto done;}
+    if(sigaction(SIGQUIT,&ignored,&old_quit)<0) {r=external_error("Cannot suspend editor signals");sigaction(SIGINT,&old_int,NULL);goto done;}
+    pid_t pid=0;r=spawn(tool,argv,true,&pid);
+    if(r.code==RESULT_OK) {int status=0;pid_t waited;do {waited=waitpid(pid,&status,0);} while(waited<0&&errno==EINTR);r=waited<0?external_error("Cannot wait for editor"):exit_result(status,"Editor");}
+    sigaction(SIGINT,&old_int,NULL);sigaction(SIGQUIT,&old_quit,NULL);
+done:
+    free(argv);free(tool);free(file);return r;
+}
+bool platform_external_cleanup_pending(void) {
+    if(detached_launcher) {
+        pid_t n=waitpid(detached_launcher,NULL,WNOHANG);
+        if(n>0 || (n<0&&errno==ECHILD)) detached_launcher=0;
+    }
+    return detached_launcher!=0;
+}
+Result platform_external_open(const char *path,PlatformExternal **out) {
+    *out=NULL;
+    if(active_launcher || platform_external_cleanup_pending()) return result_make(RESULT_EXISTS,"Previous external launcher still running");
+    char *file=NULL;Result r=target(path,&file);if(r.code!=RESULT_OK) return r;
+    char *tool=program("xdg-open");if(!tool) {free(file);return result_make(RESULT_NOT_FOUND,"Missing xdg-open; install xdg-utils");}
+    PlatformExternal *job=calloc(1,sizeof *job);if(!job) {free(file);free(tool);return result_make(RESULT_NO_MEMORY,"Out of memory");}
+    char *argv[]={tool,file,NULL};r=spawn(tool,argv,false,&job->pid);free(tool);free(file);
+    if(r.code==RESULT_OK) {*out=job;active_launcher=job->pid;}else free(job);
+    return r;
+}
+Result platform_external_poll(PlatformExternal *job,bool *done) {
+    *done=false;int status=0;pid_t n=waitpid(job->pid,&status,WNOHANG);
+    if(!n) return result_make(RESULT_OK,NULL);
+    if(n<0&&errno==EINTR) return result_make(RESULT_OK,NULL);
+    *done=true;active_launcher=0;job->pid=0;
+    return n<0?external_error("Cannot collect external launcher"):exit_result(status,"xdg-open");
+}
+void platform_external_close(PlatformExternal *job) {
+    if(!job) return;
+    if(job->pid) {
+        /* Never apply converter SIGKILL/time/resource limits to user tools.
+           Collect later while this process lives; on exit the OS reparents it. */
+        pid_t n;do {n=waitpid(job->pid,NULL,WNOHANG);} while(n<0&&errno==EINTR);
+        if(n==0) detached_launcher=job->pid;
+        active_launcher=0;
+    }
+    free(job);
+}
+bool platform_terminal_size(unsigned *rows,unsigned *columns) {
+    struct winsize size;
+    if(ioctl(STDOUT_FILENO,TIOCGWINSZ,&size)<0||!size.ws_row||!size.ws_col) return false;
+    *rows=size.ws_row;*columns=size.ws_col;return true;
+}

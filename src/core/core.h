@@ -126,6 +126,17 @@ Result batch_execute(BatchJob *job, BatchCallback callback, void *context);
 void batch_free(BatchJob *job);
 void app_marks_apply_result(AppState *app, const BatchJob *job);
 
+typedef struct { char **argv; size_t len; } EditorCommand;
+Result editor_command_parse(const char *text,EditorCommand *out);
+void editor_command_free(EditorCommand *command);
+Result core_editor_run(const char *path);
+typedef struct ExternalJob ExternalJob;
+Result core_external_open(const char *path,ExternalJob **out);
+Result core_external_poll(ExternalJob *job,bool *done);
+void core_external_close(ExternalJob *job);
+bool core_external_cleanup_pending(void);
+bool core_terminal_size(unsigned *rows,unsigned *columns);
+
 typedef struct { size_t max_visited, max_results; unsigned max_depth; } SearchLimits;
 typedef struct {
     FileList matches;

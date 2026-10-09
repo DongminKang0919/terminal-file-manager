@@ -10,7 +10,7 @@ parser.add_argument('--disable-leaks',action='store_true',help='Explicitly omit 
 args=parser.parse_args()
 root=Path(__file__).resolve().parents[1];os.chdir(root)
 out=Path(args.output_directory).resolve();out.mkdir(parents=True,exist_ok=True)
-sources=['src/model.c']+sorted(str(p) for p in Path('src/core').glob('*.c'))+['src/platform/posix.c','src/platform/posix_media.c']+sorted(str(p) for p in Path('src/ui').glob('*.c') if p.name!='main.c')
+sources=['src/model.c']+sorted(str(p) for p in Path('src/core').glob('*.c'))+sorted(str(p) for p in Path('src/platform').glob('posix*.c'))+sorted(str(p) for p in Path('src/ui').glob('*.c') if p.name!='main.c')
 flags=[os.environ.get('CC','cc'),'-D_XOPEN_SOURCE=700','-std=c11','-g','-O1','-Wall','-Wextra','-Wpedantic',
        '-fsanitize=address,undefined','-fno-omit-frame-pointer']
 wraps='platform_reader_open,platform_reader_line,platform_reader_close,platform_reader_changed,readdir,platform_directory_empty,platform_directory_open,platform_info,app_refresh'

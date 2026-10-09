@@ -16,14 +16,17 @@ int main(int argc, char **argv) {
     size_t last_index = SIZE_MAX;
 
     /* app_init already loaded and sorted this directory. */
-    int key;
+    int key; bool redraw=true;
     for (;;) {
         if (core_media_shutdown_requested()) break;
-        draw(ui);
-        wtimeout(stdscr, (media_pending(ui) || core_media_cleanup_pending()) ? 40 : -1);
+        bool external_changed=external_prepare(ui);
+        if(redraw||external_changed) draw(ui);
+        bool media_wait=media_pending(ui)||core_media_cleanup_pending();
+        wtimeout(stdscr,(media_wait || ui->external_job || core_external_cleanup_pending())?40:-1);
         key = input_key(stdscr);
         wtimeout(stdscr, -1); /* Forms and inline find retain their blocking input policy. */
-        if (key == ERR) continue;
+        if (key == ERR) {redraw=media_wait;continue;}
+        redraw=true;
         int h, w; getmaxyx(stdscr, h, w); UiScreenLayout screen=ui_screen_layout(ui,w,h); UiLayout layout=screen.list; int rows = layout.list_rows; if (rows < 1) rows = 1;
         if (key == KEY_MOUSE) {
             MEVENT event;
@@ -87,6 +90,8 @@ int main(int argc, char **argv) {
         if (key == 'q' || key == KEY_F(10)) break;
         if (panel_key(ui, key, h)) continue;
         switch (key) {
+            case UI_EDIT: external_entry(ui,true); break;
+            case UI_EXTERNAL: external_entry(ui,false); break;
             case 'f': case UI_FILTER: show_filter(ui); break;
             case 'b': case UI_FAVORITES: show_favorites(ui); break;
             case UI_MODE_PREVIEW: ui_set_mode(ui,UI_LIST_PREVIEW); break;
