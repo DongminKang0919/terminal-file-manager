@@ -46,6 +46,8 @@ Result platform_reader_peek(PlatformReader *reader, unsigned char *buffer, size_
 Result platform_reader_line(PlatformReader *reader, char *buffer, size_t size, bool *end);
 void platform_reader_close(PlatformReader *reader);
 uint64_t platform_monotonic_ms(void);
+Result platform_editor_inspect(const char *path,unsigned char *sample,size_t capacity,size_t *length,bool *read_only);
+Result platform_vim_available(void);
 Result platform_editor_setting(char **out);
 Result platform_editor_run(char **argv,size_t count,const char *path);
 typedef struct PlatformExternal PlatformExternal;

@@ -130,6 +130,8 @@ void app_marks_apply_result(AppState *app, const BatchJob *job);
 typedef struct { char **argv; size_t len; } EditorCommand;
 Result editor_command_parse(const char *text,EditorCommand *out);
 void editor_command_free(EditorCommand *command);
+Result core_vim_check(const char *path,bool *read_only);
+Result core_vim_run(const char *path);
 Result core_editor_run(const char *path);
 typedef struct ExternalJob ExternalJob;
 Result core_external_open(const char *path,ExternalJob **out);

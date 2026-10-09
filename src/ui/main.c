@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
         if (panel_key(ui, key, h)) continue;
         switch (key) {
             case 't': case UI_TRASH: trash_entry(ui); break;
-            case UI_EDIT: external_entry(ui,true); break;
+            case 'e': case UI_EDIT: external_entry(ui,true); break;
             case UI_EXTERNAL: external_entry(ui,false); break;
             case 'f': case UI_FILTER: show_filter(ui); break;
             case 'b': case UI_FAVORITES: show_favorites(ui); break;

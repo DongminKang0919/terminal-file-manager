@@ -17,6 +17,10 @@ void external_entry(UiContext *ui,bool edit) {
     if(!file->valid||file->kind!=FILE_REGULAR) {message(ui,"External tools require a cursor regular file");ui->status_priority=true;return;}
     char *path=text_copy(file->path),*name=text_copy(file->name);
     if(!path||!name) {free(path);free(name);message(ui,"Out of memory; not launched");ui->status_priority=true;return;}
+    if(edit) {
+        bool read_only=false;Result checked=core_vim_check(path,&read_only);
+        if(checked.code!=RESULT_OK) {message(ui,checked.detail);ui->status_priority=true;ui->status_kind=NOTICE_ERROR;free(path);free(name);return;}
+    }
     Result outcome=result_make(RESULT_OK,NULL);
     if(!edit) {
         if(ui->external_job) {outcome=result_make(RESULT_EXISTS,"External launcher still running");message(ui,outcome.detail);}
@@ -25,7 +29,7 @@ void external_entry(UiContext *ui,bool edit) {
         UiFocus focus=ui->focus;
         graphics_probe_cancel(ui);graphics_clear(ui);preview_reset(ui);core_media_shutdown();
         if(stdscr) {def_prog_mode();endwin();fflush(stdout);}
-        Result r=core_editor_run(path);outcome=r;
+        Result r=core_vim_run(path);outcome=r;
         if(stdscr) {
             reset_prog_mode();unsigned rows=0,cols=0;if(core_terminal_size(&rows,&cols)) resizeterm((int)rows,(int)cols);
             cbreak();noecho();keypad(stdscr,TRUE);curs_set(0);input_init();terminal_input_reset();flushinp();

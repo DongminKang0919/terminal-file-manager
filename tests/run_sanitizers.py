@@ -18,6 +18,7 @@ ui=[*core,*sorted(x for x in (root/'src/ui').glob('*.c') if x.name!='main.c')]
 flags=['-D_XOPEN_SOURCE=700','-O1','-g','-Wall','-Wextra','-Wpedantic','-std=c11',
        '-fno-omit-frame-pointer','-fsanitize=address,undefined','-fno-pie','-no-pie']
 targets={
+ 'vim_test':(['platform_reader_peek'],core),
  'favorites_test':(['platform_favorites_write'],core),
  'filter_test':([],core),
  'batch_conflict_test':(['platform_move','platform_copy_progress'],core),
@@ -64,6 +65,9 @@ for name in targets:
  if name=='operations_test':
   cmd=['python3',str(root/'tests/run_operations.py')]
   case_env={**env,'TFILE_OPERATIONS_TEST':binary}
+ elif name=='vim_test':
+  cmd=['python3',str(root/'tests/vim_tools.py')]
+  case_env={**env,'TFILE_VIM_TEST':binary}
  elif name=='external_test':
   cmd=['python3',str(root/'tests/external_tools.py')]
   case_env={**env,'TFILE_EXTERNAL_TEST':binary}

@@ -46,6 +46,25 @@ static Result target(const char *path,char **out) {
     if(!S_ISREG(st.st_mode)) return result_make(RESULT_UNSUPPORTED,"External tools accept cursor regular files only; no links/directories/special files");
     return platform_resolve(NULL,path,out);
 }
+Result platform_vim_available(void) {
+    char *vim=program("vim");
+    if(!vim) return result_make(RESULT_NOT_FOUND,"Vim unavailable; install vim with your package manager (Ubuntu/WSL: sudo apt install vim). No fallback.");
+    free(vim);return result_make(RESULT_OK,NULL);
+}
+Result platform_editor_inspect(const char *path,unsigned char *sample,size_t capacity,size_t *length,bool *read_only) {
+    *length=0;*read_only=false;
+    char *resolved=NULL;Result r=target(path,&resolved);
+    if(r.code!=RESULT_OK) return r;
+    PlatformReader *reader=NULL;r=platform_reader_open(path,&reader);
+    if(r.code==RESULT_OK) r=platform_reader_peek(reader,sample,capacity,length);
+    bool changed=false;
+    if(r.code==RESULT_OK) r=platform_reader_changed(reader,path,&changed);
+    struct stat st;
+    if(r.code==RESULT_OK && (changed || lstat(resolved,&st)<0 || !S_ISREG(st.st_mode)))
+        r=result_make(RESULT_IO,"File changed while checking editor target; not opened");
+    if(r.code==RESULT_OK) *read_only=!(st.st_mode&0222) || faccessat(AT_FDCWD,resolved,W_OK,AT_EACCESS)<0;
+    platform_reader_close(reader);free(resolved);return r;
+}
 static void child_error(int fd,int error) {
     size_t at=0;
     while(at<sizeof error) {ssize_t n=write(fd,(char *)&error+at,sizeof error-at);if(n<0&&errno==EINTR)continue;if(n<=0)break;at+=(size_t)n;}
@@ -107,7 +126,7 @@ Result platform_editor_run(char **configured,size_t count,const char *path) {
     if(sigaction(SIGINT,&ignored,&old_int)<0) {r=external_error("Cannot suspend editor signals");goto done;}
     if(sigaction(SIGQUIT,&ignored,&old_quit)<0) {r=external_error("Cannot suspend editor signals");sigaction(SIGINT,&old_int,NULL);goto done;}
     pid_t pid=0;r=spawn(tool,argv,true,&pid);
-    if(r.code==RESULT_OK) {int status=0;pid_t waited;do {waited=waitpid(pid,&status,0);} while(waited<0&&errno==EINTR);r=waited<0?external_error("Cannot wait for editor"):exit_result(status,"Editor");}
+    if(r.code==RESULT_OK) {int status=0;pid_t waited;do {waited=waitpid(pid,&status,0);} while(waited<0&&errno==EINTR);r=waited<0?external_error("Cannot wait for editor"):exit_result(status,!strcmp(configured[0],"vim")?"Vim":"Editor");}
     sigaction(SIGINT,&old_int,NULL);sigaction(SIGQUIT,&old_quit,NULL);
 done:
     free(argv);free(tool);free(file);return r;

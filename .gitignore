@@ -79,3 +79,5 @@ __pycache__/
 /tests/external_test
 
 /tests/trash_test
+
+/tests/vim_test

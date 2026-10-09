@@ -266,8 +266,8 @@ static void draw_screen(UiContext *ui, bool prepare) {
     if (!ui->modal_depth) {
         bool reading = ui->focus == UI_FOCUS_PREVIEW;
         bool has_item=ui_panel(ui)->selected<ui_panel(ui)->app.files.len;
-        const char *keys[] = {reading ? "Esc" : has_item ? "Enter" : "F2", reading ? "Up/Down" : "Space", reading ? "PgUp/PgDn" : "Tab", reading ? "Home" : "Backspace", reading ? "Tab" : "F1", "F9"};
-        const char *labels[] = {reading ? ": Files" : has_item ? ": Open" : ": New", reading ? ": Row" : ": Mark", reading ? ": Page" : ui->mode==UI_LIST_LIST ? ": Other" : ": Preview", reading ? ": Top" : ": Parent", reading ? ": Files" : ": Help", ": Menu"};
+        const char *keys[] = {reading ? "Esc" : has_item ? "Enter" : "F2", reading ? "Up/Down" : "Space", reading ? "PgUp/PgDn" : "Tab", reading ? "Home" : "e", reading ? "Tab" : "F1", "F9"};
+        const char *labels[] = {reading ? ": Files" : has_item ? ": Open" : ": New", reading ? ": Row" : ": Mark", reading ? ": Page" : ui->mode==UI_LIST_LIST ? ": Other" : ": Preview", reading ? ": Top" : ": Vim", reading ? ": Files" : ": Help", ": Menu"};
         int x = 1;
         for (size_t i = 0; i < (reading ? 5u : 6u); i++) {
             if(!reading && i==1 && !has_item) continue;
@@ -280,7 +280,7 @@ static void draw_screen(UiContext *ui, bool prepare) {
         }
     }
     attrset(A_NORMAL);
-    if(ui_panel(ui)->app.filter_kind!=FILTER_NONE) { attrset(COLOR_PAIR(UI_MUTED)); draw_text(h-1,1,w-2,"Filter active | f: change / clear | apply clears marks"); }
+    if(ui_panel(ui)->app.filter_kind!=FILTER_NONE) { attrset(COLOR_PAIR(UI_MUTED)); draw_text(h-1,1,w-2,ui->focus==UI_FOCUS_FILES ? "Space: Mark | e: Vim | f: Filter/Clear" : "Filter active | f: change / clear"); }
     if (ui->modal_depth) {
         /* Change cell attributes only; keep wide glyphs and ACS border characters. */
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {

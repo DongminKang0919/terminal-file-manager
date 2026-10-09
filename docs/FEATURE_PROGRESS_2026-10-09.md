@@ -37,7 +37,7 @@ f/F9 Filter → Name contains 또는 full-name glob, Clear. 부분 일치는 기
 
 추가 통합 검사에서 workflow의 실제 middle-collision 시나리오도 새 선택 창에서 Stop을 명시적으로 선택하지 않아 실패했다. 새 창의 존재를 확인하고 Stop을 누르게 보완했으며 기존 성공/실패/미실행/partial/마킹/원본 및 목적지 내용 검증은 유지했다. 50x9/80x24/160x32 workflow와 recovery 관련 검사는 PASS(`/tmp/tfile-stage3-workflow.log`, `/tmp/tfile-stage3-recovery.log`). 재실행은 1–4 통합으로 묶어 수행한다.
 
-## 4단계 정책/검증
+## 4단계 최초 정책/검증 (후속 Vim 요구로 변경)
 
 F9 append-only Edit in editor / Open externally(커서 일반 파일; marks 무시). Enter unchanged. VISUAL→EDITOR→vi: 선택한 비어 있지 않은 설정이 불량/누락 도구이면 명확히 실패하며 몰래 하위 설정으로 바꾸지 않는다. 최대 4095바이트/32 args, whitespace 분리, single/double quotes, single quote 밖 backslash escape, quotes 안 셸처럼 보이는 문자는 literal. 따옴표 밖 `| & ; < > $ backtick ( )`, raw newline/CR, 끝 escape/미완료 quote를 거부한다. 변수/tilde/glob/치환/파이프 확장 없음. 비어 있는 인수는 허용하지만 argv[0]는 비어 있으면 거부. PATH는 절대 항목만 탐색; 명시적 editor 경로는 지원. 마지막 인자는 별도 absolute file argv; `execv`이며 ENOEXEC shell fallback이 없다. 외부 도구는 파일 경로를 다시 여므로 동시 외부 leaf 교체까지 inode snapshot으로 고정하지 않는다.
 
@@ -124,3 +124,17 @@ LSan은 이번 세션에서 실행/재시도하지 않았다. 위 ASan/UBSan 결
 
 
 로컬 커밋: `eea1a18` favorites, `3c6b290` filter, `d83cb11` collision skip, `a0a425b`/`5b53d1f` 기존 collision 입력 회귀 보강, `45cf11d` external tools, `3165cfe` Trash, `a156e10` cross-FS 보류 설계. 최종 검증과 README의 삭제 정책 정리는 별도 `Record final feature validation and manual checks` 문서 커밋으로 남긴다. 원격 푸시/릴리스/전역 설정 변경 없음. 전체 완료가 아니라 **1–5 완료 / 6 보류**다.
+
+
+## 후속 우선순위 조정 — Vim → 마킹 발견 가능성
+
+추가 요구 시 기준 `d13e957`, 작업 트리 clean. 기존 즐겨찾기/필터/Trash/GUI 경로는 재작성하지 않는다. 새 우선순위 1 Vim을 먼저 검증·문서·커밋하고, 2 기존 마킹/일괄 작업 안내를 보완한다. GUI 추가 작업은 하지 않는다. 6단계 cross-FS 보류는 유지한다.
+
+| 후속 작업 | 상태 | 커밋 | 검증 |
+| --- | --- | --- | --- |
+| Vim 명시 편집 | 완료 | `Edit cursor text files explicitly with Vim` 커밋 | native fixture + 실제 설치 Vim 9.1 PTY + 기존 external 회귀 PASS |
+| 마킹/일괄 작업 발견 가능성 | 미착수 | — | 기존 `>`/`*`, panel marks, exactly-one-mark 경로를 재사용하고 안내/회귀 보강 |
+
+Vim: `e`/F9 Edit with Vim, 커서 일반 텍스트 하나, marks/VISUAL/EDITOR 무시. 현재 파일을 실행 직전 다시 읽고 version 변경을 검사한다. 첫 64KiB(+UTF-8 경계 최대3바이트) UTF-8/ASCII, NUL/일부 control/media signature 거부. empty/extensionless/config/source/BOM 지원. SVG/XML처럼 텍스트 형식은 텍스트로 취급. 샘플 밖 바이너리와 UTF-8으로 우연히 해석 가능한 바이너리를 완전히 판별하지 못하며 다른 encoding 텍스트는 거부될 수 있다. 링크는 항상 거부, 대상 확인 후 편집 경로 없음. readable but not writable/mode write bits 없는 파일은 `-R`; no privilege escalation. `-R`은 :w!로 사용자가 바꿀 수 있는 advisory Vim 옵션이며 filesystem 권한은 별도다. argv `vim [-R] -- absolute-path`, 실행 missing/ENOEXEC/nonzero/signal은 오류, 다른 도구 fallback 없음. 기존 suspend/endwin/media cleanup/waitpid/signal restore/geometry/input/mouse/list/preview 복구를 재사용한다. 성공 종료는 save 완료가 아니다. 최종 경로를 Vim이 다시 열기 때문에 샘플 검사 이후 leaf/내용 교체 레이스는 남는다.
+
+실제 실행 `/tmp/tfile-vim-related.log`: native UTF-8/media/invalid encoding/64KiB 경계·샘플 한계·읽기 전용·변경 감지·link/FIFO/dir 거부·환경변수 무시·argv/NO shell·missing/exit/signal/parent signal 복구 PASS. **실제 설치된 Vim 9.1**을 controlled .vimrc/임시 파일의 PTY에서 실행해 edit/:wq/:q!/SIGKILL/readonly -R/resize/커서-vs-mark/미리보기 갱신/직후 메뉴/termios와 mouse enable/실제 마우스 입력 복구 PASS. 사람이 실제 터미널을 보는 육안 검사는 하지 않았다. 기존 external native/PTY도 PASS. 최초 PTY 실패는 ncurses 전용 판독기가 Vim keyboard/device/style 시퀀스를 해석하지 못한 것이었고 Vim 전용 subclass만 해당 비그리기 시퀀스를 처리했다. 모든 실제 파일/argv/신호/복귀 assertions는 유지했다. PDF 거부 fixture는 image=Off로 별도 미디어 질의와 분리했다. architecture/diff PASS. 다음 행동: Vim 로컬 커밋 후 마킹 안내/정확히 한 마킹의 copy/move/delete/Trash 회귀 보강.
