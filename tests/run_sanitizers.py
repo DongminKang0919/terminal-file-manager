@@ -24,7 +24,7 @@ targets={
  'filter_test':([],core),
  'batch_conflict_test':(['platform_move','platform_copy_progress'],core),
  'external_test':([],core),
- 'trash_test':(['fsync','write','unlinkat','fstatfs'],core),
+ 'trash_test':(['fsync','write','unlinkat','fstatfs','fchmod','mkdirat'],core),
  'panels_ui_test':(['app_init','app_refresh','platform_directory_open','platform_reader_line','qsort','newwin','delwin','input_key','input_wide','confirm','malloc','calloc','realloc','free'],ui),
  'batch_test':(['malloc','calloc','realloc','platform_move'],core),
  'batch_ui_test':(['app_refresh','platform_directory_open','platform_reader_line','qsort','core_monotonic_ms','wrefresh','input_key','input_wide','batch_prepare','newwin','delwin','malloc','calloc','realloc'],ui),

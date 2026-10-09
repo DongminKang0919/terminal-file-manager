@@ -644,9 +644,16 @@ static bool trash_private(Operation *op,int fd,const char *path) {
     return (S_ISDIR(st.st_mode)&&st.st_uid==geteuid()&&(st.st_mode&07777)==0700) ||
         op_error(op,path,RESULT_ACCESS,"Trash directories must be user-owned mode 0700, without links");
 }
+/* No threads: bound the process-wide mask change to this one mkdir syscall.
+   Existing directories are never chmod'ed. Restore even on EEXIST/error. */
+static int trash_mkdir(int parent,const char *name) {
+    mode_t previous=umask(0);
+    int result=mkdirat(parent,name,0700),saved=errno;
+    umask(previous);errno=saved;return result;
+}
 static int trash_child(Operation *op,int parent,const char *name,const struct stat *source,const char *path) {
     if(S_ISDIR(source->st_mode)&&!outside_source(op,source,parent,path)) return -1;
-    if(mkdirat(parent,name,0700)<0&&errno!=EEXIST) {op_errno(op,path);return -1;}
+    if(trash_mkdir(parent,name)<0&&errno!=EEXIST) {op_errno(op,path);return -1;}
     int fd=openat(parent,name,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
     if(fd<0) {op_errno(op,path);return -1;}
     if(!trash_private(op,fd,path) || (S_ISDIR(source->st_mode)&&!outside_source(op,source,fd,path))) {close(fd);return -1;}
@@ -659,7 +666,7 @@ static int trash_home_root(Operation *op,const char *path,const struct stat *sou
     for(char *part=strtok_r(copy,"/",&save);part;part=strtok_r(NULL,"/",&save)) {
         if(!strcmp(part,"..")) {op_error(op,path,RESULT_INVALID_NAME,"Parent components in Trash location");close(fd);fd=-1;break;}
         if(S_ISDIR(source->st_mode)&&!outside_source(op,source,fd,path)) {close(fd);fd=-1;break;}
-        if(mkdirat(fd,part,0700)<0&&errno!=EEXIST) {op_errno(op,path);close(fd);fd=-1;break;}
+        if(trash_mkdir(fd,part)<0&&errno!=EEXIST) {op_errno(op,path);close(fd);fd=-1;break;}
         int next=openat(fd,part,O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
         if(next<0) {op_errno(op,path);close(fd);fd=-1;break;}
         close(fd);fd=next;
@@ -796,6 +803,7 @@ Result platform_trash_progress(const char *src,char **destination,OperationCallb
     }
     if(info_fd<0) {op_error(&op,src,RESULT_EXISTS,"Cannot reserve a unique Trash entry");goto done;}
     if(fstat(info_fd,&record)<0) {op_errno(&op,src);goto done;}
+    if(fchmod(info_fd,0600)<0) {op_errno(&op,src);goto done;}
     TRASH_HOOK("trash-write",info_fd,info_name);
     size_t at=0,n=strlen(metadata);
     while(at<n) {ssize_t written=write(info_fd,metadata+at,n-at);if(written<0&&errno==EINTR)continue;if(written<=0){if(!written)errno=EIO;op_errno(&op,src);goto done;}at+=(size_t)written;}

@@ -228,7 +228,7 @@ check-isolated: check-external
 .PHONY: check-external
 
 tests/trash_test: tests/trash_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -DTFILE_TRASH_TEST_HOOKS -o $@ tests/trash_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) -Wl,--wrap=fsync,--wrap=write,--wrap=unlinkat,--wrap=fstatfs
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DTFILE_TRASH_TEST_HOOKS -o $@ tests/trash_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) -Wl,--wrap=fsync,--wrap=write,--wrap=unlinkat,--wrap=fstatfs,--wrap=fchmod,--wrap=mkdirat
 check-trash: tests/trash_test tfile
 	./tests/trash_test
 	python3 tests/trash_pty.py

@@ -15,9 +15,13 @@
 #include <time.h>
 static char *virtual_top,*swap_parent,*swap_old,*decoy;
 static int mode, sync_failure=-1;
-static bool fail_write,fail_remove,unknown_fs;
+static bool fail_write,fail_remove,unknown_fs,fail_mode,fail_mkdir;
 enum { NORMAL, WRITE_FAIL, READY_CANCEL, LATE_COLLISION, POST_SYNC, PARENT_SWAP, LEAF_SWAP, CRASH, ORPHAN, PRE_SYNC };
 int __real_fsync(int);ssize_t __real_write(int,const void *,size_t);int __real_unlinkat(int,const char *,int);int __real_fstatfs(int,struct statfs *);
+int __real_mkdirat(int,const char *,mode_t);
+int __wrap_mkdirat(int fd,const char *name,mode_t permissions) {if(fail_mkdir){errno=EACCES;return -1;}return __real_mkdirat(fd,name,permissions);}
+int __real_fchmod(int,mode_t);
+int __wrap_fchmod(int fd,mode_t permissions) {if(fail_mode){errno=EPERM;return -1;}return __real_fchmod(fd,permissions);}
 int __wrap_fsync(int fd) {if(fd==sync_failure){errno=EIO;return -1;}return __real_fsync(fd);}
 ssize_t __wrap_write(int fd,const void *p,size_t n) {if(fail_write){errno=ENOSPC;return -1;}return __real_write(fd,p,n);}
 int __wrap_unlinkat(int fd,const char *n,int f) {if(fail_remove){errno=EACCES;return -1;}return __real_unlinkat(fd,n,f);}
@@ -40,17 +44,41 @@ static char *read_file(const char *p) {FILE *f=fopen(p,"r");assert(f);char b[163
 static char *info_for(const char *target) {char *leaf=core_path_name(target),*files=core_path_parent(target),*trash=core_path_parent(files),*info=core_path_join(trash,"info");char *name=malloc(strlen(leaf)+11);assert(name);sprintf(name,"%s.trashinfo",leaf);char *out=core_path_join(info,name);free(leaf);free(files);free(trash);free(info);free(name);return out;}
 static bool callback(const OperationProgress *p,void *ctx) {(void)p;int *calls=ctx;(*calls)++;return mode!=READY_CANCEL||*calls<2;}
 static Result trash(const char *p,char **to) {int calls=0;return core_trash_progress(p,to,callback,&calls);}
-static void reset(void) {mode=NORMAL;fail_write=fail_remove=unknown_fs=false;sync_failure=-1;}
+static void reset(void) {mode=NORMAL;fail_write=fail_remove=unknown_fs=fail_mode=fail_mkdir=false;sync_failure=-1;}
 static int fds(void) {return count("/proc/self/fd");}
 int main(void) {
     int initial=fds();char root[]="/tmp/tfile-trash-XXXXXX";assert(mkdtemp(root));
     char *data=core_path_join(root,"data"),*src=core_path_join(root,"source"),*home=core_path_join(data,"Trash"),*infos=core_path_join(home,"info"),*files=core_path_join(home,"files");assert(!mkdir(src,0700));assert(!setenv("XDG_DATA_HOME",data,1));
+    assert(geteuid()!=0); /* Permission assertions must not run as root. */
+    const mode_t masks[]={0022,0077,0200,0400};
+    for(size_t m=0;m<4;m++) for(int existing=0;existing<2;existing++) {
+        char label[40];snprintf(label,sizeof label,"mask-%o-%d",masks[m],existing);
+        char *area=core_path_join(root,label),*payload=core_path_join(src,label),*dest=NULL;
+        assert(!setenv("XDG_DATA_HOME",area,1));
+        if(existing) {put(payload);ok(trash(payload,&dest));free(dest);dest=NULL;}
+        put(payload);mode_t previous=umask(masks[m]);Result result=trash(payload,&dest);mode_t observed=umask(previous);assert(observed==masks[m]);
+        ok(result);assert(dest&&access(payload,F_OK)<0);
+        char *record_path=info_for(dest),*body=read_file(record_path);struct stat permissions;
+        assert(!stat(record_path,&permissions)&&(permissions.st_mode&0777)==0600);
+        assert(strstr(body,"[Trash Info]\nPath=")&&strstr(body,"DeletionDate="));
+        char *base=core_path_join(area,"Trash");
+        const char *children[]={"", "files", "info"};
+        for(size_t c=0;c<3;c++) {char *dir=*children[c]?core_path_join(base,children[c]):text_copy(base);assert(!stat(dir,&permissions)&&(permissions.st_mode&0777)==0700);free(dir);}
+        free(base);free(body);free(record_path);free(dest);free(payload);free(area);
+    }
+    char *retry_area=core_path_join(root,"mkdir-retry"),*retry_file=core_path_join(src,"mkdir-retry"),*retry_to=NULL;
+    put(retry_file);assert(!setenv("XDG_DATA_HOME",retry_area,1));fail_mkdir=true;
+    mode_t old_mask=umask(0200);Result refused=trash(retry_file,&retry_to);assert(umask(old_mask)==0200);
+    assert(refused.code!=RESULT_OK&&!refused.partial&&!retry_to&&!access(retry_file,F_OK));reset();
+    ok(trash(retry_file,&retry_to));free(retry_area);free(retry_file);free(retry_to);
+    assert(!setenv("XDG_DATA_HOME",data,1));
     char *p=core_path_join(src,"-한글 %\n.txt"),*to=NULL;put(p);struct stat before,after;assert(!lstat(p,&before));ok(trash(p,&to));assert(access(p,F_OK)<0&&to);assert(!lstat(to,&after)&&before.st_ino==after.st_ino&&(after.st_mode&0777)==0640);char *info=info_for(to),*content=read_file(info);assert(strstr(content,"[Trash Info]\nPath=/")&&strstr(content,"%ED%95%9C%EA%B8%80%20%25%0A.txt\nDeletionDate="));struct tm date={0};char *stamp=strstr(content,"DeletionDate=")+13;assert(strptime(stamp,"%Y-%m-%dT%H:%M:%S",&date));free(content);free(info);free(to);to=NULL;
     put(p);ok(trash(p,&to));assert(count(files)==2&&count(infos)==2);free(to);to=NULL;
     char *tree=core_path_join(src,"tree"),*nested=core_path_join(tree,"nested");assert(!mkdir(tree,0700));put(nested);ok(trash(tree,&to));char *saved=core_path_join(to,"nested");assert(!access(saved,F_OK));free(saved);free(to);to=NULL;
     char *outside=core_path_join(root,"outside"),*link=core_path_join(src,"link");put(outside);assert(!symlink(outside,link));ok(trash(link,&to));assert(!lstat(to,&after)&&S_ISLNK(after.st_mode)&&!access(outside,F_OK));free(to);to=NULL;
     char *special=core_path_join(src,"fifo");assert(!mkfifo(special,0600));assert(trash(special,&to).code==RESULT_UNSUPPORTED&&!to&&!access(special,F_OK));
     char *q=core_path_join(src,"errors");put(q);int baseline=count(infos);
+    fail_mode=true;Result permission_failure=trash(q,&to);assert(permission_failure.code!=RESULT_OK&&!permission_failure.partial&&!to&&!access(q,F_OK)&&count(infos)==baseline);reset();ok(trash(q,&to));free(to);to=NULL;baseline++;put(q);
     mode=WRITE_FAIL;Result r=trash(q,&to);assert(r.code==RESULT_IO&&!r.partial&&!to&&!access(q,F_OK)&&count(infos)==baseline);reset();
     mode=PRE_SYNC;r=trash(q,&to);assert(r.code==RESULT_IO&&!r.partial&&!to&&!access(q,F_OK)&&count(infos)==baseline);reset();
     mode=READY_CANCEL;r=trash(q,&to);assert(r.code==RESULT_CANCELLED&&!r.partial&&!to&&count(infos)==baseline&&!access(q,F_OK));reset();
