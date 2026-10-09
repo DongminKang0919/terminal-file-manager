@@ -93,6 +93,17 @@ Auto 동작·회귀·실행 결과와 수동 확인 범위는 [자동 감지 검
 
 ## 기본 사용
 
+처음 파일 작업을 연습할 때는 실제 파일 대신 임시 디렉터리를 사용할 수 있습니다.
+
+```sh
+playground=$(mktemp -d /tmp/tfile-play.XXXXXX)
+mkdir "$playground/source" "$playground/destination"
+printf 'Hello tfile\n' > "$playground/source/example.txt"
+./tfile "$playground"
+```
+
+`source`에서 파일을 마킹하고 이중 패널의 반대편에 `destination`을 열어 복사·이동한 뒤, `!`에서 결과를 확인하세요. 이 예시는 종료 후에도 연습 파일을 남깁니다.
+
 1. 방향키 또는 클릭으로 커서를 이동합니다. 디렉터리에서 `Enter`를 누르면 들어가고, 파일에서 누르면 미리보기를 표시하고 스크롤 가능한 경우에만 초점을 옮깁니다.
 2. `Tab`으로 목록과 스크롤 가능한 미리보기 초점을 바꿉니다. 미리보기에서 방향키·페이지 키·휠로 읽고 `Esc`로 목록에 돌아옵니다.
 3. `Ctrl+F`로 현재 목록에서 이름을 빠르게 찾습니다. 하위 디렉터리까지 검색하려면 `F3`을 사용합니다.
