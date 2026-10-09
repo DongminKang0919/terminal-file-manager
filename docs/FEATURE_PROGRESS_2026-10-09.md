@@ -8,12 +8,12 @@
 | 2 목록 필터 | 완료 | `3c6b290` | filter native/PTY + batch/search/navigation/favorites 회귀 PASS |
 | 3 충돌 건너뛰기 | 완료 | `d83cb11` + `a0a425b` + `5b53d1f` | copy/move native late collision + PTY/기존 batch 진행 회귀 PASS |
 | 4 외부 도구 | 완료 | `45cf11d` | parser/process native + cooked terminal/resize restore PTY PASS |
-| 5 휴지통 | 완료 | `Move selected items to standards-based local Trash` 커밋 | native/PTY PASS; 실제 별도 mount/desktop 복원 미검증 |
-| 6 교차 FS 이동 | 미착수 | — | 삭제 조건/identity/복사 완전성 설계가 먼저; 안전하지 않으면 보류 |
+| 5 휴지통 | 완료 | `3165cfe` | native/PTY PASS; 실제 별도 mount/desktop 복원 미검증 |
+| 6 교차 FS 이동 | 보류 | 문서 커밋 예정 | [안전 조건과 필요한 결정](CROSS_FILESYSTEM_MOVE_DESIGN_2026-10-09.md); EXDEV 거부 유지 |
 
 완료는 코드·관련 회귀·문서·로컬 커밋까지 포함한다. 단계별 검사 및 통합/최종 전체 검사를 기록한다. PTY/정적 확인을 실제 터미널 육안 확인과 구분한다. 알려진 ptrace 제약의 LSan은 반복하지 않으며 ASan/UBSan 실제 범위와 최신 수동 명령을 별도로 남긴다.
 
-중단 시 다음 행동: 1–4 통합 전체 검사 결과를 확인하고 5단계 Trash 명세에 따른 안전 범위를 구현한다. 실제 상태는 위 표와 git log 및 작업 트리를 함께 확인한다.
+중단 시 다음 행동: 1–5 최종 전체 및 sanitizer 로그를 확인하고 결과/로컬 커밋을 기록한다. 6단계는 보류 설계의 원본 격리·동시 변경·복구 결정을 먼저 받아야 한다. 실제 상태는 위 표와 git log 및 작업 트리를 함께 확인한다.
 
 ## 1단계 정책/검증
 
@@ -62,3 +62,8 @@ Editor: graphics/probe/preview/converter를 정리하고 curses program mode 저
 5단계 직접 검사: native 실제 파일/디렉터리/링크 이동·원래 inode/mode·percent metadata/date·동일 원래 이름 재등록·권한/링크/unknown FS 거부·기록/metadata fsync/최종 fsync/cleanup 오류 주입·NOREPLACE 늦은 충돌·취소·metadata-first 프로세스 crash·원본 부모 경로 교체·최종 leaf 사전 교체 거부·FD baseline·commit 후 sync-error mark 제거. filesystem별 shared/private fallback은 전용 임시 top FD를 주입한 **모의 routing 검사**이며 실제 다른 device 통과가 아니다. PTY 50x9/100x24: 기본 Cancel/마킹 batch/cancel/실제 payload+info/실패 후 원본 보존/별도 영구 삭제/resize 취소/활성 right panel. PASS(`/tmp/tfile-stage5-related-final.log`). 최초 새 테스트의 time.h 누락과 마킹 입력/작은 화면 알림 확인 오류는 테스트 코드에서 수정했고, actual filesystem assertions와 상세 결과 이유 검사를 유지했다. architecture/diff PASS. 다음: 로컬 5단계 커밋 후 6단계 보류 설계 및 최종 전체/sanitizer 검사.
 
 1–4 통합 전체 검사 PASS: `/tmp/tfile-features-integration-1-4.log`. 앞선 두 실패를 위 3단계에 원인/수정 근거로 남겼다.
+
+
+## 6단계 보류
+
+[교차 파일시스템 이동 설계](CROSS_FILESYSTEM_MOVE_DESIGN_2026-10-09.md)에 원본 삭제 조건, 복사 검증, 메타데이터 범위, 복사/정리 취소, staging 복구 충돌, narrow regular-only 후보를 기록했다. 현재 copy+delete의 identity 확인은 최종 leaf 삭제와 원자 결합이 아니어서 복사하지 않은 대체 항목 삭제를 막는 보장이 부족하다. 원본 staging 격리와 재시작 recovery는 사용자 데이터 위치/복구 정책의 미해결 결정이므로 이 기능 구현을 멈춘다. 기존 EXDEV 거부와 원본 보존을 유지하며 실제 두 filesystem 통과를 주장하지 않는다. 다른 1–5 작업/검증은 독립적으로 완료한다.
