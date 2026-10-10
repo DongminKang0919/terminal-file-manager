@@ -21,7 +21,7 @@ isolated_check.py는 기존 HOME/config 및 TFILE_* 제거에 data/cache XDG 경
 
 ## 직접 검증
 
-기존 Ubuntu 24.04.5 LTS x86_64, uid 1000 비 root, GCC 13.3.0, make 4.3, ncurses-dev 6.4, Python 3.12.3. Clang은 PATH에서 찾지 못해 로컬 미검증이며 시스템 패키지를 변경하지 않았다. 실제 WSL·새 OS/컨테이너·다른 배포판은 실행하지 않았다. 알려진 ptrace 제약 때문에 LSan은 반복하지 않고 미완료로 남긴다.
+기존 Ubuntu 24.04.5 LTS x86_64, uid 1000 비 root, GCC 13.3.0, make 4.3, ncurses-dev 6.4, Python 3.12.3. Clang은 PATH에서 찾지 못해 로컬 미검증이며 시스템 패키지를 변경하지 않았다. 이번 자동 작업에서는 실제 WSL 터미널·새 OS/컨테이너·다른 배포판에서 실행하지 않았다. 개발자의 별도 WSL 실제 사용·수동 검사 결과는 [사용자 수동 결과](MEDIA_PREVIEW_VALIDATION.md#수정-후-사용자-wsl-터미널의-수동-sanitizer-결과-검토)로 구분하며, 그 과거 성공을 이번 버전 전체의 검증으로 확대하지 않는다. 알려진 ptrace 제약 때문에 LSan은 반복하지 않고 미완료로 남긴다.
 
 제품 src는 이번에 변경하지 않았다. 최신 문서/검사 변경에 대해 직접 실행한 결과는 다음과 같다. 전체 실행 중 추가한 인자 없는 시작 검사와 깨끗한 빌드 환경 축소는 최종 clean_source_check에서 별도 재검사했다.
 
@@ -103,4 +103,4 @@ printf 'temporary text\n' > "$practice_dir/text"
 ./tfile "$practice_dir"
 ```
 
-텍스트 미리보기·한글/긴 이름·50×9와 100×24·키보드/마우스, e로 실제 Vim 편집/복귀, b/f 및 Space/a/u 마킹을 확인한다. 별도 임시 파일로 F8 확인 취소와 t 휴지통 이동을 구분하고 데스크톱 도구에서 복원한다. Sixel 터미널과 선택 도구가 있다면 F7 Image display setup의 실제 표시/삭제, 리사이즈와 모달 복귀 후 잔상을 확인한다. 실제 WSL 설치·terminfo·선택 도구 설치부터의 검증은 아직 별도 필요하다.
+텍스트 미리보기·한글/긴 이름·50×9와 100×24·키보드/마우스, e로 실제 Vim 편집/복귀, b/f 및 Space/a/u 마킹을 확인한다. 별도 임시 파일로 F8 확인 취소와 t 휴지통 이동을 구분하고 데스크톱 도구에서 복원한다. Sixel 터미널과 선택 도구가 있다면 F7 Image display setup의 실제 표시/삭제, 리사이즈와 모달 복귀 후 잔상을 확인한다. 새 WSL 환경의 설치·terminfo·선택 도구 설치부터 최신 버전 전체를 검증하는 작업은 별도로 필요하다. 기존 WSL 사용·수동 검사 결과와는 구분한다.
