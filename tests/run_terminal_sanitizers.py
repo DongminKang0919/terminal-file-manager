@@ -27,7 +27,10 @@ with tempfile.TemporaryDirectory(prefix='tfile-terminal-san-home-') as home:
          'UBSAN_OPTIONS':'halt_on_error=1:print_stacktrace=1','TFILE_BINARY':str(out/'tfile')}
     for name,command in [('terminal',[str(out/'terminal_test')]),('input',[str(out/'terminal_input_test')]),
                          ('probe',[str(out/'graphics_probe_test')]),('pty',['python3','tests/terminal_pty.py']),
-                         ('auto_pty',['python3','tests/terminal_auto_pty.py'])]:
+                         ('auto_pty',['python3','tests/terminal_auto_pty.py']),
+                         ('vim_pty',['python3','tests/vim_pty.py']),
+                         ('editor_shutdown_pty',['python3','tests/editor_shutdown_pty.py']),
+                         ('mark_discovery_pty',['python3','tests/mark_discovery_pty.py'])]:
         with (out/(name+'.log')).open('w') as log:
             result=subprocess.run(command,env=env,stdout=log,stderr=subprocess.STDOUT)
         print(('PASS' if result.returncode==0 else 'FAIL')+f': {name}, {out/name}.log',flush=True)

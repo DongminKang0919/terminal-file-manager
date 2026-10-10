@@ -37,3 +37,7 @@ python3 tests/isolated_check.py env TFILE_TERMINAL_IDLE_TRACE=1 python3 tests/ru
 ```
 
 이 명령은 기본으로 LSan을 활성화하고 terminal/input/probe/pty/auto_pty 5개를 실행한다. 실패 시 해당 출력 디렉터리의 pty.log IDLE_MEASURE/RESTORE_MEASURE와 traceback을 그대로 보고한다. Python assertion 실패와 sanitizer 런타임/누수 진단을 분리한다.
+
+## 후속 배포 검사
+
+위 5개 PASS는 이 기록 당시의 범위다. 2026-10-10에는 같은 terminal sanitizer runner가 Vim 복귀·부모 종료·마킹 PTY를 추가해 총 8개를 실행하도록 확장됐다. 최신 직접 실행 결과와 WSL LSan 명령은 [배포 준비 기록](RELEASE_READINESS_2026-10-10.md)에 구분한다. 위 과거 PASS를 확장한 8개 또는 최신 LSan 통과로 간주하지 않는다.

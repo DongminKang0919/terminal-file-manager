@@ -1,7 +1,12 @@
 """Clean first-run environment, absent optional tools and rejected non-TTY launches.
 PTY output validates application behavior, not physical terminal graphics.
 """
+import fcntl
 import os
+import select
+import struct
+import termios
+import time
 from pathlib import Path
 import pty
 import subprocess
@@ -18,12 +23,13 @@ with tempfile.TemporaryDirectory(prefix='tfile-first-run-') as directory:
     base = Path(directory)
     root = base / 'files'
     root.mkdir()
-    (base / 'bin').mkdir()  # No ImageMagick, Poppler or shell helpers.
+    (base / 'bin').mkdir()  # No Vim, ImageMagick, Poppler or xdg-open.
     for name, data in [('00-text', b'text\n' * 80), ('empty', b''),
                        ('binary', b'\0binary'), ('picture.png', b'\x89PNG\r\n\x1a\ninvalid'),
                        ('page.pdf', b'%PDF-1.4\ninvalid')]:
         (root / name).write_bytes(data)
     clean = {'HOME': directory, 'XDG_CONFIG_HOME': str(base / 'config'),
+             'XDG_DATA_HOME': str(base / 'data'), 'XDG_CACHE_HOME': str(base / 'cache'),
              'PATH': str(base / 'bin'), 'TERM': 'xterm-256color', 'LC_ALL': 'C.UTF-8'}
     # Either redirected stream must be rejected before emitting terminal controls.
     master, slave = pty.openpty()
@@ -59,8 +65,28 @@ with tempfile.TemporaryDirectory(prefix='tfile-first-run-') as directory:
         t.send('\x06' + name + '\n')
     try:
         assert 'text' in body() and 'Settings (F7)' not in body(), body()
+        t.send('e')
+        assert 'Vim' in body() and 'install' in body().lower(), body()
+        t.send('\x1b')
+        t.send('\x1b[20~' + '\x1bOB' * 22 + '\n')
+        assert 'Missing xdg-open' in body() and 'install xdg-utils' in body(), body()
+        t.send('\x1b')
+        (root / 'folder').mkdir()
+        t.send('r')
+        find('folder')
+        t.send('\n')
+        assert str(root / 'folder') in body(), body()
+        t.send('\x7f')
+        find('00-text')
+        assert 'text' in body(), body()
         t.send('\x1bOQcreated\n')
         assert (root / 'created').is_file()
+        t.send('\x1b[15~\t\x1bOH' + '\x1b[3~' * 100 + 'copied\n\n')
+        assert (root / 'copied').is_file() and (root / 'created').is_file()
+        find('copied')
+        t.send('\x1b[17~\t\x1bOH' + '\x1b[3~' * 100 + 'moved\n\n')
+        assert (root / 'moved').is_file() and not (root / 'copied').exists()
+        find('created')
         # Mouse cancellation leaves the new file intact; explicit Delete removes it.
         t.send('\x1b[19~')
         for y in range(24):
@@ -93,11 +119,35 @@ with tempfile.TemporaryDirectory(prefix='tfile-first-run-') as directory:
         t.close()
         os.environ.clear()
         os.environ.update(saved)
+    # README's no-argument invocation starts in the process working directory.
+    master, slave = pty.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 24, 100, 0, 0))
+    process = subprocess.Popen([BINARY], cwd=root, env=clean,
+                               stdin=slave, stdout=slave, stderr=slave)
+    os.close(slave)
+    screen = FirstScreen(24, 100)
+    try:
+        deadline = time.monotonic() + 3
+        while str(root) not in screen.row(1) or 'Shown:' not in screen.row(22):
+            assert time.monotonic() < deadline, 'No-argument startup did not become ready'
+            if select.select([master], [], [], .02)[0]:
+                screen.feed(os.read(master, 65536))
+        os.write(master, b'q')
+        assert process.wait(timeout=3) == 0
+        assert not (base / 'config/tfile/settings.conf').exists()
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+        os.close(master)
     # The full-suite wrapper must remove inherited binary and graphics overrides.
     subprocess.run([sys.executable, 'tests/isolated_check.py', sys.executable, '-c',
                     'import os; assert not any(k.startswith("TFILE_") for k in os.environ); '
-                    'assert os.environ["HOME"] != "poison-home"'],
+                    'assert os.environ["HOME"] != "poison-home"; '
+                    'assert all(os.environ[k].startswith(os.environ["HOME"] + "/") '
+                    'for k in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME"))'],
                    env={**saved, 'HOME': 'poison-home', 'TFILE_BINARY': '/missing',
                         'TFILE_SIXEL': '1', 'TFILE_CELL_PIXELS': '1x1'}, check=True)
 print('PASS: clean HOME/XDG and no optional tools; create/delete/cancel, media reasons, '
+      'Vim/xdg-open missing guidance, navigation/copy/move, no-argument startup, '
       'no unsolicited preview focus; non-TTY/TERM failures; suite environment isolation')

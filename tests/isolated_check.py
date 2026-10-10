@@ -7,6 +7,8 @@ import tempfile
 with tempfile.TemporaryDirectory(prefix="tfile-check-settings-") as directory:
     environment = {**{key: value for key, value in os.environ.items()
                       if not key.startswith("TFILE_")}, "HOME": directory,
-                   "XDG_CONFIG_HOME": os.path.join(directory, "config")}
+                   "XDG_CONFIG_HOME": os.path.join(directory, "config"),
+                   "XDG_DATA_HOME": os.path.join(directory, "data"),
+                   "XDG_CACHE_HOME": os.path.join(directory, "cache")}
     # Preserve recursive make's jobserver descriptors.
     sys.exit(subprocess.call(sys.argv[1:], env=environment, close_fds=False))

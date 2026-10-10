@@ -251,3 +251,8 @@ check-marking: tests/mark_policy_test tfile
 	python3 tests/mark_discovery_pty.py
 check-isolated: check-marking
 .PHONY: check-marking
+
+check-docs:
+	python3 tests/check_docs.py
+check-isolated: check-docs
+.PHONY: check-docs

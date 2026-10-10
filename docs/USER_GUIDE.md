@@ -1,8 +1,8 @@
 # tfile 상세 사용·개발 안내
 
-첫 설치와 기본 작업은 [README](../README.md), 최신 재현·검사 결과는 [설치·첫 사용 점검](RELEASE_READINESS_2026-10-08.md)을 참고하세요. 아래는 상세 조작과 설계·진단 설명입니다.
+첫 설치와 기본 작업은 [README](../README.md), 최신 재현·검사 결과는 [설치·첫 사용 점검](RELEASE_READINESS_2026-10-10.md)을 참고하세요. 아래는 상세 조작과 설계·진단 설명입니다.
 
-C11과 ncursesw로 만든 **Linux/WSL용 터미널 파일 관리자**입니다. 파일 목록과 텍스트·선택적 이미지/PDF 미리보기를 함께 보면서 키보드와 마우스로 탐색·검색·복사·이동·삭제할 수 있습니다.
+C11과 ncursesw로 만든 **Linux용 터미널 파일 관리자**입니다. 파일 목록과 텍스트·선택적 이미지/PDF 미리보기를 함께 보면서 키보드와 마우스로 탐색·검색·복사·이동·삭제할 수 있습니다.
 
 최신 표시의 [전후 텍스트 비교](UI_UX_COMPARISON.md)는 별도로 제공합니다.
 
@@ -33,7 +33,7 @@ PDF 파일도 오른쪽 미리보기 패널에서 **첫 페이지**를 이미지
 
 ## 빌드 및 실행
 
-필요한 환경은 Linux/WSL, C11 컴파일러, `make`, ncursesw 개발 라이브러리입니다. UTF-8 로캘과 마우스 입력을 지원하는 터미널을 권장합니다. 테스트에는 Python 3도 필요합니다.
+필수 의존성은 C11 컴파일러, `make`, ncursesw 개발 라이브러리이며 Linux POSIX 환경을 대상으로 합니다. 현재 직접 검증은 Ubuntu 24.04이며 실제 WSL은 미검증입니다. UTF-8 로캘과 마우스 입력을 지원하는 터미널을 권장합니다. 테스트에는 Python 3도 필요합니다.
 
 ```sh
 make
@@ -133,7 +133,11 @@ printf 'Hello tfile\n' > "$playground/source/example.txt"
 | `F4` | 디렉터리 생성 창 열기 (보조 단축키) |
 | `F5` / `F6` | 복사 / 이동 |
 | `F7` | 옵션 |
-| `F8`, `Delete` | 삭제 확인 |
+| `F8`, `Delete` | 영구 삭제 확인 |
+| `t` / F9 Move to Trash | 휴지통 이동 확인 |
+| `e` / F9 Edit with Vim | 마킹과 별개인 커서 텍스트 파일 편집 |
+| `b`, `f` | 즐겨찾기 / 현재 목록 필터 |
+| `a`, `u` | 목록 초점에서 보이는 항목 전체 마킹 / 해제 |
 | `F9`, `m` | 전체 메뉴 |
 | `!` | 최근 작업 결과 상세 보기 |
 | `z` | 작업 알림 표시 닫기 (상세는 보존) |
@@ -178,11 +182,11 @@ printf 'Hello tfile\n' > "$playground/source/example.txt"
 - **대상 여러 개:** 목적지 디렉터리 하나를 직접 입력하거나 단일 전송과 같은 Browse 선택기로 골라 원래 이름으로 전송합니다. 상대 경로 기준은 폼의 Base입니다. 잘못된 목적지는 폼 안에 오류를 표시하고 입력·편집 위치를 유지합니다. Enter/Next는 실행하지 않고 기본 Cancel인 대상 확인창을 엽니다. 확인창의 Esc/Cancel은 입력 폼으로 돌아오며, 폼의 Esc/Cancel·리사이즈는 변경 없이 종료합니다. 실행 전 취소·입력 검증 실패는 최근 결과를 교체하지 않습니다. 실행 전 대상 목록·개수·목적지를 스크롤하여 확인할 수 있습니다. 대상 이름 입력과 단일 이름 변경은 제공하지 않습니다.
 - **삭제:** 확인창의 기본 선택은 **Cancel**입니다. 대상 개수와 종류·목록을 확인한 뒤 명시적으로 Delete를 선택합니다. 디렉터리 내부도 삭제되며 복구되지 않습니다. 목록 스크롤만으로 Delete가 선택되지는 않습니다.
 
-대상은 현재 목록 순서의 원본 경로로 고정하고 하나씩 처리합니다. 첫 오류나 취소에서 중단하며 나머지는 **미실행**으로 기록합니다. 경로 고정은 파일시스템 스냅샷이 아니므로 실행 전에 사라지거나 바뀐 항목은 기존 작업 검증에 따라 오류가 날 수 있습니다.
+대상은 현재 목록 순서의 원본 경로로 고정하고 하나씩 처리합니다. 변경 없는 복사·이동 이름 충돌은 Stop / Skip this target / Skip all later name collisions를 선택할 수 있습니다. 그 밖의 첫 오류나 취소에서 중단하며 나머지는 **미실행**으로 기록합니다. 경로 고정은 파일시스템 스냅샷이 아니므로 실행 전에 사라지거나 바뀐 항목은 기존 작업 검증에 따라 오류가 날 수 있습니다.
 
 진행 창은 현재 최상위 대상의 순번, 처리 경로, 누적 완료 항목 수와 복사 바이트를 보여줍니다. 최상위 대상 수와 재귀 처리 항목 수를 구분하며, 사전 재귀 순회나 추정 진행률은 사용하지 않습니다. 이동은 대상 사이에서 취소할 수 있지만 개별 이동 호출 도중에는 취소할 수 없습니다.
 
-작업 종료 후 목록은 한 번 갱신합니다. 성공 대상의 표시는 해제하고 실패·취소·미실행 대상은 목록에 남아 있으면 유지합니다.
+작업 종료 후 목록은 한 번 갱신합니다. 성공 대상의 표시는 해제하고 건너뜀·실패·취소·미실행 대상은 목록에 남아 있으면 유지합니다.
 
 ### 알림과 최근 결과
 
@@ -232,7 +236,7 @@ image=1
 - 실패·취소 후 자동 재시도, 롤백, 잔여물 삭제를 하지 않습니다. 이미 완료한 변경은 남을 수 있으므로 상세 결과를 확인하세요.
 - 표시용 이스케이프와 생략은 원본 파일명을 바꾸지 않습니다. 다만 진단 필드 자체의 길이 제한은 유지되며, 이미 잘린 진단을 상세 창에서 복원하지는 않습니다.
 - 이름 비교는 바이트 단위 대소문자 무시 비교를 사용합니다. 완전한 Unicode 대소문자 접기·정규화·자연 정렬은 제공하지 않습니다.
-- 일반 텍스트와 선택적 PNG/JPEG·PDF 첫 페이지 미리보기를 제공합니다. 그 밖의 바이너리 본문, 외부 뷰어 실행, 파일 작업 백그라운드 큐는 지원하지 않습니다.
+- 일반 텍스트와 선택적 PNG/JPEG·PDF 첫 페이지 미리보기를 제공합니다. 그 밖의 바이너리 본문과 파일 작업 백그라운드 큐는 지원하지 않습니다. 별도 F9 Open externally는 xdg-open으로 파일을 엽니다.
 
 검색·미리보기 상한, 표시 규칙, 파일 작업 검증과 취소 정책의 자세한 내용은 [사용 및 개발 참고서](REFERENCE.md)를 참고하세요.
 
@@ -260,16 +264,16 @@ flowchart LR
 ```sh
 make check       # core, platform, UI 및 PTY 회귀 검사
 make check-core  # core와 platform 검사만 실행
-make check-terminal # 터미널 파서·입력 및 F7 진단 PTY 검사
-make check-media # 미디어 대역·프로토콜/수명주기 PTY와 비 root 목적지 선택창 검사
-python3 tests/media_real.py # 선택 의존성이 있으면 실제 변환 검사
-python3 tests/run_sanitizers.py --output-directory /tmp/tfile-sanitizers-manual
-python3 tests/run_media_sanitizers.py --output-directory /tmp/tfile-media-sanitizers-manual
-ASAN_OPTIONS=detect_leaks=1 make check-settings-sanitize
-python3 tests/run_terminal_sanitizers.py --output-directory /tmp/tfile-terminal-sanitizers-manual
+python3 tests/isolated_check.py make check-terminal # 터미널 파서·입력 및 F7 진단 PTY 검사
+python3 tests/isolated_check.py make check-media # 미디어 대역·프로토콜/수명주기 PTY와 비 root 목적지 선택창 검사
+python3 tests/isolated_check.py python3 tests/media_real.py # 선택 의존성이 있으면 실제 변환 검사
+python3 tests/isolated_check.py python3 tests/run_sanitizers.py --output-directory /tmp/tfile-sanitizers-manual
+python3 tests/isolated_check.py python3 tests/run_media_sanitizers.py --output-directory /tmp/tfile-media-sanitizers-manual
+python3 tests/isolated_check.py env ASAN_OPTIONS=detect_leaks=1 make check-settings-sanitize
+python3 tests/isolated_check.py python3 tests/run_terminal_sanitizers.py --output-directory /tmp/tfile-terminal-sanitizers-manual
 ```
 
-`run_sanitizers.py`의 기존 17개 native 검사는 미디어 전용 검사 완료를 뜻하지 않습니다. `run_media_sanitizers.py`는 별도로 media·preview·picker native와 media PTY를 실행합니다. `run_terminal_sanitizers.py`는 terminal_test·terminal_input_test·graphics_probe_test와 sanitizer 앱의 terminal_pty.py·terminal_auto_pty.py를 실행하고 별도 로그를 남깁니다. 전용 스크립트는 기본적으로 누수 검출을 요청합니다. 현재 환경의 알려진 ptrace 제약에서는 LSan을 반복 실행하지 않습니다. 최신 UI 검사와 LSan 수동 실행 명령은 [UI/UX 검증 기록](UI_UX_VALIDATION.md)에 구분해 기록합니다. 실행 환경 때문에 `--disable-leaks`를 명시해 수행한 ASan/UBSan 결과는 누수 검사 통과가 아닙니다. 자세한 실행 명령·로그 위치와 후속 수정 결과는 [미디어 검증 기록](MEDIA_PREVIEW_VALIDATION.md#후속-정적-검토-수정)을 참고하세요.
+`run_sanitizers.py`의 native 검사는 미디어 전용 검사 완료를 뜻하지 않습니다. `run_media_sanitizers.py`는 별도로 media·preview·picker native와 media PTY를 실행합니다. `run_terminal_sanitizers.py`는 terminal_test·terminal_input_test·graphics_probe_test와 sanitizer 앱의 terminal_pty.py·terminal_auto_pty.py·vim_pty.py·editor_shutdown_pty.py·mark_discovery_pty.py를 실행하고 별도 로그를 남깁니다. 전용 스크립트는 기본적으로 누수 검출을 요청합니다. 현재 환경의 알려진 ptrace 제약에서는 LSan을 반복 실행하지 않습니다. 최신 UI 검사와 LSan 수동 실행 명령은 [UI/UX 검증 기록](UI_UX_VALIDATION.md)에 구분해 기록합니다. 실행 환경 때문에 `--disable-leaks`를 명시해 수행한 ASan/UBSan 결과는 누수 검사 통과가 아닙니다. 자세한 실행 명령·로그 위치와 후속 수정 결과는 [미디어 검증 기록](MEDIA_PREVIEW_VALIDATION.md#후속-정적-검토-수정)을 참고하세요.
 
 기존 검증은 Unicode·안전한 표시, 작은 화면, 초점·방문 위치·빠른 찾기, 파일 작업 실패·취소, 다중 선택과 일괄 작업을 포함합니다. 이중 패널 검사는 상태 독립성·모드 전환·작업 대상과 양쪽 갱신·실패 주입·메모리/FD/창 정리도 확인합니다. 안정화 계측에서는 불필요한 목록 조회·정렬과 검색 화면 갱신 횟수도 확인합니다.
 
@@ -286,3 +290,19 @@ python3 tests/run_terminal_sanitizers.py --output-directory /tmp/tfile-terminal-
 이중 패널 전송 규칙과 회귀 검사·sanitizer 제한: [복사·이동 검증 기록](TRANSFER_VALIDATION.md).
 
 현재 기능의 연속 사용 흐름과 실패·복구, 중간 안정화 결과: [2026-10-04 점검 기록](STABILIZATION_2026-10-04.md).
+
+## Vim 편집과 외부 열기
+
+자체 편집기는 없습니다. `e`/F9 Edit with Vim은 마킹과 별개로 현재 커서 파일 하나를 외부 Vim으로 엽니다. VISUAL/EDITOR나 다른 편집기로 대체하지 않습니다. `sudo apt install vim xdg-utils`는 Ubuntu의 선택 도구 설치 예시입니다. Vim·xdg-open이 없으면 안내하고 파일 관리를 계속할 수 있습니다.
+
+확장자 대신 일반 파일의 앞 64 KiB로 UTF-8/ASCII 텍스트를 판별합니다. 빈 파일도 가능하지만 링크·특수 파일, 미디어 signature, NUL/제어문자, 잘못된 UTF-8은 거부합니다. 뒤쪽 바이너리는 놓칠 수 있고 다른 인코딩은 거부될 수 있습니다. 쓰기 권한이 없는 읽을 수 있는 텍스트는 `-R`로 열며 권한 상승은 하지 않습니다. `-R`은 강제 보안 장벽이 아닙니다. 절대 경로를 `--` 뒤 별도 argv로 전달하며 셸 문자열을 실행하지 않습니다.
+
+Vim 실행 전 ncurses/미디어를 정리하고 복귀 후 화면·입력·선택·목록을 복원합니다. 부모 tfile에 SIGTERM/SIGHUP을 보내면 해당 편집기에 같은 신호를 전달하고 회수 후 터미널을 복원하며 종료합니다. 자동 SIGKILL/종료 기한은 없어 Vim이 무시하면 기다립니다. 정상 종료는 저장 완료를 보장하지 않습니다. Vim이 경로를 다시 열므로 동시 경로 교체를 끝까지 고정하는 snapshot은 아닙니다.
+
+F9 Open externally는 xdg-open을 사용하며 요청 성공은 문서 표시·저장 완료를 의미하지 않습니다. 커서 파일 자체를 명령으로 실행하지 않습니다. 최신 sanitizer 앱의 Vim 부모 종료·마킹 PTY 검사와 수동 LSan 명령은 [최신 배포 준비 기록](RELEASE_READINESS_2026-10-10.md#수동-확인)에 있습니다.
+
+## 즐겨찾기와 필터
+
+`b`/F9 Favorite directories는 활성 패널의 디렉터리를 `a`로 등록, `r`로 이름 변경, `d`로 등록 해제하고 Enter로 이동합니다. 등록 해제는 실제 디렉터리를 삭제하지 않습니다. settings.conf와 별도 favorites.conf(동일 config 디렉터리)에 저장하며 최대 64개, 이름 128바이트입니다. 접근/저장 실패는 기존 상태를 유지하고 오류를 표시합니다. 잘못된 저장 파일은 자동 덮어쓰지 않으며 동시 외부 변경 병합은 지원하지 않습니다.
+
+`f`/F9 Filter는 현재 목록의 이름 부분 일치(ASCII 대소문자 무시) 또는 전체 이름 glob(대소문자 구분, `* ? []`와 backslash escape)을 적용하거나 Clear로 해제합니다. 재귀 검색 F3와 빠른 찾기 Ctrl+F와 별개입니다. 패널별로 독립적이며 적용/해제 성공 시 모든 마킹을 지웁니다. 전체 마킹·일괄 작업은 보이는 항목만 대상으로 합니다. 필터는 이동/새로고침/방문 복원에 유지하고 검색 결과를 직접 열 때 해당 패널에서 해제합니다. 시작 설정으로 저장하지 않습니다.
