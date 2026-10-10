@@ -32,16 +32,16 @@ for w,h in [(50,9),(80,24),(100,24),(160,32)]:
             t.send('\x1b')
         try:
             assert 'Shown: 61 | Marked: 0 | Dotfiles: on' in t.screen.row(h-2)
-            assert f'Shown 1-{rows}/61' in t.screen.row(h-3)
+            assert f'1-{rows}/61' in t.screen.row(h-3)
             t.send('\x1bOF')
             before=[t.screen.row(y)[:split] for y in range(first,h-2)]
-            assert f'Shown {62-rows}-61/61' in t.screen.row(h-3)
+            assert f'{62-rows}-61/61' in t.screen.row(h-3)
             option(1)
             t.frame(0,2,w,h-4)
             assert 'Preview' not in t.screen.row(2)
             assert t.screen.rows[h-4][1]=='>'
             assert '59-' in t.screen.row(h-4)
-            assert f'Shown {62-rows}-61/61' in t.screen.row(h-3)
+            assert f'{62-rows}-61/61' in t.screen.row(h-3)
             option(1)
             assert [t.screen.row(y)[:split] for y in range(first,h-2)]==before
             option(0)

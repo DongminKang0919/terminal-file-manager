@@ -43,7 +43,7 @@ void ui_size(const Item *it, char *out, size_t size) {
 
 static void draw_box(int x, int y, int w, int h, const char *title, bool focused) {
     if (w < 2 || h < 2) return;
-    attrset(COLOR_PAIR(focused ? UI_BASE : UI_BORDER) | (focused ? A_BOLD : A_NORMAL));
+    attrset(COLOR_PAIR(focused ? UI_FOCUS : UI_BORDER) | (focused ? A_BOLD : A_NORMAL));
     mvhline(y, x, ACS_HLINE, w); mvhline(y + h - 1, x, ACS_HLINE, w);
     mvvline(y, x, ACS_VLINE, h); mvvline(y, x + w - 1, ACS_VLINE, h);
     mvaddch(y, x, ACS_ULCORNER); mvaddch(y, x + w - 1, ACS_URCORNER);
@@ -66,34 +66,34 @@ void fit_selection(UiContext *ui, int rows) {
 }
 typedef struct { const char *label; const char *compact; int key; } Action;
 static const Action actions[] = {
-    { "F1 Help", "F1", KEY_F(1) }, { "F2 New", "F2", KEY_F(2) },
-    { "F3 Search", "F3", KEY_F(3) }, { "F5 Copy", "F5", KEY_F(5) },
-    { "F6 Move", "F6", KEY_F(6) }, { "F7 Options", "F7", KEY_F(7) },
-    { "F8 Delete", "F8", KEY_F(8) }, { "F9 Menu", "F9", KEY_F(9) },
+    { "F1 Help", "F1", KEY_F(1) }, { "F3 Search", "F3", KEY_F(3) },
+    { "F2 New", "F2", KEY_F(2) }, { "F5 Copy", "F5", KEY_F(5) },
+    { "F6 Move", "F6", KEY_F(6) }, { "F8 Delete", "F8", KEY_F(8) },
+    { "F7 Options", "F7", KEY_F(7) }, { "F9 Menu", "F9", KEY_F(9) },
     { "F10 Quit", "F10", KEY_F(10) }
 };
-static const char *action_label(size_t index, int width) {
-    int required = 1;
-    for (size_t i = 0; i < sizeof actions / sizeof actions[0]; ++i)
-        required += (int)strlen(actions[i].label) + 3;
-    return width >= required ? actions[index].label : actions[index].compact;
+static bool action_visible(size_t index, int width) {
+    /* Retain Help/Search and the complete Menu/Quit commands at minimum size.
+       F9 contains every omitted command. Never render a partial button. */
+    if (width < 80) return index <= 1 || index >= 7;
+    if (width < 100) return index != 2 && index != 6;
+    return true;
 }
 static bool action_bounds(size_t index, int width, int *at, int *length) {
+    if (!action_visible(index,width)) return false;
     *at = 1;
     for (size_t i = 0; i <= index; i++) {
-        *length = (int)strlen(action_label(i, width)) + 2;
+        if (!action_visible(i,width)) continue;
+        *length = (int)strlen(actions[i].label) + 2;
         if (*at + *length >= width) return false;
-        if (i != index) {
-            int gap = width >= 120 && (i == 0 || i == 2 || i == 4 || i == 6) ? 3 : 1;
-            *at += *length + gap;
-        }
+        if (i != index) *at += *length + ((i == 1 || i == 5) ? (width >= 120 ? 3 : 2) : 1);
     }
     return true;
 }
 int header_action(int x, int width) {
     for (size_t i = 0; i < sizeof actions / sizeof actions[0]; ++i) {
         int at, length;
-        if (!action_bounds(i, width, &at, &length)) break;
+        if (!action_bounds(i, width, &at, &length)) continue;
         if (x >= at && x < at + length) return actions[i].key;
     }
     return 0;
@@ -146,7 +146,10 @@ static void draw_file_panel(UiContext *ui,UiFilePanel *p,unsigned index,int x,in
         attrset(style);
         mvhline(y, x+1, ' ', mid - 2);
         mvaddch(y, x+1, cursor ? (focused||ui->mode!=UI_LIST_LIST ? '>' : ':') : ' ');
-        mvaddch(y, x+2, app_marked(&p->app, it->name) ? '*' : ' ');
+        bool marked = app_marked(&p->app, it->name);
+        if (marked) attrset(COLOR_PAIR(active ? UI_MARK_SELECTED : UI_MARK) | A_BOLD);
+        mvaddch(y, x+2, marked ? '*' : ' ');
+        attrset(style);
         if (!active) attrset(COLOR_PAIR(item_color(it, false)));
         draw_text(y, x+3, name_width, it->name);
         attrset(active ? style : COLOR_PAIR(UI_MUTED));
@@ -164,7 +167,7 @@ static void draw_file_panel(UiContext *ui,UiFilePanel *p,unsigned index,int x,in
         }
         attrset(A_NORMAL);
     }
-    if (p->app.files.len && (p->top || p->app.files.len > (size_t)rows)) {
+    if (ui->active!=index && p->app.files.len && (p->top || p->app.files.len > (size_t)rows)) {
         size_t end = p->top + (size_t)rows;
         if (end > p->app.files.len) end = p->app.files.len;
         char range[96];
@@ -173,6 +176,23 @@ static void draw_file_panel(UiContext *ui,UiFilePanel *p,unsigned index,int x,in
             snprintf(range, sizeof range, " %s %s ", p->top ? "^ more" : "Top", end < p->app.files.len ? "v more" : "End");
         attrset(COLOR_PAIR(UI_MUTED));
         draw_text(h - 3, x+2, mid - 4, range);
+        attrset(A_NORMAL);
+    }
+    if (ui->active==index) {
+        char target[128];
+        if (p->app.marks_len) snprintf(target,sizeof target," Targets: %zu marked ",p->app.marks_len);
+        else snprintf(target,sizeof target," Target: %s ",p->app.files.len ? "cursor" : "none");
+        if (p->app.files.len && (p->top || p->app.files.len > (size_t)rows)) {
+            size_t end=p->top+(size_t)rows;
+            if(end>p->app.files.len) end=p->app.files.len;
+            size_t used=strlen(target);
+            snprintf(target+used,sizeof target-used,"%zu-%zu/%zu ",p->top+1,end,p->app.files.len);
+            if ((int)strlen(target)>mid-4) {
+                snprintf(target,sizeof target," %s %zu-%zu/%zu ",p->app.marks_len?"*marks":">cursor",p->top+1,end,p->app.files.len);
+            }
+        }
+        attrset(COLOR_PAIR(p->app.marks_len ? UI_MARK : UI_MUTED) | A_BOLD);
+        draw_text(h-3,x+2,mid-4,target);
         attrset(A_NORMAL);
     }
     if (!p->app.files.len) {
@@ -197,6 +217,16 @@ static void draw_location(UiFilePanel *p,int x,int w,bool dual) {
     attroff(COLOR_PAIR(UI_PATH));
 }
 
+/* Hints have no button brackets or mouse action. Share key/description styling. */
+static int draw_hint(int row,int x,int width,const char *key,const char *label) {
+    int keylen=(int)strlen(key), len=keylen+(int)strlen(label);
+    if(x+len>width-1) return x;
+    attrset(COLOR_PAIR(UI_COMMAND) | A_BOLD);
+    draw_text(row,x,keylen,key);
+    attrset(ui_bar()); draw_text(row,x+keylen,len-keylen,label);
+    return x+len+2;
+}
+
 static void draw_screen(UiContext *ui, bool prepare) {
     if (!ui_preview_enabled(ui)) ui->focus = UI_FOCUS_FILES;
     erase(); int h, w; getmaxyx(stdscr, h, w);
@@ -206,14 +236,14 @@ static void draw_screen(UiContext *ui, bool prepare) {
     if (h < 9 || w < 50) { mvaddstr(0, 0, "Terminal too small (minimum 50x9)"); graphics_clear(ui); refresh(); return; }
     attrset(ui_bar()); mvhline(0, 0, ' ', w);
     for (size_t i = 0; i < sizeof actions / sizeof actions[0]; ++i) {
-        const char *label = action_label(i, w);
+        const char *label = actions[i].label;
         int at, length;
-        if (!action_bounds(i, w, &at, &length)) break;
+        if (!action_bounds(i, w, &at, &length)) continue;
         mvaddch(0, at, '['); draw_text(0, at + 1, length - 2, label);
         mvaddch(0, at + length - 1, ']');
-        attron(A_BOLD);
+        attrset(COLOR_PAIR(UI_COMMAND) | A_BOLD);
         draw_text(0, at + 1, (int)strlen(actions[i].compact), actions[i].compact);
-        attroff(A_BOLD);
+        attrset(ui_bar());
     }
     UiScreenLayout screen=ui_screen_layout(ui,w,h);
     for(unsigned i=0;i<2;i++) if(screen.visible[i])
@@ -265,32 +295,51 @@ static void draw_screen(UiContext *ui, bool prepare) {
     int summary_width=(int)strlen(summary);
     if(summary_width>w-4) summary_width=w-4;
     draw_text(h-2,1,summary_width,summary);
+    const char *marked_summary=strstr(summary,"Marked:");
+    if(active->app.marks_len && marked_summary) {
+        int at=(int)(marked_summary-summary);
+        char count[48]; snprintf(count,sizeof count,"Marked: %zu",active->app.marks_len);
+        attrset(COLOR_PAIR(UI_MARK) | A_BOLD);
+        draw_text(h-2,1+at,summary_width-at,count);
+    }
     int x=summary_width+3;
     attrset(ui_notice_style(alert_kind));
     draw_text(h-2,x,w-x-1,alert);
     attrset(A_NORMAL);
     attrset(ui_bar()); mvhline(h - 1, 0, ' ', w);
+    bool has_item=active->selected<active->app.files.len;
+    const Item *cursor=has_item ? &active->app.files.entries[active->selected] : NULL;
+    /* Use prepared metadata only; core still validates actual Vim eligibility. */
+    bool vim_hint=cursor && cursor->valid && cursor->kind==FILE_REGULAR &&
+        (!ui_preview_enabled(ui) || (!ui->preview_page.binary && ui->media_kind==PREVIEW_NOT_MEDIA));
     if (!ui->modal_depth) {
         bool reading = ui->focus == UI_FOCUS_PREVIEW;
-        bool has_item=ui_panel(ui)->selected<ui_panel(ui)->app.files.len;
         const char *keys[] = {reading ? "Esc" : has_item ? "Enter" : "F2", reading ? "Up/Down" : "Space", reading ? "PgUp/PgDn" : "Tab", reading ? "Home" : "e", reading ? "Tab" : "F1", "F9", "a", "u"};
-        const char *labels[] = {reading ? ": Files" : has_item ? ": Open" : ": New", reading ? ": Row" : ": Mark", reading ? ": Page" : ui->mode==UI_LIST_LIST ? ": Other" : ": Preview", reading ? ": Top" : ": Vim", reading ? ": Files" : ": Help", ": Menu", ": All", ": Clear"};
+        const char *labels[] = {reading ? ": Files" : has_item ? ": Open" : ": New", reading ? ": Row" : ": Mark", reading ? ": Page" : ui->mode==UI_LIST_LIST ? ": Other" : ": Preview", reading ? ": Top" : ": Vim cursor", reading ? ": Files" : ": Help", ": Menu", ": All", ": Clear"};
         int x = 1;
         for (size_t i = 0; i < (reading ? 5u : 8u); i++) {
             if(!reading && i==1 && !has_item) continue;
             if(!reading && i==2 && ui->mode!=UI_LIST_LIST && !preview_can_focus(ui)) continue;
-            int keylen = (int)strlen(keys[i]), len = keylen + (int)strlen(labels[i]);
-            if (x + len > w - 1) break;
-            attron(A_BOLD); draw_text(h - 1, x, keylen, keys[i]); attroff(A_BOLD);
-            draw_text(h - 1, x + keylen, len - keylen, labels[i]);
-            x += len + 2;
+            if(!reading && i==3 && !vim_hint) continue;
+            int next=draw_hint(h-1,x,w,keys[i],labels[i]);
+            if(next==x) break;
+            x=next;
         }
     }
     attrset(A_NORMAL);
     if(!ui->modal_depth && ui->focus==UI_FOCUS_FILES && ui_panel(ui)->app.filter_kind!=FILTER_NONE) {
-        attrset(COLOR_PAIR(UI_MUTED));mvhline(h-1,0,' ',w);
-        draw_text(h-1,1,w-2,w>=80 ? "Space: Mark | e: Vim | f: Filter/Clear | a: All / u: Clear" : "Space: Mark | e: Vim | f: Filter/Clear");
+        attrset(ui_bar()); mvhline(h-1,0,' ',w);
+        const char *keys[]={"Space","f","e","a","u"};
+        const char *labels[]={": Mark",": Filter/Clear",": Vim cursor",": All",": Clear"};
+        int at=1;
+        for(size_t i=0;i<5;i++) {
+            if((i==0 && !has_item) || (i==2 && !vim_hint)) continue;
+            int next=draw_hint(h-1,at,w,keys[i],labels[i]);
+            if(next==at) break;
+            at=next;
+        }
     }
+    attrset(A_NORMAL);
     if (ui->modal_depth) {
         /* Change cell attributes only; keep wide glyphs and ACS border characters. */
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {

@@ -142,7 +142,7 @@ if __name__ == '__main__':
         t=Terminal(root,tools,log)
         try:
             t.wait(lambda:len(t.records())>=1)
-            assert 'Loading preview' in t.text()
+            assert 'Converting preview' in t.text()
             slow_pid=t.records()[0]['pid']
             start=time.monotonic(); t.send('\x1bOB')
             t.wait(lambda:t.screen.image is not None)

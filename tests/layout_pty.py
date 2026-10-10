@@ -18,6 +18,7 @@ for width, height in [(50,9),(80,24),(100,24),(160,32)]:
         t = Terminal(directory,width,height)
         try:
             t.frame(0,2,split,height-4); t.frame(split,2,width-split,height-4)
+            assert 'e: Vim' not in t.screen.row(height-1)  # directory is not an editor candidate
             assert '[>]  Location:' in t.screen.row(1)
             assert t.screen.rows[first][1]=='>'
             assert 'a-dir' in t.screen.row(first) and 'Dir' in t.screen.row(first)
@@ -29,6 +30,10 @@ for width, height in [(50,9),(80,24),(100,24),(160,32)]:
                 assert 'Modified' in t.screen.row(4)
                 assert t.screen.row(first)[split-18:split-14].isdigit()
             t.click(4,first+1)
+            assert t.screen.rows[first+1][1]=='>'
+            t.click(4,height-3)  # target/range caption is information, not a row
+            assert t.screen.rows[first+1][1]=='>'
+            t.click(2,height-1)  # footer key hints are not clickable commands
             assert t.screen.rows[first+1][1]=='>'
             t.click(split,first)
             assert t.screen.rows[first+1][1]=='>'  # border must not select
@@ -58,6 +63,11 @@ for width, height in [(50,9),(80,24),(100,24),(160,32)]:
         t=Terminal(directory,width,height)
         try:
             assert 'No visible items' in t.screen.row(first)
+            for key in ['u','a']:
+                t.send(key)
+                assert 'Target: none' in t.screen.row(height-2)
+                assert 'Target: none' in t.screen.row(height-3)
+                assert 'e: Vim' not in t.screen.row(height-1)
             assert 'Row' not in '\n'.join(t.screen.row(y) for y in range(height))
         finally: t.close()
 print('PASS: main panel cells at 50x9/80x24/100x24/160x32, selection, columns, empty list, short/EOF/binary/link/error previews')

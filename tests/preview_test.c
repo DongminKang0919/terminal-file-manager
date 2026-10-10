@@ -302,6 +302,8 @@ int main(void) {
     size_t directory_reads_before=directory_reads;
     ui.preview_checked=0; preview_prepare(&ui,17); render_preview(&ui);
     assert(!ui.preview_directory_empty && !preview_has("Empty directory"));
+    assert(preview_has("[i] Directory") && preview_has("Enter to open."));
+    assert(!preview_can_focus(&ui));
     assert(directory_reads-directory_reads_before<=3);
     for(int i=0;i<2;i++) {
         ui_panel(&ui)->app.show_hidden=i;
@@ -354,7 +356,7 @@ int main(void) {
     ui.preview_result=result_make(RESULT_OK,NULL);
     ui.media_kind=PREVIEW_PNG; ui.media_done=false;
     snprintf(ui.media_hint,sizeof ui.media_hint,"Converting image.");
-    render_preview(&ui); assert(preview_has("[...] Loading preview"));
+    render_preview(&ui); assert(preview_has("[...] Converting preview"));
     ui.media_done=true; ui.image_auto=false;
     snprintf(ui.media_hint,sizeof ui.media_hint,"Image preview off (F7: Auto)");
     render_preview(&ui); assert(preview_has("[i] Preview disabled"));

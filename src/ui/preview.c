@@ -203,20 +203,20 @@ static void preview_content(UiContext *ui, View *v, const Item *it) {
         if (!ui->preview_ready)
             preview_status(ui,v,"[...] Loading preview","Checking directory contents.",NULL,UI_DIR);
         else if (ui->preview_directory_empty)
-            preview_status(ui,v,"[i] Empty directory","This directory contains no entries.",NULL,UI_DIR);
-        else preview_status(ui,v,"[i] Preview unavailable","Directory contents are shown when opened.","Double-click or use Open to enter.",UI_DIR);
+            preview_status(ui,v,"[i] Empty directory","No entries. Enter to open.",NULL,UI_DIR);
+        else preview_status(ui,v,"[i] Directory","Enter to open.",NULL,UI_DIR);
         return;
     }
     if (!(it->kind == FILE_REGULAR)) {
         preview_status(ui,v,"[i] Preview unavailable","This file type has no preview.",NULL,UI_DIR); return;
     }
     if (ui->media_kind != PREVIEW_NOT_MEDIA) {
-        if (!ui->media_done) { preview_status(ui,v,"[...] Loading preview",ui->media_hint,NULL,UI_DIR); return; }
+        if (!ui->media_done) { preview_status(ui,v,"[...] Converting preview",ui->media_hint,NULL,UI_DIR); return; }
         if (ui->media_result.code != RESULT_OK) {
             bool setup = ui->media_result.code == RESULT_UNSUPPORTED;
             bool missing = setup && !strncmp(ui->media_result.detail,"Missing ",8);
             if (missing) snprintf(text,sizeof text,"%s\n%s",ui->media_result.detail,ui->media_hint);
-            preview_status(ui,v,setup ? "[i] Preview unavailable" : "[!] Preview failed",
+            preview_status(ui,v,missing ? "[i] Missing preview tool" : setup ? "[i] Preview unavailable" : "[!] Preview failed",
                 missing ? text : ui->media_result.detail,missing ?
                     (strstr(ui->media_result.detail,"ImageMagick") ? "Install ImageMagick for image previews." : "Install Poppler for PDF preview tools.") :
                     setup ? NULL : "Refresh to retry.",setup ? (missing ? UI_PREVIEW_WARNING : UI_DIR) : UI_SPECIAL); return;

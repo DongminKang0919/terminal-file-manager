@@ -122,7 +122,10 @@ for width,height in [(50,9),(80,24),(160,32)]:
                     menu(18);active('Left');t.send('\t');active('Right')
                     assert 'STALE' in panel('Right')
                     t.send(F2+F5+F8);assert 'Stale panel' in t.screen.row(h-2)
-                    assert 'New -' not in body() and 'Move' not in body() and 'Copy' not in body() and 'confirmation' not in body()
+                    # Full command labels now remain in row 0 at 80 columns.
+                    # Modal titles start below that row; verify every remaining cell.
+                    below_commands='\n'.join(t.screen.row(y) for y in range(1,h))
+                    assert 'New -' not in below_commands and 'Move' not in below_commands and 'Copy' not in below_commands and 'confirmation' not in below_commands
                 finally: a.chmod(0o700)
                 t.send('r');assert 'STALE' not in panel('Right')
                 t.send('\t');active('Left');marked(2)

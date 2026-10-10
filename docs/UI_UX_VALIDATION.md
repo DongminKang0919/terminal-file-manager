@@ -1,5 +1,7 @@
 # UI/UX consistency — 2026-10-08
 
+최신 역할 표시 변경과 검사는 [2026-10-10 검증 기록](UI_ROLE_VALIDATION_2026-10-10.md), [동일 fixture의 실제 PTY 비교](UI_ROLE_COMPARISON_2026-10-10.md)를 참고하세요. 아래는 이전 변경의 기록입니다.
+
 ## Audit and rules
 
 The current README and UI code already shared popup frames, safe UTF-8 display,

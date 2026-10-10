@@ -14,11 +14,12 @@ instructions use the normal text color. ASCII markers work without colors.
 | --- | --- | --- |
 | Binary or unsupported file type | `[i] Preview unavailable` | Explains the unsupported content; no retry suggestion |
 | Zero-byte file | `[i] Empty file` | File contains no data |
-| Verified empty directory | `[i] Empty directory` | Directory contains no entries |
+| Directory | `[i] Directory` | Enter to open |
+| Verified empty directory | `[i] Empty directory` | No entries; Enter to open |
 | Image Auto off | `[i] Preview disabled` | Existing disabled hint; F7 configuration guidance |
-| Capability query or conversion pending | `[...] Loading preview` | Existing preparation hint |
+| Capability query or conversion pending | `[...] Converting preview` (media) / `[...] Loading preview` (file/directory) | Existing preparation hint |
 | Read, metadata or conversion error | `[!] Preview failed` | Actual error detail; refresh guidance |
-| Missing converter / image configuration | `[i] Preview unavailable` | Existing precise detail; warning color for missing tools/settings |
+| Missing converter / image configuration | `[i] Missing preview tool` / `[i] Preview unavailable` | Existing precise detail; warning color for missing tools/settings |
 | PDF page without extractable text | `[i] Preview unavailable` | No text could be extracted from page 1; never called an empty file |
 
 Neutral information uses the existing cyan information color; setup warnings

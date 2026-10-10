@@ -160,8 +160,8 @@ const FileInfo *ui_operation_item(UiContext *ui) {
 }
 void mark_targets_message(UiContext *ui) {
     size_t n=ui_panel(ui)->app.marks_len;char text[128];
-    if(n) snprintf(text,sizeof text,"Targets: %zu marked; cursor ignored. a: all / u: clear",n);
-    else snprintf(text,sizeof text,"Target: cursor (no marks). Space: Mark / a: all");
+    if(n) snprintf(text,sizeof text,"Targets: %zu marked",n);
+    else snprintf(text,sizeof text,"Target: %s",ui_panel(ui)->app.files.len ? "cursor" : "none");
     message(ui,text);ui->status_priority=true;ui->mark_hint=true;
 }
 void delete_entry(UiContext *ui) {

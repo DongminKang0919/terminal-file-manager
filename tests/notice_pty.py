@@ -19,6 +19,7 @@ for w,h in [(50,9),(100,24)]:
             t.send('\x1b')
             t.send('\x1bOF\x1b[19~\x1b')
             assert '[Cancelled]' in status() and 'Shown: 30' in status()
+            assert 'cursor' in t.screen.row(h-3)
             before=[t.screen.row(y) for y in range(2,h-2)]
             t.click(w-5,h-2); result()
             t.send(f'\x1b[<65;{(w-min(78,w-8))//2+4};4M'); assert 'Lines 2-' in body()
@@ -26,7 +27,7 @@ for w,h in [(50,9),(100,24)]:
             t.send('\x1bOF'); assert 'End' in body()
             t.send('\x1bOH\x1b')
             assert [t.screen.row(y) for y in range(2,h-2)]==before
-            t.send('\x1bOP\x1b'); assert '[Cancelled]' in status()
+            t.send('\x1bOP\x1b'); assert '[Cancelled]' in status(), body()
             t.send('\x1b[18~\x1b'); assert '[Cancelled]' in status()
             t.send('\x06한글\x1b'); assert '[Cancelled]' in status()
             t.send('z'); assert '[Cancelled]' not in status() and 'Shown: 30' in status()
@@ -47,6 +48,7 @@ for w,h in [(50,9),(100,24)]:
             t.send('\x1bOH'+'\x1b[3~'*100+'00-한글\n')
             assert 'exists' in body(); t.send('\x1b')
             assert '[Error]' in status() and 'Shown: 30' in status()
+            assert 'cursor' in t.screen.row(h-3)
             t.send('\x1b[19~\x1b')  # Closing a confirmation preserves the unread error.
             assert '[Error]' in status() and len(list(root.iterdir()))==30
             t.send('!'); result(); assert 'File operation: Error' in body()

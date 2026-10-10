@@ -227,7 +227,7 @@ int main(int argc,char **argv) {
         if(i==2) assert(!setenv("PATH","/nonexistent",1));
         if(i==1) {preview_prepare(&ui,17);clock_offset=9000;}
         prepared(&ui);erase();preview(&ui,55,2,45,20);
-        assert(contains_screen(i==2 ? "Preview unavailable" : "Preview failed") && !contains_screen("No text could be extracted"));
+        assert(contains_screen(i==2 ? "Missing preview tool" : "Preview failed") && !contains_screen("No text could be extracted"));
         clock_offset=0;assert(!setenv("PATH",tools,1));
     }
     ui_set_mode(&ui,UI_LIST_ONLY); assert(!ui.media_job && !ui.media_data);

@@ -69,7 +69,13 @@ for width,height in [(50,9),(80,24),(160,32)]:
             left=panel('Left');t.send(F5);assert str(b) in body() or '/B' in body()
             t.send('\n');assert not (b/'leaf-one').exists();t.send('\t\n')
             assert (b/'leaf-one').read_text()=='first' and (b/'leaf-two').read_text()=='second'
-            marks(0);assert panel('Left')==[s.replace('*',' ',1) if '*' in s[1:3] else s for s in left]
+            marks(0)
+            expected=[s.replace('*',' ',1) if '*' in s[1:3] else s for s in left[:-1]]
+            # Successful copy clears marks and updates the independent target caption.
+            # Retain an exact comparison of all list rows and every border cell.
+            caption='└─ Target: cursor '
+            expected.append(caption+'─'*(len(left[-1])-len(caption)-1)+'┘')
+            assert panel('Left')==expected, body()
             t.send('\t');side('Right');marks(1);t.send('\t')
             # Real middle collision in current Size-descending order: successes
             # unmark, failed/unexecuted retain marks, and the peer mark survives.

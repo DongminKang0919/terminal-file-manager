@@ -169,45 +169,49 @@ if os.geteuid() != 0:
 else:
     print('SKIP: PTY permission cases require non-root (native regressions drop privileges)')
 
-# Top actions remain clickable in full and compact layouts. Deletion always
+# Top actions remain clickable; omitted narrow commands remain in F9. Deletion always
 # requires an explicit confirmation, including recursive directory removal.
-for width, delete_x, menu_x, quit_x in [(100, 67, 79, 89), (50, 32, 37, 42)]:
+for width, delete_x, menu_x, quit_x in [(100, 53, 79, 89), (50, None, 24, 34)]:
     with tempfile.TemporaryDirectory(prefix='tfile-delete-') as directory:
         root = Path(directory)
         target = root / 'sample.txt'
         target.write_text('keep until confirmed')
         t = Terminal(directory, width)
         try:
-            labels = [b'F1', b'F2', b'F3', b'F5', b'F6', b'F7', b'F8', b'F9', b'F10']
+            labels = [b'F1', b'F3', b'F2', b'F5', b'F6', b'F8', b'F7', b'F9', b'F10'] if width>=100 else [b'F1', b'F3', b'F9', b'F10']
             positions = [t.initial.index(label) for label in labels]
             assert positions == sorted(positions)
-            assert b'Confirm deletion' in t.click(delete_x, 0)
+            def delete_command():
+                if delete_x is not None: return t.click(delete_x,0)
+                assert b'Menu' in t.click(menu_x,0)
+                return t.send('\x1bOB'*6+'\n')
+            assert b'Confirm deletion' in delete_command()
             assert target.exists()
             t.send('\n')  # Enter alone chooses Cancel.
             assert target.exists()
             t.send('\x1b[3~')  # Delete key uses the same confirmation.
             t.send('\x1b')
             assert target.exists()
-            t.click(delete_x, 0)
+            delete_command()
             # Dialog width is clamped on a narrow terminal.
             dialog_width = min(78, width - 4)
             dialog_x = (width - dialog_width) // 2
             t.click(dialog_x + 16, 14)  # Cancel button.
             assert target.exists()
-            t.click(delete_x, 0)
+            delete_command()
             t.click(dialog_x + dialog_width - 4, 8)  # Close button.
             assert target.exists()
-            t.click(delete_x, 0)
+            delete_command()
             t.send('\t\n')  # Explicitly choose Delete.
             assert not target.exists()
             nested = root / 'nested'
             nested.mkdir()
             (nested / 'child.txt').write_text('child')
             t.send('r')
-            assert b'all its contents?' in t.click(delete_x, 0)
+            assert b'all its contents?' in delete_command()
             t.send('\n')
             assert (nested / 'child.txt').exists()
-            t.click(delete_x, 0)
+            delete_command()
             t.send('\t\n')
             assert not nested.exists()
             assert b'Menu' in t.click(menu_x, 0)

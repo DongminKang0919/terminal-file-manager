@@ -15,6 +15,7 @@ char type_letter(FileType type) {
 }
 
 int item_color(const Item *it, bool active) {
+    if (active) return UI_SELECTED;
     switch (item_type(it)) {
         case TYPE_DIR: return active ? UI_DIR_SELECTED : UI_DIR;
         case TYPE_EXEC: return active ? UI_EXEC_SELECTED : UI_EXEC;
@@ -30,7 +31,7 @@ attr_t ui_selection(void) {
 }
 
 attr_t ui_bar(void) {
-    return has_colors() ? COLOR_PAIR(UI_HEADER) : A_REVERSE;
+    return has_colors() ? COLOR_PAIR(UI_HEADER) : A_NORMAL;
 }
 
 attr_t ui_notice_style(NoticeKind kind) {
@@ -74,7 +75,7 @@ void init_theme(void) {
         init_pair(UI_PREVIEW_WARNING, COLOR_YELLOW, COLOR_BLACK);
         init_pair(UI_BASE, COLOR_WHITE, COLOR_BLACK);
         init_pair(UI_BORDER, COLOR_WHITE, COLOR_BLACK);
-        init_pair(UI_HEADER, COLOR_BLACK, COLOR_WHITE);
+        init_pair(UI_HEADER, COLOR_WHITE, COLOR_BLACK);
         init_pair(UI_COLUMNS, COLOR_WHITE, COLOR_BLACK);
         init_pair(UI_DISABLED, COLOR_WHITE, COLOR_BLACK);
         init_pair(UI_SELECTED, COLOR_WHITE, COLOR_BLUE);
@@ -99,7 +100,7 @@ void init_theme(void) {
         init_pair(UI_POP_BODY, 255, 238);
         init_pair(UI_POP_MUTED, 250, 238);
         init_pair(UI_POP_BORDER, 250, 238);
-        init_pair(UI_POP_TITLE, 255, 60);
+        init_pair(UI_POP_TITLE, 255, 25);
         init_pair(UI_POP_FOOTER, 250, 237);
         init_pair(UI_POP_ERROR, 210, 238);
         init_pair(UI_POP_FOOT_ERROR, 210, 237);
@@ -115,10 +116,14 @@ void init_theme(void) {
         init_pair(UI_POP_FOOTER, COLOR_BLACK, COLOR_WHITE);
         init_pair(UI_POP_ERROR, COLOR_RED, COLOR_WHITE);
         init_pair(UI_POP_FOOT_ERROR, COLOR_RED, COLOR_WHITE);
-        init_pair(UI_POP_WARNING, COLOR_RED, COLOR_WHITE);
-        init_pair(UI_POP_FOOT_WARNING, COLOR_RED, COLOR_WHITE);
+        init_pair(UI_POP_WARNING, COLOR_BLACK, COLOR_YELLOW);
+        init_pair(UI_POP_FOOT_WARNING, COLOR_BLACK, COLOR_YELLOW);
         init_pair(UI_POP_DISABLED, COLOR_BLACK, COLOR_WHITE);
     }
+    init_pair(UI_COMMAND, COLORS >= 256 ? 80 : COLOR_CYAN, COLORS >= 256 ? 237 : COLOR_BLACK);
+    init_pair(UI_FOCUS, COLORS >= 256 ? 117 : COLOR_BLUE, COLORS >= 256 ? 235 : COLOR_BLACK);
+    init_pair(UI_MARK, COLORS >= 256 ? 222 : COLOR_YELLOW, COLORS >= 256 ? 235 : COLOR_BLACK);
+    init_pair(UI_MARK_SELECTED, COLORS >= 256 ? 229 : COLOR_YELLOW, COLORS >= 256 ? 25 : COLOR_BLUE);
     bkgd(COLOR_PAIR(UI_BASE));
 }
 
