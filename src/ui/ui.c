@@ -203,16 +203,22 @@ static void draw_file_panel(UiContext *ui,UiFilePanel *p,unsigned index,int x,in
     }
 }
 
+UiHistoryLayout ui_history_layout(int width,bool dual) {
+    if(width>=80) return (UiHistoryLayout){1,8,10,11,dual?23:33,true};
+    return (UiHistoryLayout){1,3,5,3,dual?10:20,false};
+}
+
 static void draw_location(UiFilePanel *p,int x,int w,bool dual) {
+    UiHistoryLayout buttons=ui_history_layout(w,dual);
     attrset(COLOR_PAIR(UI_PATH));
     mvhline(1, x, ' ', w);
     if (!p->app.history_at) attrset(COLOR_PAIR(UI_DISABLED) | A_DIM);
-    draw_text(1, x+1, 3, "[<]"); attrset(COLOR_PAIR(UI_PATH));
+    draw_text(1, x+buttons.back_x, buttons.back_width, buttons.labels ? "[< Back]" : "[<]"); attrset(COLOR_PAIR(UI_PATH));
     if (p->app.history_at + 1 >= p->app.history_len) attrset(COLOR_PAIR(UI_DISABLED) | A_DIM);
-    draw_text(1, x+5, 3, "[>]"); attrset(COLOR_PAIR(UI_MUTED));
-    if(!dual) draw_text(1, x+10, 10, "Location:");
+    draw_text(1, x+buttons.forward_x, buttons.forward_width, buttons.labels ? "[Forward >]" : "[>]"); attrset(COLOR_PAIR(UI_MUTED));
+    if(!dual) draw_text(1, x+buttons.path_x-10, 10, "Location:");
     attrset(COLOR_PAIR(UI_PATH));
-    int start_col=dual?10:20; int available=w-start_col-1;
+    int start_col=buttons.path_x; int available=w-start_col-1;
     draw_window_path(stdscr,1,x+start_col,available,p->app.directory);
     attroff(COLOR_PAIR(UI_PATH));
 }

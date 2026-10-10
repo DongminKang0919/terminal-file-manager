@@ -55,6 +55,16 @@ int main(void) {
     feed("plain"); for(const char *p="plain";*p;p++) assert(input_key(stdscr)==*p);
     feed("\033OA"); assert(input_key(stdscr)==KEY_UP);
     feed("\033[1;3D"); assert(input_key(stdscr)==UI_BACK);
+    feed("\033[1;3C"); assert(input_key(stdscr)==UI_FORWARD);
+    feed("[]"); assert(input_key(stdscr)=='['); assert(input_key(stdscr)==']');
+    feed("\033[D\033[C\033OD\033OC");
+    assert(input_key(stdscr)==KEY_LEFT); assert(input_key(stdscr)==KEY_RIGHT);
+    assert(input_key(stdscr)==KEY_LEFT); assert(input_key(stdscr)==KEY_RIGHT);
+    feed("\033[1;"); assert(input_key(stdscr)==ERR);
+    feed("3C"); assert(input_key(stdscr)==UI_FORWARD);
+    feed("\033[1;5Cq"); int modified=input_key(stdscr);
+    assert(modified!=KEY_RIGHT && modified!=UI_FORWARD && modified!=UI_BACK);
+    if(modified!='q') assert(input_key(stdscr)=='q');
     feed("\033[<0;4;5M"); assert(input_key(stdscr)==KEY_MOUSE); MEVENT e; assert(getmouse(&e)==OK&&e.x==3&&e.y==4);
     wint_t scalars[]={L'ć',L'한',0x1f642,0x80,0x9b,0x10ffff};
     for(unsigned i=0;i<sizeof scalars/sizeof *scalars;i++) {

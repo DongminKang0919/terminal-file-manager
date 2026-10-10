@@ -8,6 +8,14 @@ Result __wrap_platform_directory_open(const char *path,PlatformDirectory **out) 
     if(denied && !strcmp(path,denied)) { *out=NULL; return result_make(RESULT_ACCESS,"Injected denied history"); }
     return __real_platform_directory_open(path,out);
 }
+static void forward_style(UiContext *ui,bool enabled) {
+    draw_cached(ui);
+    UiScreenLayout screen=ui_screen_layout(ui,COLS,LINES);
+    UiHistoryLayout buttons=ui_history_layout(ui->mode==UI_LIST_LIST?screen.width[ui->active]:COLS,ui->mode==UI_LIST_LIST);
+    chtype cell=mvwinch(stdscr,1,screen.x[ui->active]+buttons.forward_x);
+    assert(PAIR_NUMBER(cell)==(enabled?UI_PATH:UI_DISABLED));
+    assert(!!(cell&A_DIM)==!enabled);
+}
 static void ok(Result r) { assert(r.code==RESULT_OK); }
 int main(void) {
     char root[]="/tmp/tfile-history-XXXXXX"; assert(mkdtemp(root));
@@ -16,7 +24,7 @@ int main(void) {
     for(int i=0;i<40;i++) { char name[32]; snprintf(name,sizeof name,"f%02d",i); ok(core_create(a,name,false)); }
     ok(core_create(a,".hidden",false)); ok(core_create(a,"raw\xff\n",false));
     FILE *out=tmpfile(),*in=tmpfile(); assert(out&&in);
-    SCREEN *screen=newterm("xterm-256color",out,in); assert(screen); resizeterm(24,80);
+    SCREEN *screen=newterm("xterm-256color",out,in); assert(screen); resizeterm(24,80); init_theme();
     UiContext ui={0}; ok(ui_init(&ui,a)); ok(load_dir(&ui,"f30")); ui_panel(&ui)->top=20;
     size_t selected=ui_panel(&ui)->selected; assert(navigate(&ui,b,NULL));
     history_dir(&ui,false); assert(ui_panel(&ui)->selected==selected && ui_panel(&ui)->top==20);
@@ -42,7 +50,34 @@ int main(void) {
     assert(app_history(&ui_panel(&ui)->app,true).code==RESULT_NOT_FOUND);
     for(int i=0;i<140;i++) assert(navigate(&ui,i%2?a:b,NULL));
     assert(ui_panel(&ui)->app.history_len==128 && ui_panel(&ui)->app.history_at==127);
+    /* Failed forward navigation preserves its index, list, cursor and enabled button. */
+    history_dir(&ui,false); forward_style(&ui,true);
+    char *destination=text_copy(ui_panel(&ui)->app.history[ui_panel(&ui)->app.history_at+1].directory);
+    assert(destination);
+    at=ui_panel(&ui)->app.history_at; items=ui_panel(&ui)->app.files.entries;
+    selected=ui_panel(&ui)->selected; top=ui_panel(&ui)->top;
+    denied=destination; history_dir(&ui,true); denied=NULL;
+    assert(ui_panel(&ui)->app.history_at==at && ui_panel(&ui)->app.files.entries==items);
+    assert(ui_panel(&ui)->selected==selected && ui_panel(&ui)->top==top); forward_style(&ui,true);
+    history_dir(&ui,true); forward_style(&ui,false);
+    history_dir(&ui,true); assert(strstr(ui.status,"No forward history")); forward_style(&ui,false);
+    free(destination);
+    history_dir(&ui,false); forward_style(&ui,true);
+    assert(navigate(&ui,root,NULL)); forward_style(&ui,false);
+    /* The inactive panel retains its entire history and viewport. */
+    ok(ui_set_mode(&ui,UI_LIST_LIST));
+    UiFilePanel *left=&ui.panels[0];
+    size_t left_at=left->app.history_at,left_len=left->app.history_len,left_top=left->top,left_selected=left->selected;
+    HistoryEntry *left_history=left->app.history; FileInfo *left_files=left->app.files.entries;
+    ui_activate_panel(&ui,1); assert(navigate(&ui,root,NULL)); assert(navigate(&ui,b,NULL));
+    history_dir(&ui,false); forward_style(&ui,true); history_dir(&ui,true); forward_style(&ui,false);
+    assert(left->app.history==left_history && left->app.history_at==left_at && left->app.history_len==left_len);
+    assert(left->app.files.entries==left_files && left->top==left_top && left->selected==left_selected);
+    for(int width=50;width<=160;width+=55) {
+        resizeterm(24,width); history_dir(&ui,false); forward_style(&ui,true);
+        history_dir(&ui,true); forward_style(&ui,false);
+    }
     ui_free(&ui); endwin(); delscreen(screen); fclose(out); fclose(in);
     free(a); free(b); ok(core_delete(root));
-    puts("PASS: history identity/raw bytes/scroll, changed sort, missing/hidden fallback, failed navigation transaction, Parent, forward trim and 128-entry ownership");
+    puts("PASS: history identity/raw bytes/scroll, changed sort, missing/hidden fallback, failed navigation transaction, Parent, forward trim/button state, dual isolation and 128-entry ownership");
 }

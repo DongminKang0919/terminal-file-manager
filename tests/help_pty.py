@@ -41,7 +41,8 @@ for width,height in [(50,9),(80,24),(160,32)]:
                 previous=start; t.send('\x1b[6~')
             assert set(seen)==set(range(1,total+1))
             body=' '.join(' '.join(seen[i].split()) for i in range(1,total+1))
-            for text in ['GETTING STARTED','NAVIGATION','FILE OPERATIONS','SEARCH','PREVIEW','OPTIONS',
+            for text in ['Plain Right opens the selected directory', 'A new directory visit clears forward history',
+                         'terminal intercepts Alt+arrows', 'GETTING STARTED','NAVIGATION','FILE OPERATIONS','SEARCH','PREVIEW','OPTIONS',
                          'never overwritten','Cancel is selected by default','cannot be undone',
                          'incomplete copies are kept','deleted items are not restored',
                          'Cancel/Esc/Enter keeps collected results','x or resize stops and closes',

@@ -11,7 +11,9 @@ static const HelpEntry entries[] = {
     {"PgUp/PgDn", "Move one list page. Home/End selects first/last."},
     {"Enter / Right", "In Files, open a directory or show the file preview (focus it when scrollable); double-click or Open also works."},
     {"Backspace / Left", "In Files, go to the parent directory; Parent also works."},
-    {"Alt+Left/Right", "Back/forward restores the visited selection and list scroll. [ / ], Location buttons and mouse side buttons also work if supported."},
+    {"[ / Alt+Left", "Back: previous visit; restores selection and list scroll."},
+    {"] / Alt+Right", "Forward: next visit. Plain Right opens the selected directory; it is not Forward. A new directory visit clears forward history."},
+    {"Location buttons", "Back/Forward and mouse side buttons use the active panel history. If the terminal intercepts Alt+arrows, use [ / ]."},
     {"Tab / Shift+Tab", "Switch Files/Preview when preview can scroll. Click a scrollable preview to focus it; * marks the active title."},
     {"r", "Refresh the current directory and preview."},
     {"q / F10", "Quit from the main screen."},
@@ -130,7 +132,7 @@ void show_help(UiContext *ui) {
     if (w > 78) w = 78;
     WINDOW *win = dialog_open(ui, "Help", h, w);
     if (!win) { message(ui, "Cannot open help window"); return; }
-    HelpRow lines[384]; size_t total;
+    HelpRow lines[448]; size_t total;
     if (!help_rows(lines, sizeof lines / sizeof lines[0], w - 4, &total)) {
         dialog_close(ui, win); message(ui, "Help text exceeds display capacity"); return;
     }

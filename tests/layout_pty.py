@@ -19,7 +19,8 @@ for width, height in [(50,9),(80,24),(100,24),(160,32)]:
         try:
             t.frame(0,2,split,height-4); t.frame(split,2,width-split,height-4)
             assert 'e: Vim' not in t.screen.row(height-1)  # directory is not an editor candidate
-            assert '[>]  Location:' in t.screen.row(1)
+            assert ('[Forward >]  Location:' if width>=80 else '[>]  Location:') in t.screen.row(1)
+            assert ('[< Back]' if width>=80 else '[<]') in t.screen.row(1)
             assert t.screen.rows[first][1]=='>'
             assert 'a-dir' in t.screen.row(first) and 'Dir' in t.screen.row(first)
             if height>=12: assert 'Directory' in t.screen.row(4)[split:] and '| -' not in t.screen.row(4)[split:]

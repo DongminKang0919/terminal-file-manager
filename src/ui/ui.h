@@ -133,6 +133,9 @@ bool open_search_result(UiContext *ui, const char *path);
 bool navigate(UiContext *ui, const char *path, const char *highlight);
 void parent_dir(UiContext *ui);
 void history_dir(UiContext *ui, bool forward);
+/* Shared Location button geometry for painting and mouse hit testing. */
+typedef struct { int back_x, back_width, forward_x, forward_width, path_x; bool labels; } UiHistoryLayout;
+UiHistoryLayout ui_history_layout(int width, bool dual);
 void enter_item(UiContext *ui);
 bool panel_key(UiContext *ui, int key, int height);
 int join(char *out, size_t size, const char *directory, const char *name);
