@@ -136,6 +136,7 @@ void history_dir(UiContext *ui, bool forward);
 /* Shared Location button geometry for painting and mouse hit testing. */
 typedef struct { int back_x, back_width, forward_x, forward_width, path_x; bool labels; } UiHistoryLayout;
 UiHistoryLayout ui_history_layout(int width, bool dual);
+int ui_history_action(int x, int y, int width, bool dual);
 void enter_item(UiContext *ui);
 bool panel_key(UiContext *ui, int key, int height);
 int join(char *out, size_t size, const char *directory, const char *name);

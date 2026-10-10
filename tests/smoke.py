@@ -473,7 +473,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-history-') as directory:
     (root / 'a').mkdir()
     (root / 'b').mkdir()
     (root / 'match.txt').write_text('search me')
-    t = Terminal(directory)
+    t = Terminal(directory, track_screen=True)
     try:
         # Search uses a single frame: the visible X closes each stage of the single search window.
         t.send('\x1bOR')
@@ -512,7 +512,9 @@ with tempfile.TemporaryDirectory(prefix='tfile-history-') as directory:
         t.send('branch-in-b\n')
         assert (root / 'b' / 'branch-in-b').exists()
         t.click(2, 1)  # Back
-        t.click(6, 1)  # Forward
+        # Locate the rendered label: wide layouts put x=6 inside Back.
+        forward = t.screen.row(1).index('[Forward >]')
+        t.click(forward + 3, 1)  # Forward
         t.send('\x1bOQ')
         t.send('modal-')
         t.send('\x1b[<128;20;8M\x1b[<128;20;8m')

@@ -208,6 +208,14 @@ UiHistoryLayout ui_history_layout(int width,bool dual) {
     return (UiHistoryLayout){1,3,5,3,dual?10:20,false};
 }
 
+int ui_history_action(int x,int y,int width,bool dual) {
+    UiHistoryLayout buttons=ui_history_layout(width,dual);
+    if(y!=1 || x<0 || x>=width) return 0;
+    if(x>=buttons.back_x && x<buttons.back_x+buttons.back_width) return UI_BACK;
+    if(x>=buttons.forward_x && x<buttons.forward_x+buttons.forward_width) return UI_FORWARD;
+    return 0;
+}
+
 static void draw_location(UiFilePanel *p,int x,int w,bool dual) {
     UiHistoryLayout buttons=ui_history_layout(w,dual);
     attrset(COLOR_PAIR(UI_PATH));

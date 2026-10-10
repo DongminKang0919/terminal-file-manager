@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
                 list_x=screen.x[ui->active]; list_width=screen.width[ui->active];
             }
             int local_x=event.x-list_x;
-            UiHistoryLayout buttons=ui_history_layout(ui->mode==UI_LIST_LIST?screen.width[ui->active]:w,ui->mode==UI_LIST_LIST);
+            int history_action=ui_history_action(local_x,event.y,ui->mode==UI_LIST_LIST?screen.width[ui->active]:w,ui->mode==UI_LIST_LIST);
             if (event.bstate & (BUTTON4_PRESSED | BUTTON5_PRESSED)) {
                 last_index = SIZE_MAX;
                 if (ui_preview_enabled(ui) && event.x > list_width && event.x < w - 1 && event.y > 2 && event.y < h - 3) {
@@ -67,8 +67,7 @@ int main(int argc, char **argv) {
                 }
                 if (event.y == h - 2) key = UI_RESULT;
                 else if (event.y == 0) key = header_action(event.x, w);
-                else if (event.y == 1 && local_x >= buttons.back_x && local_x < buttons.back_x + buttons.back_width) key = UI_BACK;
-                else if (event.y == 1 && local_x >= buttons.forward_x && local_x < buttons.forward_x + buttons.forward_width) key = UI_FORWARD;
+                else if (history_action) key = history_action;
                 else if (event.y == 3 && local_x >= 2 && local_x < 10) key = KEY_BACKSPACE;
                 else if (event.y == 3 && local_x >= 12 && local_x < 18) key = KEY_ENTER;
                 else if (event.y >= layout.list_y && event.y < h - 3 && local_x > 0 && local_x < list_width - 1 && ui_panel(ui)->top + (size_t)(event.y - layout.list_y) < ui_panel(ui)->app.files.len) {

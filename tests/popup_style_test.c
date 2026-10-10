@@ -10,6 +10,57 @@ static Cell cell(WINDOW *w, int y, int x) {
     return result;
 }
 static void same_text(Cell a, Cell b) { assert(!wcscmp(a.text,b.text)); }
+/* Geometry locates semantic elements; literal output independently verifies it. */
+static void location_text(int x,const char *text,int pair,bool dim) {
+    for(int i=0;text[i];i++) {
+        Cell c=cell(stdscr,1,x+i);
+        assert(c.text[0]==(wchar_t)text[i] && !c.text[1]);
+        assert(c.pair==pair);
+        assert((c.attr&~A_COLOR)==(dim?A_DIM:A_NORMAL));
+    }
+}
+static void location_style(UiContext *ui,int width) {
+    UiHistoryLayout buttons=ui_history_layout(width,false);
+    const char *back=width>=80?"[< Back]":"[<]";
+    const char *forward=width>=80?"[Forward >]":"[>]";
+    assert(buttons.back_width==(int)strlen(back));
+    assert(buttons.forward_width==(int)strlen(forward));
+    assert(buttons.back_x+buttons.back_width<buttons.forward_x);
+    assert(buttons.forward_x+buttons.forward_width<buttons.path_x-10);
+    for(size_t state=0;state<4;state++) {
+        /* Empty history, first visit, middle visit, last visit. */
+        AppState *app=&ui_panel(ui)->app;
+        app->history_len=state?3:0;
+        app->history_at=state?state-1:0;
+        bool back_enabled=app->history_at>0;
+        bool forward_enabled=app->history_at+1<app->history_len;
+        draw_cached(ui);
+        location_text(buttons.back_x,back,back_enabled?UI_PATH:UI_DISABLED,!back_enabled);
+        location_text(buttons.forward_x,forward,forward_enabled?UI_PATH:UI_DISABLED,!forward_enabled);
+        location_text(buttons.path_x-10,"Location:",UI_MUTED,false);
+        location_text(buttons.path_x,ui_panel(ui)->app.directory,UI_PATH,false);
+        /* Scan actual brackets, not layout bounds, for an independent hit oracle.
+           Disabled buttons still dispatch to the existing no-history notice. */
+        int expected=0,seen=0;
+        for(int x=0;x<width;x++) {
+            Cell c=cell(stdscr,1,x);
+            if(c.text[0]==L'[') { assert(seen<2); expected=seen++?UI_FORWARD:UI_BACK; }
+            assert(ui_history_action(x,1,width,false)==expected);
+            assert(!ui_history_action(x,0,width,false));
+            assert(!ui_history_action(x,2,width,false));
+            if(c.text[0]==L']') expected=0;
+            if(x>=buttons.path_x+(int)strlen(app->directory)) {
+                assert(c.text[0]==L' ');
+                assert(c.pair==UI_PATH && !(c.attr&~A_COLOR));
+            }
+        }
+        assert(seen==2 && !expected);
+        assert(!ui_history_action(-1,1,width,false));
+        assert(!ui_history_action(width,1,width,false));
+    }
+    ui_panel(ui)->app.history_len=ui_panel(ui)->app.history_at=0;
+    draw_cached(ui);
+}
 int main(void) {
     assert(setlocale(LC_ALL,"C.UTF-8"));
     const char *terms[]={"xterm-256color","xterm","vt100"};
@@ -17,20 +68,25 @@ int main(void) {
     for (int t=0;t<3;t++) {
         FILE *out=tmpfile(), *in=tmpfile(); assert(out && in);
         SCREEN *screen=newterm(terms[t],out,in); assert(screen); init_theme();
-        assert(t!=1 || COLORS==8); assert(t!=2 || !has_colors());
+        assert(t!=0 || COLORS>=256); assert(t!=1 || COLORS==8); assert(t!=2 || !has_colors());
         for (int n=0;n<4;n++) {
             int h=heights[n], w=widths[n]; resizeterm(h,w);
             Item items[]={ {.name="한글-directory",.path="/a",.valid=true,.kind=FILE_DIRECTORY},
                            {.name="link",.path="/b",.valid=true,.kind=FILE_LINK} };
-            UiContext ui={0}; ui_panel(&ui)->app.directory="/"; ui_panel(&ui)->app.files=(FileList){items,2};
+            UiContext ui={0}; ui_panel(&ui)->app.directory="/location/path"; ui_panel(&ui)->app.files=(FileList){items,2};
             draw_cached(&ui);
             UiLayout layout=ui_layout(w,h,false);
+            if (getenv("TFILE_STYLE_DIAGNOSTICS")) {
+                Cell probe=cell(stdscr,1,10);
+                fprintf(stderr,"Location probe: TERM=%s env_TERM=%s size=%dx%d has_colors=%d COLORS=%d cell(1,10)=U+%04lx '%ls' pair=%d attr=0x%lx\n",
+                        terms[t],getenv("TERM")?getenv("TERM"):"(unset)",COLS,LINES,
+                        has_colors(),COLORS,(unsigned long)probe.text[0],probe.text,probe.pair,(unsigned long)probe.attr);
+            }
             assert(cell(stdscr,0,2).attr&A_BOLD);
             assert(!(cell(stdscr,0,1).attr&A_DIM));
             assert(cell(stdscr,2,4).attr&A_BOLD);
             assert(!(cell(stdscr,2,10).attr&A_BOLD));
-            assert(cell(stdscr,1,1).attr&A_DIM);
-            assert(cell(stdscr,1,5).attr&A_DIM);
+            location_style(&ui,w);
             assert(cell(stdscr,h-1,1).attr&A_BOLD);
             assert(!(cell(stdscr,h-1,6).attr&A_BOLD));
             assert(cell(stdscr,layout.list_y,1).text[0]==L'>');
@@ -40,8 +96,7 @@ int main(void) {
                 assert(cell(stdscr,2,1).pair==UI_FOCUS);
                 assert(cell(stdscr,0,w-1).pair==UI_HEADER);
                 assert(cell(stdscr,h-1,w-1).pair==UI_HEADER);
-                assert(cell(stdscr,1,10).pair==UI_MUTED);
-                assert(cell(stdscr,1,20).pair==UI_PATH);
+
                 assert(cell(stdscr,layout.list_y,3).pair==UI_SELECTED);
                 assert(cell(stdscr,layout.list_y,w-3).pair==UI_SELECTED);
                 assert(cell(stdscr,layout.list_y+1,3).pair==UI_LINK);
@@ -155,5 +210,5 @@ int main(void) {
         }
         endwin(); delscreen(screen); fclose(in); fclose(out);
     }
-    puts("PASS: 256/8/mono popup surfaces, title/border/footer/focus/disabled attributes, wide glyph preservation and exact background restoration at 50x9/80x24/100x24/160x32");
+    puts("PASS: 256/8/mono Location label/path, enabled/disabled history styles and exact click bounds; popup surfaces, title/border/footer/focus/disabled attributes, wide glyph preservation and exact background restoration at 50x9/80x24/100x24/160x32");
 }
