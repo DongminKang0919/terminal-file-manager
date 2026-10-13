@@ -19,18 +19,21 @@ for name,test,sources,extra in [
     ('terminal_test','tests/terminal_test.c',core,[]),
     ('terminal_input_test','tests/terminal_input_test.c',core+ui,['-lncursesw','-Wl,--wrap=core_monotonic_ms']),
     ('graphics_probe_test','tests/graphics_probe_test.c',core+ui,['-lncursesw','-Wl,--wrap=core_monotonic_ms,--wrap=core_terminal_pixels,--wrap=terminal_query,--wrap=terminal_query_cells']),
-    ('tfile','src/ui/main.c',core+ui,['-lncursesw'])]:
+    ('tfile','src/ui/main.c',core+ui,['-lncursesw']),
+    ('tfile_read','tests/scan_gate.c',core+ui+['src/ui/main.c'],['-lncursesw','-Wl,--wrap=platform_directory_open,--wrap=platform_directory_next'])]:
     subprocess.run(flags+['-o',str(out/name),test]+sources+extra,check=True)
 with tempfile.TemporaryDirectory(prefix='tfile-terminal-san-home-') as home:
     env={**os.environ,'HOME':home,'XDG_CONFIG_HOME':home+'/config',
          'ASAN_OPTIONS':f'detect_leaks={int(not args.disable_leaks)}:halt_on_error=1',
-         'UBSAN_OPTIONS':'halt_on_error=1:print_stacktrace=1','TFILE_BINARY':str(out/'tfile')}
+         'UBSAN_OPTIONS':'halt_on_error=1:print_stacktrace=1','TFILE_BINARY':str(out/'tfile'),
+         'TFILE_READ_BINARY':str(out/'tfile_read')}
     for name,command in [('terminal',[str(out/'terminal_test')]),('input',[str(out/'terminal_input_test')]),
                          ('probe',[str(out/'graphics_probe_test')]),('pty',['python3','tests/terminal_pty.py']),
                          ('auto_pty',['python3','tests/terminal_auto_pty.py']),
                          ('vim_pty',['python3','tests/vim_pty.py']),
                          ('editor_shutdown_pty',['python3','tests/editor_shutdown_pty.py']),
-                         ('mark_discovery_pty',['python3','tests/mark_discovery_pty.py'])]:
+                         ('mark_discovery_pty',['python3','tests/mark_discovery_pty.py']),
+                         ('reads_pty',['python3','tests/scan_latency_pty.py'])]:
         with (out/(name+'.log')).open('w') as log:
             result=subprocess.run(command,env=env,stdout=log,stderr=subprocess.STDOUT)
         print(('PASS' if result.returncode==0 else 'FAIL')+f': {name}, {out/name}.log',flush=True)

@@ -112,10 +112,16 @@ Result preview_session_page(PreviewSession *s, size_t start, size_t limit, Previ
         if (end) { s->eof = true; break; }
         for (char *p = buffer; *p; p++) if (*p == '\t') *p = ' ';
         buffer[strcspn(buffer, "\r\n")] = 0;
-        char *line = text_copy(buffer);
-        if (!line) { s->error = result_make(RESULT_NO_MEMORY, "Out of memory"); goto fail; }
+        /* A distant jump still reads sequentially, but only the last cache-sized
+           range can be used by this page or subsequent backward navigation. */
+        char *line = NULL;
+        if (target - s->next <= CACHE_ROWS) {
+            line = text_copy(buffer);
+            if (!line) { s->error = result_make(RESULT_NO_MEMORY, "Out of memory"); goto fail; }
+        }
         size_t slot = s->next % CACHE_ROWS;
         free(s->lines[slot]); s->lines[slot] = line; s->next++;
+        if (!line) s->first = s->next;
         if (s->next - s->first > CACHE_ROWS) s->first++;
     }
     out->skipped = start < s->next ? start : s->next;

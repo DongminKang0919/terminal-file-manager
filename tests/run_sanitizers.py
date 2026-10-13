@@ -18,6 +18,8 @@ ui=[*core,*sorted(x for x in (root/'src/ui').glob('*.c') if x.name!='main.c')]
 flags=['-D_XOPEN_SOURCE=700','-O1','-g','-Wall','-Wextra','-Wpedantic','-std=c11',
        '-fno-omit-frame-pointer','-fsanitize=address,undefined','-fno-pie','-no-pie']
 targets={
+ 'read_job_test':(['platform_task_send','platform_directory_open','malloc'],core),
+ 'performance_test':(['text_copy'],core),
  'mark_policy_test':([],ui),
  'vim_test':(['platform_reader_peek'],core),
  'favorites_test':(['platform_favorites_write'],core),

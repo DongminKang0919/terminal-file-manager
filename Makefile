@@ -10,6 +10,21 @@ HEADERS = src/model.h $(wildcard src/core/*.h src/platform/*.h src/ui/*.h)
 
 all: tfile
 
+tests/performance_test: tests/performance_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/performance_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) -Wl,--wrap=text_copy
+
+tests/tfile_read: tests/scan_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/scan_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=platform_directory_open,--wrap=platform_directory_next
+
+tests/read_job_test: tests/read_job_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/read_job_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) -Wl,--wrap=platform_task_send,--wrap=platform_directory_open,--wrap=malloc
+
+check-reads: tests/read_job_test tests/tfile_read tfile
+	./tests/read_job_test
+	python3 tests/isolated_check.py python3 tests/scan_latency_pty.py
+check-isolated: check-reads
+.PHONY: check-reads
+
 tfile: $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS)
 
@@ -34,7 +49,8 @@ tests/progress_test: tests/progress_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $
 tests/sort_test: tests/sort_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/sort_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES)
 
-check-core: tests/batch_test tests/ownership_test tests/sort_test tests/progress_test tests/core_test tests/platform_test tests/operations_test tests/search_test
+check-core: tests/performance_test tests/batch_test tests/ownership_test tests/sort_test tests/progress_test tests/core_test tests/platform_test tests/operations_test tests/search_test
+	./tests/performance_test
 	./tests/batch_test
 	./tests/ownership_test
 	./tests/sort_test
@@ -63,7 +79,7 @@ tests/popup_style_test: tests/popup_style_test.c $(CORE_SOURCES) $(PLATFORM_SOUR
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/popup_style_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS)
 
 tests/tfile_search: tests/search_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
-	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/search_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_search
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/search_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_search,--wrap=core_search_unsorted,--wrap=core_read_cancel
 
 tests/tfile_progress: tests/progress_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/progress_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_transfer_progress,--wrap=core_delete_progress
@@ -122,6 +138,7 @@ check-isolated: tests/picker_test tests/media_test tests/panels_ui_test tests/tf
 	python3 tests/batch_progress_pty.py
 
 clean:
+	rm -f tests/performance_test tests/tfile_read tests/read_job_test
 	rm -f tests/mark_policy_test tests/vim_test tests/trash_test tests/external_test tests/batch_conflict_test tests/filter_test tests/favorites_test tests/graphics_probe_test tests/terminal_test tests/terminal_input_test tests/settings_sanitize tests/settings_core_test tests/settings_test tfile tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_test tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/ownership_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
 
 .PHONY: all clean check check-core

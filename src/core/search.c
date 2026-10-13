@@ -54,32 +54,39 @@ static void search_tree(Search *s, const char *path, unsigned depth) {
             if (s->result.result.code == RESULT_OK && (s->result.visited % 64 == 0 || platform_monotonic_ms() - s->last_progress >= 100)) progress(s, entry.path);
             file_info_free(&entry); continue;
         }
-        char *child_path = text_copy(entry.path);
+        /* Keep the entry alive through callbacks and recursion. Matching entries
+           transfer ownership to results; nonmatches are freed after traversal.
+           The path allocation itself remains stable when results reallocates. */
+        const char *child_path = entry.path;
+        FileInfo discarded = {0};
         bool directory = entry.kind == FILE_DIRECTORY;
-        if (!child_path) { file_info_free(&entry); s->result.result = issue_at(result_make(RESULT_NO_MEMORY, "Out of memory"), path); break; }
         if (text_contains(entry.name, s->term)) {
             char *relative = platform_path_relative(s->root, entry.path);
-            if (!relative) { free(child_path); file_info_free(&entry); s->result.result = issue_at(result_make(RESULT_NO_MEMORY, "Out of memory"), path); break; }
+            if (!relative) { file_info_free(&entry); s->result.result = issue_at(result_make(RESULT_NO_MEMORY, "Out of memory"), path); break; }
             if (s->result.matches.len == s->capacity) {
                 size_t next = s->capacity ? s->capacity * 2 : 64;
                 FileInfo *entries = realloc(s->result.matches.entries, next * sizeof *entries);
-                if (!entries) { free(relative); free(child_path); file_info_free(&entry); s->result.result = issue_at(result_make(RESULT_NO_MEMORY, "Out of memory"), path); break; }
+                if (!entries) { free(relative); file_info_free(&entry); s->result.result = issue_at(result_make(RESULT_NO_MEMORY, "Out of memory"), path); break; }
                 s->result.matches.entries = entries; s->capacity = next;
             }
             free(entry.name); entry.name = relative;
             s->result.matches.entries[s->result.matches.len++] = entry;
-        } else file_info_free(&entry);
+        } else discarded = entry;
         if (s->result.visited % 64 == 0 || platform_monotonic_ms() - s->last_progress >= 100) progress(s, child_path);
         if (directory) search_tree(s, child_path, depth + 1);
-        free(child_path);
+        file_info_free(&discarded);
     }
     platform_directory_close(dir);
 }
-SearchResult core_search(const char *root, const char *term, SearchLimits limits, SearchProgress callback, void *context) {
+SearchResult core_search_unsorted(const char *root, const char *term, SearchLimits limits, SearchProgress callback, void *context) {
     Search s = { .root = root, .term = term, .limits = limits, .callback = callback, .context = context };
     if (progress(&s, root)) search_tree(&s, root, 0);
     s.result.limited |= s.depth_limited;
-    if (s.result.matches.len > 1) qsort(s.result.matches.entries, s.result.matches.len, sizeof *s.result.matches.entries, file_compare);
     return s.result;
+}
+SearchResult core_search(const char *root, const char *term, SearchLimits limits, SearchProgress callback, void *context) {
+    SearchResult result = core_search_unsorted(root, term, limits, callback, context);
+    if (result.matches.len > 1) qsort(result.matches.entries, result.matches.len, sizeof *result.matches.entries, file_compare);
+    return result;
 }
 void search_result_free(SearchResult *result) { file_list_free(&result->matches); *result = (SearchResult){0}; }

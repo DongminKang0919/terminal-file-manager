@@ -1,6 +1,10 @@
 #include "ui.h"
 
 static Result initialize_panel(AppState *app,const char *directory,const StartupSettings *s) {
+    if (app->load_progress) {
+        app->show_hidden = s->show_hidden; app->sort = s->sort;
+        return app_navigate(app, directory ? directory : ".");
+    }
     if(s->show_hidden && s->sort.key==SORT_NAME && !s->sort.descending)
         return app_init(app,directory);
     return app_init_settings(app,directory,s);
@@ -19,6 +23,7 @@ Result ui_init(UiContext *ui,const char *directory) {
     return r;
 }
 void ui_free(UiContext *ui) {
+    core_read_shutdown();
     graphics_probe_cancel(ui); graphics_clear(ui); notice_clear(ui); preview_reset(ui); core_media_shutdown();
     for(unsigned i=0;i<2;i++) app_free(&ui->panels[i].app);
     core_external_close(ui->external_job);ui->external_job=NULL;

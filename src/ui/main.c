@@ -19,10 +19,12 @@ int main(int argc, char **argv) {
     int key; bool redraw=true;
     for (;;) {
         if (core_media_shutdown_requested() || core_editor_shutdown_requested()) break;
+        ui_enable_async_reads(ui);
         bool external_changed=external_prepare(ui);
         if(redraw||external_changed) draw(ui);
         bool media_wait=media_pending(ui)||core_media_cleanup_pending();
-        wtimeout(stdscr,(media_wait || ui->external_job || core_external_cleanup_pending())?40:-1);
+        bool read_wait=core_read_cleanup_pending();
+        wtimeout(stdscr,(media_wait || ui->external_job || core_external_cleanup_pending() || read_wait)?40:-1);
         key = input_key(stdscr);
         wtimeout(stdscr, -1); /* Forms and inline find retain their blocking input policy. */
         if (key == ERR) {redraw=media_wait;continue;}

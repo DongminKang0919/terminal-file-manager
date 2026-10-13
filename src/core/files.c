@@ -21,7 +21,7 @@ bool text_contains(const char *text, const char *needle) {
     }
     return false;
 }
-static Result read_list(const char *directory, bool hidden, bool directories_only, FileList *out) {
+Result core_read_directory(const char *directory, bool hidden, bool directories_only, FileList *out) {
     *out = (FileList){0}; PlatformDirectory *dir = NULL;
     Result r = platform_directory_open(directory, &dir);
     size_t capacity = 0;
@@ -42,6 +42,32 @@ static Result read_list(const char *directory, bool hidden, bool directories_onl
     if (r.code != RESULT_OK) file_list_free(out);
     return r;
 }
+static Result load_directory(AppState *app, const char *path, bool hidden, char **resolved, FileList *list) {
+    *resolved = NULL; *list = (FileList){0};
+    if (!app->load_progress) {
+        Result r = core_resolve_directory(app->directory, path, resolved);
+        if (r.code == RESULT_OK) r = core_read_directory(*resolved, hidden, false, list);
+        if (r.code != RESULT_OK) { free(*resolved); *resolved = NULL; }
+        return r;
+    }
+    ReadJob *job = NULL;
+    Result r = core_read_directory_start(app->directory, path, hidden, false, &job);
+    bool done = false;
+    while (r.code == RESULT_OK && !done) {
+        r = core_read_poll(job, &done);
+        if (!done && !app->load_progress(core_read_snapshot(job)->matches.len, false, !core_read_pending_messages(job), app->load_context)) {
+            core_read_cancel(job); r = core_read_snapshot(job)->result;
+        }
+    }
+    if (r.code == RESULT_OK && job) {
+        SearchResult result;
+        core_read_take(job, &result, resolved); *list = result.matches;
+        if (!*resolved) { file_list_free(list); r = result_make(RESULT_IO, "Missing directory load result"); }
+    }
+    core_read_close(job);
+    app->load_progress(list->len, true, false, app->load_context);
+    return r;
+}
 static void filter_list(FileList *list,FilterKind kind,const char *pattern) {
     if(kind==FILTER_NONE) return;
     size_t kept=0;
@@ -57,7 +83,8 @@ Result app_set_filter(AppState *app,FilterKind kind,const char *pattern) {
     if(!*pattern) kind=FILTER_NONE;
     char *copy=kind==FILTER_NONE?NULL:text_copy(pattern);
     if(kind!=FILTER_NONE&&!copy) return result_make(RESULT_NO_MEMORY,"Out of memory");
-    FileList list; Result r=read_list(app->directory,app->show_hidden,false,&list);
+    FileList list; char *resolved = NULL;
+    Result r=load_directory(app,app->directory,app->show_hidden,&resolved,&list); free(resolved);
     if(r.code!=RESULT_OK) { free(copy); return r; }
     size_t count=list.len;filter_list(&list,kind,copy); main_list_sort(&list,app->sort);
     file_list_free(&app->files);free(app->filter);app_marks_clear(app);
@@ -67,7 +94,7 @@ Result app_set_filter(AppState *app,FilterKind kind,const char *pattern) {
 /* Pickers retain their legacy order; the main list applies its own comparator
    directly to the read list, including the raw-name tie breaker. */
 Result core_list(const char *directory, bool hidden, bool directories_only, FileList *out) {
-    Result r = read_list(directory, hidden, directories_only, out);
+    Result r = core_read_directory(directory, hidden, directories_only, out);
     if (r.code == RESULT_OK && out->len > 1) qsort(out->entries, out->len, sizeof *out->entries, file_compare);
     return r;
 }
@@ -95,10 +122,8 @@ Result app_remember_selection(AppState *app, size_t selected, size_t top) {
 }
 static Result navigate_to(AppState *app, const char *directory, bool record, bool hidden, const char *required_name, size_t *selected,bool reveal_filter) {
     char *resolved = NULL;
-    Result r = core_resolve_directory(app->directory, directory, &resolved);
-    if (r.code != RESULT_OK) return r;
     FileList list;
-    r = read_list(resolved, hidden, false, &list);
+    Result r = load_directory(app, directory, hidden, &resolved, &list);
     if (r.code != RESULT_OK) { free(resolved); return r; }
     bool changing_filter=reveal_filter && app->filter_kind!=FILTER_NONE;
     size_t unfiltered=list.len;

@@ -4,6 +4,9 @@
 /tests/platform_test
 /tests/operations_test
 /tests/search_test
+/tests/performance_test
+/tests/tfile_read
+/tests/read_job_test
 /tests/controller_test
 /tests/text_test
 /tests/text_window_test

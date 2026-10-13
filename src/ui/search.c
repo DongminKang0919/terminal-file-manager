@@ -10,7 +10,8 @@ typedef struct {
     char term[256];
     unsigned frame;
     int focus; /* 0: results, 1: Search, 2: Open. */
-    bool drawn;
+    bool drawn, asynchronous;
+    int poll_delay;
     uint64_t last_draw;
 
 } Search;
@@ -71,7 +72,7 @@ static bool search_progress(const SearchResult *progress, const char *path, void
         s->drawn = true; s->last_draw = now;
     }
     /* Poll every callback, including callbacks whose rendering was suppressed. */
-    nodelay(s->win, TRUE);
+    wtimeout(s->win, s->asynchronous ? s->poll_delay : 0);
     int key = input_key(s->win);
     if (key == KEY_MOUSE) {
         MEVENT event;
@@ -83,6 +84,7 @@ static bool search_progress(const SearchResult *progress, const char *path, void
     }
     if (key == KEY_RESIZE || key == KEY_F(10)) s->close_requested = s->stopped = true;
     if (key == 27 || key == '\n' || key == KEY_ENTER) s->stopped = true;
+    if (core_media_shutdown_requested() || core_editor_shutdown_requested()) s->close_requested = s->stopped = true;
     nodelay(s->win, FALSE);
     return !s->stopped;
 }
@@ -114,15 +116,37 @@ void search_items(UiContext *ui) {
         search_result_free(&result);
         WINDOW *host = s.win;
         char term[sizeof s.term]; memcpy(term, s.term, sizeof term);
-        s = (Search){ .win = host }; memcpy(s.term, term, sizeof term);
-        result = core_search(ui_panel(ui)->app.directory, s.term, search_default_limits(), search_progress, &s);
+        s = (Search){ .win = host, .asynchronous = ui->async_reads }; memcpy(s.term, term, sizeof term);
+        if (ui->async_reads) {
+            ReadJob *job = NULL;
+            Result started = core_read_search_start(ui_panel(ui)->app.directory, s.term, search_default_limits(), &job);
+            if (started.code != RESULT_OK) result.result = started;
+            else {
+                bool done = false;
+                while (!done) {
+                    (void)core_read_poll(job, &done);
+                    s.poll_delay = core_read_pending_messages(job) ? 0 : 40;
+                    if (!done && !search_progress(core_read_snapshot(job), NULL, &s)) {
+                        core_read_cancel(job); break;
+                    }
+                }
+                core_read_take(job, &result, NULL);
+                core_read_close(job);
+            }
+        } else result = core_search(ui_panel(ui)->app.directory, s.term, search_default_limits(), search_progress, &s);
         search_update(&s, &result); s.stopped = result.stopped;
         if (s.close_requested) break;
         size_t choice = 0, offset = 0, last_choice = SIZE_MAX;
         uint64_t last_click = 0;
         for (;;) {
             search_draw(&s, choice, offset, false);
-            int key = input_key(win);
+            int key;
+            do {
+                wtimeout(win, core_read_cleanup_pending() ? 40 : -1);
+                key = input_key(win);
+                if (core_media_shutdown_requested() || core_editor_shutdown_requested()) { s.close_requested = true; goto search_done; }
+            } while (key == ERR);
+            wtimeout(win, -1);
             if (key == KEY_MOUSE) {
                 MEVENT event;
                 if (getmouse(&event) == OK) {

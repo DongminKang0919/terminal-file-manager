@@ -12,6 +12,137 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <sys/prctl.h>
+#include <limits.h>
+#include <sys/mman.h>
+
+#define TASK_MESSAGE_MAX (1024u * 1024u)
+typedef struct { unsigned type; size_t len; } TaskHeader;
+struct PlatformTaskWriter { int fd; };
+struct PlatformTask {
+    int fd, diagnostic; pid_t pid;
+    TaskHeader header; size_t header_read, body_read;
+    void *body;
+};
+static pid_t task_retiring;
+static PlatformTask *task_active;
+
+bool platform_task_cleanup_pending(void) {
+    if (task_retiring) {
+        pid_t p = waitpid(task_retiring, NULL, WNOHANG);
+        if (p == task_retiring || (p < 0 && errno == ECHILD)) task_retiring = 0;
+    }
+    return task_retiring != 0;
+}
+Result platform_task_open(PlatformTaskWork work, void *context, PlatformTask **out) {
+    *out = NULL;
+    if (task_active || platform_task_cleanup_pending())
+        return result_make(RESULT_CANCELLED, "Previous read worker is still closing; retry");
+    PlatformTask *task = calloc(1, sizeof *task);
+    if (!task) return result_make(RESULT_NO_MEMORY, "Out of memory");
+    task->diagnostic = memfd_create("tfile-read-errors", MFD_CLOEXEC);
+    if (task->diagnostic < 0) { free(task); return result_make(RESULT_IO, "Cannot create read worker diagnostics"); }
+    int pipefd[2];
+    if (pipe2(pipefd, O_CLOEXEC) < 0) { close(task->diagnostic); free(task); return result_make(RESULT_IO, "Cannot create read worker pipe"); }
+    int flags = fcntl(pipefd[0], F_GETFL);
+    if (flags < 0 || fcntl(pipefd[0], F_SETFL, flags | O_NONBLOCK) < 0) {
+        close(pipefd[0]); close(pipefd[1]); close(task->diagnostic); free(task);
+        return result_make(RESULT_IO, "Cannot configure read worker pipe");
+    }
+    pid_t parent = getpid(), pid = fork();
+    if (pid < 0) {
+        close(pipefd[0]); close(pipefd[1]); close(task->diagnostic); free(task);
+        return result_make(RESULT_IO, "Cannot start read worker");
+    }
+    if (!pid) {
+        /* Do not inherit the UI's deferred shutdown handlers or terminal FDs.
+           This process does only read work and owns no child processes. */
+        struct sigaction action = {0}; action.sa_handler = SIG_DFL;
+        sigemptyset(&action.sa_mask);
+        const int signals[] = {SIGINT, SIGTERM, SIGHUP, SIGPIPE, SIGWINCH};
+        for (size_t i = 0; i < sizeof signals / sizeof *signals; i++) sigaction(signals[i], &action, NULL);
+        if (prctl(PR_SET_PDEATHSIG, SIGKILL) < 0 || getppid() != parent) _exit(1);
+        if (dup2(task->diagnostic, STDERR_FILENO) < 0) _exit(1);
+        close(pipefd[0]);
+        for (int fd = 0; fd < pipefd[1]; fd++) if (fd != STDERR_FILENO) close(fd);
+        /* Linux close_range is optional on older kernels. */
+        if (close_range((unsigned)pipefd[1] + 1, UINT_MAX, 0) < 0) {
+            long limit = sysconf(_SC_OPEN_MAX);
+            for (int fd = pipefd[1] + 1; fd < limit; fd++) close(fd);
+        }
+        PlatformTaskWriter writer = {pipefd[1]};
+        work(&writer, context);
+        close(pipefd[1]); _exit(0);
+    }
+    close(pipefd[1]); task->fd = pipefd[0]; task->pid = pid;
+    task_active = task; *out = task;
+    return result_make(RESULT_OK, NULL);
+}
+static bool task_write(int fd, const void *data, size_t len) {
+    const unsigned char *p = data;
+    while (len) {
+        ssize_t n = write(fd, p, len);
+        if (n < 0 && errno == EINTR) continue;
+        if (n <= 0) return false;
+        p += n; len -= (size_t)n;
+    }
+    return true;
+}
+bool platform_task_send(PlatformTaskWriter *writer, unsigned type, const void *data, size_t len) {
+    if (len > TASK_MESSAGE_MAX) return false;
+    TaskHeader header = {.type = type, .len = len};
+    return task_write(writer->fd, &header, sizeof header) && task_write(writer->fd, data, len);
+}
+Result platform_task_receive(PlatformTask *task, unsigned *type, void **data, size_t *len, bool *ready) {
+    *ready = false; *data = NULL; *len = 0;
+    for (;;) {
+        bool header = task->header_read < sizeof task->header;
+        if (!header && task->header.len > TASK_MESSAGE_MAX)
+            return result_make(RESULT_IO, "Invalid read worker message");
+        if (!header && !task->body && task->header.len) {
+            task->body = malloc(task->header.len);
+            if (!task->body) return result_make(RESULT_NO_MEMORY, "Out of memory");
+        }
+        if (!header && task->body_read == task->header.len) {
+            *type = task->header.type; *data = task->body; *len = task->header.len; *ready = true;
+            task->body = NULL; task->header_read = task->body_read = 0;
+            return result_make(RESULT_OK, NULL);
+        }
+        void *target = header ? (unsigned char *)&task->header + task->header_read :
+                               (unsigned char *)task->body + task->body_read;
+        size_t want = header ? sizeof task->header - task->header_read : task->header.len - task->body_read;
+        ssize_t n = read(task->fd, target, want);
+        if (n < 0 && errno == EINTR) continue;
+        if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) return result_make(RESULT_OK, NULL);
+        if (n <= 0) {
+            char diagnostic[256];
+            ssize_t bytes = pread(task->diagnostic, diagnostic, sizeof diagnostic - 1, 0);
+            if (bytes > 0) { diagnostic[bytes] = 0; return result_make(RESULT_IO, diagnostic); }
+            return result_make(RESULT_IO, "Read worker ended without a complete result");
+        }
+        if (header) task->header_read += (size_t)n; else task->body_read += (size_t)n;
+    }
+}
+void platform_task_close(PlatformTask *task) {
+    if (!task) return;
+    close(task->fd); close(task->diagnostic); free(task->body);
+    if (task_active == task) task_active = NULL;
+    pid_t p = waitpid(task->pid, NULL, WNOHANG);
+    if (p == 0 || (p < 0 && errno == EINTR)) {
+        kill(task->pid, SIGKILL); task_retiring = task->pid;
+    }
+    free(task); (void)platform_task_cleanup_pending();
+}
+void platform_task_shutdown(void) {
+    platform_task_close(task_active);
+    /* No blocking wait on a possibly uninterruptible filesystem read. Kernel
+       parent-death cleanup remains armed; exited children are reaped now. */
+    for (unsigned i = 0; i < 20 && platform_task_cleanup_pending(); i++) {
+        struct timespec pause = {0, 1000000}; nanosleep(&pause, NULL);
+    }
+}
 
 static Result failure(void) {
     ResultCode code;

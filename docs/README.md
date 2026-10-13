@@ -11,6 +11,7 @@
 
 | 주제 | 문서 |
 | --- | --- |
+| 진행 점검·최적화·비동기 판단 | [2026-10-13 검토](OPTIMIZATION_REVIEW_2026-10-13.md), [느린 읽기 비동기 개선](ASYNC_READ_VALIDATION_2026-10-13.md) |
 | 빌드·첫 실행·CI·sanitizer | [2026-10-10 배포 준비](RELEASE_READINESS_2026-10-10.md), [상세 검사 명령](USER_GUIDE.md#검증) |
 | WSL 수동 검사 | [미디어 native·PTY 수동 결과](MEDIA_PREVIEW_VALIDATION.md#수정-후-사용자-wsl-터미널의-수동-sanitizer-결과-검토), [전송 수동 누수 검사](TRANSFER_VALIDATION.md#별도-wsl-터미널의-수동-누수-검사-검토), [산출물 버전 확인 한계](STABILIZATION_2026-10-04.md#기존-수동-누수-검사-산출물-재검토) |
 | UI·패널·방문 기록 | [UI/UX](UI_UX_VALIDATION.md), [이중 패널](PANELS_VALIDATION.md), [표시 역할](UI_ROLE_VALIDATION_2026-10-10.md), [표시 전후 비교](UI_ROLE_COMPARISON_2026-10-10.md), [방문 기록 키보드·마우스](HISTORY_KEYBOARD_VALIDATION_2026-10-10.md) |

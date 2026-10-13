@@ -53,6 +53,9 @@ typedef struct {
 typedef enum { UI_LIST_ONLY, UI_LIST_PREVIEW, UI_LIST_LIST } UiMode;
 typedef struct {
     SettingsStore settings;
+    bool async_reads;
+    WINDOW *directory_load_window;
+    uint64_t directory_load_started, directory_load_drawn;
     Favorites favorites;
     ExternalJob *external_job;
     char settings_warning[256];
@@ -113,6 +116,7 @@ bool ui_operation_allowed(UiContext *ui, char *warning, size_t size);
 void refresh_peer_after_operation(UiContext *ui);
 void refresh_operation_lists(UiContext *ui, const char *highlight);
 void ui_free(UiContext *ui);
+void ui_enable_async_reads(UiContext *ui);
 void quick_find(UiContext *ui);
 void notice_clear(UiContext *ui);
 Result notice_prepare(OperationNotice *out, const char *action, const char *source, const char *destination);

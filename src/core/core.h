@@ -38,6 +38,9 @@ Result favorites_remove(Favorites *store,size_t index);
 /* Owned history data; positions are logical list ordinals, never terminal coordinates. */
 typedef struct { char *directory, *selected_name; size_t selected, top; } HistoryEntry;
 typedef struct { char *name; bool seen; } SelectionName;
+/* Loading observers are called in the parent only. false cancels an isolated
+   read job; complete always closes the observer, including failures. */
+typedef bool (*DirectoryProgress)(size_t entries, bool complete, bool waiting, void *context);
 typedef enum { FILTER_NONE, FILTER_CONTAINS, FILTER_GLOB } FilterKind;
 typedef struct {
     SelectionName *marks; size_t marks_len, marks_cap;
@@ -48,6 +51,8 @@ typedef struct {
     FilterKind filter_kind; char *filter; size_t unfiltered_count;
     HistoryEntry *history;
     size_t history_len, history_at;
+    DirectoryProgress load_progress;
+    void *load_context; /* borrowed; never accessed by a worker */
 } AppState;
 /* Main-list sorting only; core_list/search keep their legacy ordering.
    Reordering preserves owned strings and performs no filesystem queries. */
@@ -77,6 +82,8 @@ Result app_open_search_result(AppState *app, const char *path, size_t *selected,
 /* All returned lists/strings are caller-owned; free lists via file_list_free,
    strings via free. Failed pointer-producing calls leave NULL outputs. */
 Result core_list(const char *directory, bool hidden, bool directories_only, FileList *out);
+/* Unsorted internal enumeration shared by synchronous and isolated loaders. */
+Result core_read_directory(const char *directory, bool hidden, bool directories_only, FileList *out);
 int file_compare(const void *a, const void *b);
 bool text_contains(const char *text, const char *needle);
 char *core_path_join(const char *directory, const char *name);
@@ -155,7 +162,21 @@ typedef struct {
 typedef bool (*SearchProgress)(const SearchResult *progress, const char *current_path, void *context);
 SearchLimits search_default_limits(void);
 SearchResult core_search(const char *root, const char *term, SearchLimits limits, SearchProgress callback, void *context);
+SearchResult core_search_unsorted(const char *root, const char *term, SearchLimits limits, SearchProgress callback, void *context);
 void search_result_free(SearchResult *result);
+/* One isolated read job at a time. Polling does bounded nonblocking IPC work;
+   borrowed snapshots stay valid until the next poll/cancel/take/close. */
+typedef struct ReadJob ReadJob;
+Result core_read_search_start(const char *root, const char *term, SearchLimits limits, ReadJob **out);
+Result core_read_directory_start(const char *base, const char *path, bool hidden, bool directories_only, ReadJob **out);
+Result core_read_poll(ReadJob *job, bool *done);
+const SearchResult *core_read_snapshot(const ReadJob *job);
+bool core_read_pending_messages(const ReadJob *job);
+void core_read_cancel(ReadJob *job);
+void core_read_take(ReadJob *job, SearchResult *result, char **directory);
+void core_read_close(ReadJob *job);
+bool core_read_cleanup_pending(void);
+void core_read_shutdown(void);
 
 typedef struct {
     char **lines;

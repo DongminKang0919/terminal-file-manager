@@ -46,6 +46,17 @@ Result platform_reader_peek(PlatformReader *reader, unsigned char *buffer, size_
 Result platform_reader_line(PlatformReader *reader, char *buffer, size_t size, bool *end);
 void platform_reader_close(PlatformReader *reader);
 uint64_t platform_monotonic_ms(void);
+/* Isolated read-only workers. Private, framed messages have a 1 MiB limit.
+   The callback runs in the child and must never access terminal/UI state. */
+typedef struct PlatformTask PlatformTask;
+typedef struct PlatformTaskWriter PlatformTaskWriter;
+typedef void (*PlatformTaskWork)(PlatformTaskWriter *, void *);
+Result platform_task_open(PlatformTaskWork work, void *context, PlatformTask **out);
+bool platform_task_send(PlatformTaskWriter *writer, unsigned type, const void *data, size_t len);
+Result platform_task_receive(PlatformTask *task, unsigned *type, void **data, size_t *len, bool *ready);
+void platform_task_close(PlatformTask *task);
+bool platform_task_cleanup_pending(void);
+void platform_task_shutdown(void);
 Result platform_editor_inspect(const char *path,unsigned char *sample,size_t capacity,size_t *length,bool *read_only);
 Result platform_vim_available(void);
 Result platform_editor_setting(char **out);
