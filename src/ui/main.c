@@ -9,6 +9,8 @@ int main(int argc, char **argv) {
     Result initialized = ui_init(ui, argc == 2 ? argv[1] : NULL);
     if (initialized.code != RESULT_OK) { fprintf(stderr, "%s\n", initialized.detail); ui_free(ui); return 1; }
 
+    /* Shell size hints can be stale after terminal/split-pane resizing. */
+    unsetenv("LINES"); unsetenv("COLUMNS");
     initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0); init_theme();
     input_init(); graphics_init(ui); core_media_install_signals();
     set_escdelay(25);

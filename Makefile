@@ -299,3 +299,8 @@ check-isolated: check-panel-first
 tests/preview_worker_test: tests/preview_worker_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/preview_worker_test.c $(filter-out src/core/preview_job.c,$(CORE_SOURCES)) $(PLATFORM_SOURCES) -Wl,--wrap=platform_task_send,--wrap=platform_task_command
 check-preview-async: tests/preview_worker_test
+
+check-fullscreen: tfile
+	python3 tests/isolated_check.py python3 tests/fullscreen_pty.py
+check-isolated: check-fullscreen
+.PHONY: check-fullscreen
