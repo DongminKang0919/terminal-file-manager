@@ -143,10 +143,10 @@ bool rename_named_entry(UiContext *ui, const char *source, const char *name, cha
     free(requested);
     if(r.code!=RESULT_OK) { operation_warning(r,warning,size);free(original);return false; }
     char *destination = NULL;
-    r = core_transfer(true, source, ui_panel(ui)->app.directory, name, &destination);
+    r = run_move_operation(ui, source, ui_panel(ui)->app.directory, name, &destination);
     notice_commit(ui,&prepared,r);
     free(destination);
-    if (r.code != RESULT_OK) { operation_warning(r, warning, size); refresh_peer_after_operation(ui); free(original); return false; }
+    if (r.code != RESULT_OK) { operation_warning(r, warning, size); if(ui->async_reads)refresh_after_operation(ui,NULL,r.detail);else refresh_peer_after_operation(ui); free(original); return false; }
     app_unmark(&ui_panel(ui)->app,original); free(original);
     refresh_after_operation(ui, name, "Renamed"); return true;
 }
@@ -210,7 +210,7 @@ bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *
     free(requested);
     if(r.code!=RESULT_OK) { operation_warning(r,warning,size);free(original);return false; }
     char *destination = NULL;
-    r = move_it ? core_transfer(true, source, directory, name, &destination) :
+    r = move_it ? run_move_operation(ui, source, directory, name, &destination) :
                          run_file_operation(ui, true, source, directory, name, &destination);
     notice_commit(ui,&prepared,r);
     if (r.code != RESULT_OK) {
@@ -220,14 +220,14 @@ bool transfer_path(UiContext *ui, bool move_it, const char *source, const char *
             char summary[sizeof ui->status];
             snprintf(summary, sizeof summary, "%s; %s; completed: %llu; bytes: %llu; %.140s",
                      r.code == RESULT_CANCELLED ? "Copy cancelled" : "Copy failed",
-                     r.partial ? "incomplete files/directories kept" : "no changes",
+                     r.code==RESULT_UNCERTAIN?"outcome uncertain; inspect paths":r.partial ? "incomplete files/directories kept" : "no changes",
                      (unsigned long long)r.completed_items, (unsigned long long)r.copied_bytes, warning);
             refresh_after_operation(ui, NULL, summary);
             /* Keep the actionable cause in the form. The full outcome/counters
                remain in the retained notice, rather than hiding the cause. */
             if (r.code == RESULT_CANCELLED)
                 snprintf(warning, size, "Copy cancelled; %s", r.partial ? "changes kept" : "no changes");
-        } else refresh_peer_after_operation(ui);
+        } else if(ui->async_reads)refresh_after_operation(ui,NULL,r.detail);else refresh_peer_after_operation(ui);
         return false;
     }
     char success[sizeof ui->status];

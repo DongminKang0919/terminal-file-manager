@@ -21,3 +21,5 @@ bool core_media_cleanup_pending(void) { return platform_media_cleanup_pending();
 
 void core_media_install_signals(void) { platform_media_install_signals(); }
 bool core_media_shutdown_requested(void) { return platform_media_shutdown_requested(); }
+
+void core_request_shutdown(void) { platform_request_shutdown(); }

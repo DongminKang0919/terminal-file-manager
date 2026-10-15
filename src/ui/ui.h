@@ -265,6 +265,7 @@ const FileInfo *ui_operation_item(UiContext *ui);
 void mark_targets_message(UiContext *ui);
 void trash_entry(UiContext *ui);
 bool confirm_trash(UiContext *ui,const char *name,bool directory);
+Result run_move_operation(UiContext *ui,const char *source,const char *directory,const char *name,char **destination);
 Result run_trash_operation(UiContext *ui,const char *source,char **destination);
 
 #endif

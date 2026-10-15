@@ -95,7 +95,7 @@ uint64_t core_monotonic_ms(void);
 Result core_create(const char *directory, const char *name, bool is_directory);
 Result core_transfer(bool move, const char *source, const char *directory, const char *name, char **destination);
 Result core_delete_progress(const char *path, OperationCallback callback, void *context);
-/* Same-filesystem move remains a single non-cancellable call; callback ignored. */
+/* Move checks cancellation before its atomic no-replace rename. */
 Result core_transfer_progress(bool move, const char *source, const char *directory, const char *name,
                               char **destination, OperationCallback callback, void *context);
 Result core_delete(const char *path);
@@ -105,7 +105,7 @@ Result core_link_target(const char *path, char **out);
 /* Owned target snapshot and fixed results, prepared before any file changes.
    This fixes paths/order, not filesystem identities. Single APIs revalidate. */
 typedef enum { BATCH_COPY, BATCH_MOVE, BATCH_DELETE, BATCH_TRASH } BatchAction;
-typedef enum { BATCH_UNEXECUTED, BATCH_SUCCESS, BATCH_FAILED, BATCH_CANCELLED, BATCH_SKIPPED } BatchStatus;
+typedef enum { BATCH_UNEXECUTED, BATCH_SUCCESS, BATCH_FAILED, BATCH_CANCELLED, BATCH_SKIPPED, BATCH_UNKNOWN } BatchStatus;
 typedef struct {
     char *source, *name, *destination;
     FileKind kind;
@@ -120,6 +120,7 @@ typedef struct {
     char *directory;
     Result result;
     bool executed;
+    void (*report)(size_t index,void *context); void *report_context; /* worker checkpoint */
     BatchConflictCallback conflict; void *conflict_context; /* borrowed for execution only */
 } BatchJob;
 typedef struct {
@@ -234,4 +235,20 @@ Result core_preview_poll(PreviewJob *job, bool *done, PreviewReply *reply);
 void core_preview_close(PreviewJob *job);
 void core_preview_reply_free(PreviewReply *reply);
 
+/* One modal mutation executor. Paths/target order are frozen before start;
+   the caller retains the BatchJob until close. Poll updates confirmed results. */
+typedef struct MutationJob MutationJob;
+typedef struct {
+    size_t index,total,succeeded,skipped;
+    uint64_t completed_items,copied_bytes;
+    char path[1024];
+} MutationProgress;
+Result core_mutation_start(BatchJob *batch,MutationJob **out);
+Result core_mutation_poll(MutationJob *job,bool *done);
+const MutationProgress *core_mutation_progress(const MutationJob *job);
+bool core_mutation_conflict(const MutationJob *job,size_t *index);
+void core_mutation_decide(MutationJob *job,BatchConflictDecision decision);
+void core_mutation_cancel(MutationJob *job);
+void core_mutation_close(MutationJob *job); /* after done; premature close requests cooperative stop */
+void core_request_shutdown(void);
 #endif

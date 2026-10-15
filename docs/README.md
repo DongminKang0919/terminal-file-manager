@@ -11,6 +11,7 @@
 
 | 주제 | 문서 |
 | --- | --- |
+| 파일 변경 실행·취소·종료 | [변경 worker 검증·측정](ASYNC_MUTATION_VALIDATION_2026-10-15.md) |
 | 미리보기·최초 이중 패널·변경 작업 지연 | [2026-10-15 재현·구현·측정](ASYNC_PREVIEW_VALIDATION_2026-10-15.md) |
 | 진행 점검·최적화·비동기 판단 | [2026-10-13 검토](OPTIMIZATION_REVIEW_2026-10-13.md), [느린 읽기 비동기 개선](ASYNC_READ_VALIDATION_2026-10-13.md) |
 | 빌드·첫 실행·CI·sanitizer | [2026-10-10 배포 준비](RELEASE_READINESS_2026-10-10.md), [상세 검사 명령](USER_GUIDE.md#검증) |

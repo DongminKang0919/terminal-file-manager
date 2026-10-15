@@ -67,7 +67,7 @@ Result batch_execute(BatchJob *job,BatchCallback callback,void *context) {
             char *destination=NULL;
             r=core_transfer_progress(job->action==BATCH_MOVE,target->source,job->directory,target->name,
                                      &destination,callback?progress:NULL,&run);
-            free(destination);
+            target->destination=destination;
         }
         /* Only a no-change collision can be skipped. A recursive partial copy
            must stop even if its last error was EXISTS. No retry/overwrite. */
@@ -76,7 +76,9 @@ Result batch_execute(BatchJob *job,BatchCallback callback,void *context) {
             BatchConflictDecision decision=skip_all?CONFLICT_SKIP:job->conflict?
                 job->conflict(target,job->directory,job->conflict_context):CONFLICT_STOP;
             if(decision==CONFLICT_SKIP || decision==CONFLICT_SKIP_ALL) {
-                skip_all|=decision==CONFLICT_SKIP_ALL;target->status=BATCH_SKIPPED;job->skipped++;continue;
+                skip_all|=decision==CONFLICT_SKIP_ALL;target->status=BATCH_SKIPPED;job->skipped++;
+                if(job->report)job->report(i,job->report_context);
+                continue;
             }
             if(decision==CONFLICT_CANCEL) r=result_make(RESULT_CANCELLED,"Cancelled at name collision; this target unchanged");
         }
@@ -87,7 +89,9 @@ Result batch_execute(BatchJob *job,BatchCallback callback,void *context) {
         if(r.code==RESULT_OK) job->succeeded++;
         else job->result=r;
         job->result.completed_items=items; job->result.copied_bytes=bytes;
-        if(r.code!=RESULT_OK) { job->result.partial=changed; break; }
+        if(r.code!=RESULT_OK) job->result.partial=changed;
+        if(job->report)job->report(i,job->report_context);
+        if(r.code!=RESULT_OK) break;
     }
     if(job->result.code==RESULT_OK && job->skipped) snprintf(job->result.detail,sizeof job->result.detail,"Succeeded: %zu; skipped name collisions: %zu",job->succeeded,job->skipped);
     return job->result;

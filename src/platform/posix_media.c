@@ -48,6 +48,7 @@ void platform_media_install_signals(void) {
     for(size_t i=0;i<3;i++) sigaction(shutdown_signals[i],&action,&previous_signals[i]);
     handlers_installed=true; shutdown_requested=0;
 }
+void platform_request_shutdown(void) { shutdown_requested=1; }
 bool platform_media_shutdown_requested(void) { return shutdown_requested!=0; }
 static Result media_error(const char *what) {
     char detail[256]; snprintf(detail,sizeof detail,"%s: %s",what,strerror(errno));

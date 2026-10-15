@@ -81,8 +81,8 @@ tests/popup_style_test: tests/popup_style_test.c $(CORE_SOURCES) $(PLATFORM_SOUR
 tests/tfile_search: tests/search_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/search_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_search,--wrap=core_search_unsorted,--wrap=core_read_cancel
 
-tests/tfile_progress: tests/progress_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
-	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/progress_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_transfer_progress,--wrap=core_delete_progress
+tests/tfile_progress: tests/progress_gate.c tests/mutation_gate_fds.h $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/progress_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_transfer_progress,--wrap=core_delete_progress,--wrap=platform_mutation_open,--wrap=close,--wrap=close_range
 
 tests/progress_ui_test: tests/progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=core_monotonic_ms,--wrap=input_wide,--wrap=wrefresh
@@ -138,7 +138,7 @@ check-isolated: tests/picker_test tests/media_test tests/panels_ui_test tests/tf
 	python3 tests/batch_progress_pty.py
 
 clean:
-	rm -f tests/preview_worker_test tests/preview_async_test tests/tfile_preview tests/tfile_operation_latency tests/performance_test tests/tfile_read tests/read_job_test
+	rm -f tests/mutation_job_test tests/mutation_worker_test tests/preview_worker_test tests/preview_async_test tests/tfile_preview tests/tfile_operation_latency tests/performance_test tests/tfile_read tests/read_job_test
 	rm -f tests/mark_policy_test tests/vim_test tests/trash_test tests/external_test tests/batch_conflict_test tests/filter_test tests/favorites_test tests/graphics_probe_test tests/terminal_test tests/terminal_input_test tests/settings_sanitize tests/settings_core_test tests/settings_test tfile tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_test tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/ownership_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
 
 .PHONY: all clean check check-core
@@ -152,8 +152,8 @@ tests/batch_test: tests/batch_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADE
 tests/batch_ui_test: tests/batch_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/batch_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=app_refresh,--wrap=platform_directory_open,--wrap=platform_reader_line,--wrap=qsort,--wrap=core_monotonic_ms,--wrap=wrefresh,--wrap=input_key,--wrap=input_wide,--wrap=batch_prepare,--wrap=newwin,--wrap=delwin,--wrap=malloc,--wrap=calloc,--wrap=realloc
 
-tests/tfile_batch: tests/batch_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
-	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/batch_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=batch_execute
+tests/tfile_batch: tests/batch_gate.c tests/mutation_gate_fds.h $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/batch_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=batch_execute,--wrap=platform_mutation_open,--wrap=close,--wrap=close_range
 
 
 tests/panels_ui_test: tests/panels_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
@@ -287,7 +287,7 @@ check-isolated: check-preview-async
 .PHONY: check-preview-async
 
 tests/tfile_operation_latency: tests/operation_latency_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
-	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/operation_latency_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_transfer_progress,--wrap=core_delete_progress,--wrap=read,--wrap=write,--wrap=fstatat,--wrap=readdir,--wrap=unlinkat
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/operation_latency_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=input_wide,--wrap=core_transfer_progress,--wrap=core_delete_progress,--wrap=read,--wrap=write,--wrap=fstatat,--wrap=readdir,--wrap=unlinkat
 
 check-panel-first: tests/tfile_read
 	python3 tests/isolated_check.py python3 tests/panels_first_latency_pty.py
@@ -304,3 +304,17 @@ check-fullscreen: tfile
 	python3 tests/isolated_check.py python3 tests/fullscreen_pty.py
 check-isolated: check-fullscreen
 .PHONY: check-fullscreen
+
+
+tests/mutation_job_test: tests/mutation_job_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/mutation_job_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) -Wl,--wrap=read,--wrap=write,--wrap=fstatat,--wrap=renameat2,--wrap=platform_task_send,--wrap=platform_task_receive
+check-mutations: tests/mutation_job_test
+check-isolated: check-mutations
+.PHONY: check-mutations
+
+tests/mutation_worker_test: tests/mutation_worker_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/mutation_worker_test.c $(filter-out src/core/mutation_job.c,$(CORE_SOURCES)) $(PLATFORM_SOURCES) -Wl,--wrap=platform_task_send,--wrap=platform_mutation_control
+check-mutations: tests/mutation_worker_test tests/tfile_operation_latency
+	./tests/mutation_worker_test
+	python3 tests/isolated_check.py ./tests/mutation_job_test
+	python3 tests/isolated_check.py python3 tests/mutation_shutdown_pty.py

@@ -59,7 +59,10 @@ for copy, action, width, height in [(True,'esc',100,24),(True,'mouse',50,9),(Tru
                 fcntl.ioctl(master,termios.TIOCSWINSZ,struct.pack('HHHH',10,52,0,0))
                 os.kill(proc.pid,signal.SIGWINCH)
             payload+=b'qqq\x1bOP\x1b[19~'  # queued commands after Cancel must be discarded
-            send(payload); os.write(command_w,b'x')
+            send(payload)
+            # The new UI must acknowledge cancellation while the worker remains held.
+            pump_until(lambda:b'Cancellation requested' in output)
+            os.write(command_w,b'x')
             pump_until(lambda:b'R cancelled ' in events)
             line=bytes(events).split(b'R ')[1].splitlines()[0].split()
             assert line[0]==b'cancelled' and line[3]==b'1',line

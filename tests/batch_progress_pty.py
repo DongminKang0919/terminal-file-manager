@@ -57,7 +57,8 @@ for case,(action,gate,how,w,h) in enumerate(cases + [('copy','partial','esc',50,
                 queued+=f'\x1b[<0;{rx+5};{py+ph-1}M'
             else:
                 screen=Screen(h+1,w+2);fcntl.ioctl(master,termios.TIOCSWINSZ,struct.pack('HHHH',h+1,w+2,0,0));os.kill(proc.pid,signal.SIGWINCH)
-            send(queued);os.write(cw,b'x');pump(lambda:b'R ' in events)
+            send(queued);pump(lambda:'Cancellation requested' in body())
+            os.write(cw,b'x');pump(lambda:b'R ' in events)
             result=events.split(b'R ')[1].splitlines()[0].split()
             assert result[0]==b'11' and result[1]==b'1' and result[-1]==b'0',(action,how,dual,events,body())
             if action=='move':assert result[2]==b'1' and result[-3:-1]==[b'1',b'3'];assert (dst/'a').exists() and not (root/'a').exists()

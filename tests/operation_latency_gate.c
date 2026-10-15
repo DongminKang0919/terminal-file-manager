@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-#include "../src/core/core.h"
+#include "../src/ui/ui.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,7 +15,7 @@ static void hold(const char *phase) {
     if(!active || fired || !want || strcmp(want,phase) || !path)return;
     fired=true;
     char marker[4096];snprintf(marker,sizeof marker,"%s.entered",path);
-    FILE *f=fopen(marker,"w");if(f){fprintf(f,"%s\n",phase);fclose(f);}
+    FILE *f=fopen(marker,"w");if(f){fprintf(f,"%s %ld\n",phase,(long)getpid());fclose(f);}
     struct timespec ts={1,0};nanosleep(&ts,NULL);
 }
 ssize_t __real_read(int,void *,size_t);
@@ -34,7 +34,7 @@ static bool progress(const OperationProgress *p,void *ctx) {
     const char *phase=getenv("TFILE_OPERATION_PHASE"),*path=getenv("TFILE_OPERATION_LOG");
     if(!fired && phase && !strcmp(phase,"cancel") && path && (p->copied_bytes>=65536 || p->completed_items>=2)) {
         fired=true;char marker[4096];snprintf(marker,sizeof marker,"%s.entered",path);
-        FILE *f=fopen(marker,"w");if(f){fputs("real cancel boundary",f);fclose(f);}
+        FILE *f=fopen(marker,"w");if(f){fprintf(f,"real-cancel %ld\n",(long)getpid());fclose(f);}
     }
     Progress *s=ctx;return !s->cb || s->cb(p,s->context);
 }
@@ -51,4 +51,15 @@ Result __real_core_delete_progress(const char *,OperationCallback,void *);
 Result __wrap_core_delete_progress(const char *s,OperationCallback cb,void *ctx) {
     Progress p={cb,ctx};double start=last=now();gap=0;fired=false;active=true;
     Result r=__real_core_delete_progress(s,progress,&p);record(r,start);return r;
+}
+
+int __real_input_wide(WINDOW *,wint_t *);
+int __wrap_input_wide(WINDOW *win,wint_t *key) {
+    int kind=__real_input_wide(win,key);
+    const char *path=getenv("TFILE_OPERATION_LOG");
+    if(path && ((kind==OK && *key==27) || (kind==KEY_CODE_YES && (*key==KEY_F(10)||*key==KEY_RESIZE)))) {
+        char marker[4096];snprintf(marker,sizeof marker,"%s.input",path);
+        if(access(marker,F_OK)) { FILE *f=fopen(marker,"w");if(f){fprintf(f,"%.6f\n",now());fclose(f);} }
+    }
+    return kind;
 }

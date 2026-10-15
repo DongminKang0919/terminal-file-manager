@@ -18,18 +18,21 @@
 #include <limits.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
+#include <poll.h>
 
 #define TASK_MESSAGE_MAX (1024u * 1024u)
 typedef struct { unsigned type; size_t len; } TaskHeader;
-struct PlatformTaskWriter { int fd; };
+struct PlatformTaskWriter { int fd; unsigned control; size_t control_read; };
 struct PlatformTask {
     int fd, diagnostic; pid_t pid;
     TaskHeader header; size_t header_read, body_read;
     void *body;
     unsigned lane;
 };
-static pid_t task_retiring[2];
-static PlatformTask *task_active[2];
+static volatile sig_atomic_t mutation_stopping;
+static void mutation_signal(int number) { (void)number; mutation_stopping=1; }
+static pid_t task_retiring[3];
+static PlatformTask *task_active[3];
 
 static bool task_cleanup(unsigned lane) {
     if (task_retiring[lane]) {
@@ -38,7 +41,8 @@ static bool task_cleanup(unsigned lane) {
     }
     return task_retiring[lane] != 0;
 }
-bool platform_task_cleanup_pending(void) { return task_cleanup(0) | task_cleanup(1); }
+bool platform_task_cleanup_pending(void) { return task_cleanup(0) | task_cleanup(1) | task_cleanup(2); }
+bool platform_mutation_available(void) { return !task_cleanup(2) && !task_active[2]; }
 bool platform_read_available(void) { return !task_cleanup(0) && !task_active[0]; }
 bool platform_preview_available(void) { return !task_cleanup(1) && !task_active[1]; }
 static Result task_open(PlatformTaskWork work, void *context, unsigned lane, PlatformTask **out) {
@@ -62,14 +66,20 @@ static Result task_open(PlatformTaskWork work, void *context, unsigned lane, Pla
         return result_make(RESULT_IO, "Cannot start read worker");
     }
     if (!pid) {
-        /* Do not inherit the UI's deferred shutdown handlers or terminal FDs.
-           This process does only read work and owns no child processes. */
+        /* Workers own no terminal FDs or child processes. Read lanes use
+           forced cleanup; the mutation lane handles shutdown cooperatively. */
         struct sigaction action = {0}; action.sa_handler = SIG_DFL;
         sigemptyset(&action.sa_mask);
         const int signals[] = {SIGINT, SIGTERM, SIGHUP, SIGPIPE, SIGWINCH};
         for (size_t i = 0; i < sizeof signals / sizeof *signals; i++) sigaction(signals[i], &action, NULL);
-        (void)prctl(PR_SET_NAME, lane ? "tfile-preview" : "tfile-read");
-        if (prctl(PR_SET_PDEATHSIG, SIGKILL) < 0 || getppid() != parent) _exit(1);
+        if(lane==2) {
+            mutation_stopping=0;
+            action.sa_handler=mutation_signal;
+            sigaction(SIGINT,&action,NULL); sigaction(SIGTERM,&action,NULL); sigaction(SIGHUP,&action,NULL);
+            action.sa_handler=SIG_IGN; sigaction(SIGPIPE,&action,NULL);
+        }
+        (void)prctl(PR_SET_NAME, lane==2 ? "tfile-mutation" : lane ? "tfile-preview" : "tfile-read");
+        if (prctl(PR_SET_PDEATHSIG, lane==2 ? SIGTERM : SIGKILL) < 0 || getppid() != parent) _exit(1);
         if (dup2(task->diagnostic, STDERR_FILENO) < 0) _exit(1);
         close(pipefd[0]);
         for (int fd = 0; fd < pipefd[1]; fd++) if (fd != STDERR_FILENO) close(fd);
@@ -78,7 +88,7 @@ static Result task_open(PlatformTaskWork work, void *context, unsigned lane, Pla
             long limit = sysconf(_SC_OPEN_MAX);
             for (int fd = pipefd[1] + 1; fd < limit; fd++) close(fd);
         }
-        PlatformTaskWriter writer = {pipefd[1]};
+        PlatformTaskWriter writer = {.fd=pipefd[1]};
         work(&writer, context);
         close(pipefd[1]); _exit(0);
     }
@@ -88,6 +98,43 @@ static Result task_open(PlatformTaskWork work, void *context, unsigned lane, Pla
 }
 Result platform_task_open(PlatformTaskWork work, void *context, PlatformTask **out) {
     return task_open(work, context, 0, out);
+}
+Result platform_mutation_open(PlatformTaskWork work, void *context, PlatformTask **out) {
+    return task_open(work, context, 2, out);
+}
+/* Commands are four bytes and the UI has at most one outstanding cancel or
+   conflict response. EOF and parent death both request cooperative stopping. */
+bool platform_mutation_control(PlatformTaskWriter *writer, unsigned *command, bool wait) {
+    *command=0;
+    if(mutation_stopping) { *command=1; return true; }
+    struct pollfd fd={writer->fd,POLLIN,0};
+    int n;
+    do { n=poll(&fd,1,wait?40:0); } while(n<0 && errno==EINTR && !mutation_stopping);
+    if(mutation_stopping || n<0 || (n>0 && (fd.revents&(POLLHUP|POLLERR|POLLNVAL)))) {
+        mutation_stopping=1; *command=1; return true;
+    }
+    if(n==0) return false;
+    ssize_t bytes=read(writer->fd,(unsigned char *)&writer->control+writer->control_read,sizeof writer->control-writer->control_read);
+    if(bytes<0 && errno==EINTR)return false;
+    if(bytes<=0) { mutation_stopping=1;*command=1;return true; }
+    writer->control_read+=(size_t)bytes;
+    if(writer->control_read!=sizeof writer->control)return false;
+    unsigned value=writer->control;writer->control_read=0;
+    if(value==1) mutation_stopping=1;
+    *command=value; return true;
+}
+void platform_mutation_stop(PlatformTask *task) {
+    if(!task)return;
+    if(task->fd>=0) { close(task->fd);task->fd=-1; } /* Unblock worker sends without SIGPIPE termination. */
+    if(task->pid>0)kill(task->pid,SIGTERM);
+}
+bool platform_task_finished(PlatformTask *task,bool *clean) {
+    *clean=false;
+    if(task->pid==0) { *clean=true; return true; }
+    int status=0; pid_t p=waitpid(task->pid,&status,WNOHANG);
+    if(p==0 || (p<0 && errno==EINTR)) return false;
+    task->pid=0; *clean=p>0 && WIFEXITED(status) && WEXITSTATUS(status)==0;
+    return true;
 }
 Result platform_preview_open(PlatformTaskWork work, void *context, PlatformTask **out) {
     return task_open(work, context, 1, out);
@@ -161,15 +208,16 @@ void platform_task_close(PlatformTask *task) {
     if (!task) return;
     close(task->fd); close(task->diagnostic); free(task->body);
     if (task_active[task->lane] == task) task_active[task->lane] = NULL;
-    pid_t p = waitpid(task->pid, NULL, WNOHANG);
-    if (p == 0 || (p < 0 && errno == EINTR)) {
-        kill(task->pid, SIGKILL); task_retiring[task->lane] = task->pid;
+    pid_t p = task->pid>0 ? waitpid(task->pid, NULL, WNOHANG) : -1;
+    if (task->pid>0 && (p == 0 || (p < 0 && errno == EINTR))) {
+        kill(task->pid, task->lane==2 ? SIGTERM : SIGKILL); task_retiring[task->lane] = task->pid;
     }
     free(task); (void)platform_task_cleanup_pending();
 }
 void platform_task_shutdown(void) {
     platform_task_close(task_active[0]);
     platform_task_close(task_active[1]);
+    platform_task_close(task_active[2]);
     /* No blocking wait on a possibly uninterruptible filesystem read. Kernel
        parent-death cleanup remains armed; exited children are reaped now. */
     for (unsigned i = 0; i < 20 && platform_task_cleanup_pending(); i++) {
@@ -615,13 +663,16 @@ Result platform_remove_progress(const char *path, OperationCallback callback, vo
     if (parent >= 0) { remove_at(&op, parent, name, path, 0); close(parent); }
     free(name); return operation_result(&op);
 }
-Result platform_move(const char *src, const char *dst) {
-    Operation op = {0};
+Result platform_move(const char *src,const char *dst) { return platform_move_progress(src,dst,NULL,NULL); }
+Result platform_move_progress(const char *src, const char *dst, OperationCallback callback,void *context) {
+    Operation op = {.callback=callback,.context=context};
+    if(!op_poll(&op,src)) return operation_result(&op);
     char *sn = NULL, *dn = NULL;
     int sp = operation_parent(&op, src, &sn), dp = -1;
     if (sp >= 0) dp = operation_parent(&op, dst, &dn);
     Result r = op.error;
-    if (dp >= 0) {
+    if (dp >= 0 && !op_poll(&op,src)) r=operation_result(&op);
+    else if (dp >= 0) {
         /* Pin both parents; NOREPLACE also covers a late destination leaf.
            The source leaf itself is not atomically bound to earlier metadata. */
         r = renameat2(sp, sn, dp, dn, RENAME_NOREPLACE) < 0 ? failure() : result_make(RESULT_OK, NULL);

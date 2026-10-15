@@ -37,7 +37,7 @@ Result core_transfer_progress(bool move, const char *source, const char *directo
         if (r.code != RESULT_OK) goto done;
         if (descendant) { r = result_make(RESULT_SELF_TRANSFER, NULL); goto done; }
     }
-    r = move ? platform_move(source, dst) : platform_copy_progress(source, dst, callback, context);
+    r = move ? (callback ? platform_move_progress(source,dst,callback,context) : platform_move(source,dst)) : platform_copy_progress(source, dst, callback, context);
     if (r.code == RESULT_OK) { *destination = dst; dst = NULL; }
 done:
     free(resolved); free(dst); return r;

@@ -91,3 +91,6 @@ __pycache__/
 /tests/tfile_preview
 /tests/tfile_operation_latency
 /tests/preview_worker_test
+
+/tests/mutation_job_test
+/tests/mutation_worker_test

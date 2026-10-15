@@ -34,6 +34,7 @@ Result platform_copy_progress(const char *source, const char *destination, Opera
 Result platform_remove_progress(const char *path, OperationCallback callback, void *context);
 Result platform_copy(const char *source, const char *destination);
 Result platform_move(const char *source, const char *destination);
+Result platform_move_progress(const char *source,const char *destination,OperationCallback callback,void *context);
 Result platform_remove(const char *path);
 Result platform_trash_progress(const char *path,char **destination,OperationCallback callback,void *context);
 Result platform_link_target(const char *path, char **out);
@@ -46,7 +47,7 @@ Result platform_reader_peek(PlatformReader *reader, unsigned char *buffer, size_
 Result platform_reader_line(PlatformReader *reader, char *buffer, size_t size, bool *end);
 void platform_reader_close(PlatformReader *reader);
 uint64_t platform_monotonic_ms(void);
-/* Isolated read-only workers. Private, framed messages have a 1 MiB limit.
+/* Isolated workers. Private, framed messages have a 1 MiB limit.
    The callback runs in the child and must never access terminal/UI state. */
 typedef struct PlatformTask PlatformTask;
 typedef struct PlatformTaskWriter PlatformTaskWriter;
@@ -55,6 +56,11 @@ Result platform_task_open(PlatformTaskWork work, void *context, PlatformTask **o
 /* Independent bounded preview lane; directory/search retain their own lane. */
 bool platform_read_available(void);
 bool platform_preview_available(void);
+bool platform_mutation_available(void);
+Result platform_mutation_open(PlatformTaskWork work, void *context, PlatformTask **out);
+bool platform_mutation_control(PlatformTaskWriter *writer, unsigned *command, bool wait);
+void platform_mutation_stop(PlatformTask *task);
+bool platform_task_finished(PlatformTask *task, bool *clean);
 Result platform_preview_open(PlatformTaskWork work, void *context, PlatformTask **out);
 bool platform_task_request(PlatformTask *task, const void *data, size_t len);
 bool platform_task_command(PlatformTaskWriter *writer, void *data, size_t len);
@@ -83,6 +89,7 @@ void platform_media_shutdown(void);
 void platform_media_pause(void);
 bool platform_media_cleanup_pending(void);
 void platform_media_install_signals(void);
+void platform_request_shutdown(void);
 bool platform_media_shutdown_requested(void);
 Result platform_terminal_query(void);
 Result platform_terminal_session_check(void);

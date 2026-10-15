@@ -66,8 +66,8 @@ static void add_text(NoticeRows *r, const char *text, bool diagnostic) {
 static void result_rows(NoticeRows *rows, const char *title, Result r) {
     char line[160];
     snprintf(line, sizeof line, "%s: %s (code %d)%s", title,
-             r.code == RESULT_OK ? "Success" : r.code == RESULT_CANCELLED ? "Cancelled" : "Error",
-             r.code, r.partial ? " | Partial completion" : "");
+             r.code == RESULT_OK ? "Success" : r.code == RESULT_CANCELLED ? "Cancelled" : r.code==RESULT_UNCERTAIN?"Uncertain":"Error",
+             r.code, r.code==RESULT_UNCERTAIN?" | Changes may have occurred":r.partial ? " | Partial completion" : "");
     add_text(rows, line, false);
     add_text(rows, r.detail, true);
     if (*r.path) { add_text(rows, "Diagnostic path:", false); add_text(rows, r.path, false); }
@@ -90,12 +90,12 @@ void show_result(UiContext *ui) {
             add_text(&text,counts,false);
             snprintf(counts,sizeof counts,"Skipped name collisions: %zu",n->batch.skipped); add_text(&text,counts,false);
             if(n->batch.directory) { add_text(&text,"Batch destination:",false); add_text(&text,n->batch.directory,false); }
-            const char *labels[]={"Unexecuted","Success","Failed","Cancelled","Skipped"};
+            const char *labels[]={"Unexecuted","Success","Failed","Cancelled","Skipped","Uncertain"};
             for(size_t i=0;i<n->batch.len;i++) {
                 const BatchTarget *t=&n->batch.targets[i];
-                snprintf(counts,sizeof counts,"Target %zu/%zu: %s%s",i+1,n->batch.len,labels[t->status],t->result.partial?" | Partial changes":"");
+                snprintf(counts,sizeof counts,"Target %zu/%zu: %s%s",i+1,n->batch.len,labels[t->status],t->status==BATCH_UNKNOWN?" | Changes unknown":t->result.partial?" | Partial changes":"");
                 add_text(&text,counts,false); add_text(&text,t->source,false);
-                if(t->destination) { add_text(&text,"Trash payload:",false); add_text(&text,t->destination,false); }
+                if(t->destination) { add_text(&text,n->batch.action==BATCH_TRASH?"Trash payload:":"Destination:",false); add_text(&text,t->destination,false); }
                 if(t->status!=BATCH_UNEXECUTED) {
                     result_rows(&text,"Target result",t->result);
                     snprintf(counts,sizeof counts,"Recursive completed items: %llu | Copied bytes: %llu",(unsigned long long)t->result.completed_items,(unsigned long long)t->result.copied_bytes);
@@ -106,8 +106,10 @@ void show_result(UiContext *ui) {
         if (n->source) { add_text(&text, "Source:", false); add_text(&text, n->source, false); }
         if (n->destination) { add_text(&text, "Destination / requested destination:", false); add_text(&text, n->destination, false); }
         add_text(&text, "Counters are reported values; create/move may report 0. Bytes include successful writes to unfinished files.", false);
+        if(n->operation.code==RESULT_UNCERTAIN && (n->batch.action==BATCH_TRASH || strstr(n->action,"Trash")))
+            add_text(&text,"Inspect the source and Trash files/info on its filesystem, including XDG_DATA_HOME/Trash or HOME/.local/share/Trash. A payload/metadata pair may have committed before the worker stopped.",false);
         if (n->operation.code != RESULT_OK) {
-            add_text(&text, n->operation.partial ?
+            add_text(&text, n->operation.code==RESULT_UNCERTAIN?"Outcome uncertain. Inspect listed source and destination paths; do not assume no changes.":n->operation.partial ?
                      "Changes already made are kept. Incomplete copies may remain; deleted items are not restored." :
                      "No filesystem changes reported by this operation.", false);
             add_text(&text, "Remaining recursive item count and total progress are unknown. No automatic retry or rollback.", false);

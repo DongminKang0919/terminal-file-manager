@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "mutation_gate_fds.h"
 typedef struct { BatchCallback callback;void *context;bool gated; } Gate;
 static bool progress(const BatchProgress *p,void *context) {
     Gate *g=context;bool keep=g->callback(p,g->context);

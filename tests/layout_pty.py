@@ -2,7 +2,14 @@
 import os
 from pathlib import Path
 import tempfile
+import time
 from display_pty import Terminal
+
+def wait_frame(t,condition):
+    deadline=time.monotonic()+2
+    while not condition():
+        assert time.monotonic()<deadline,'\n'.join(t.screen.row(y) for y in range(t.screen.height))
+        t.read()
 
 for width, height in [(50,9),(80,24),(100,24),(160,32)]:
     with tempfile.TemporaryDirectory() as directory:
@@ -47,7 +54,9 @@ for width, height in [(50,9),(80,24),(100,24),(160,32)]:
                 assert 'Row' not in t.screen.row(height-4)[split:]
                 assert str(root) not in '\n'.join(t.screen.row(y)[split:] for y in range(3,height-3))
             t.send('\x1bOB')
+            wait_frame(t,lambda:'LINE 000' in '\n'.join(t.screen.row(y)[split:] for y in range(3,height-3)))
             t.send(f'\x1b[<65;{width-3};5M' * 90)
+            wait_frame(t,lambda:'LINE 069' in '\n'.join(t.screen.row(y)[split:] for y in range(3,height-(4 if height>=12 else 3))) and (height<12 or 'End' in t.screen.row(height-4)[split:]))
             if height>=12: assert 'End' in t.screen.row(height-4)[split:]
             assert 'LINE 069' in '\n'.join(t.screen.row(y)[split:] for y in range(3,height-(4 if height>=12 else 3)))
             t.send('\x1bOB')

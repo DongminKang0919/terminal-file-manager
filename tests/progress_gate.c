@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "mutation_gate_fds.h"
 /* Link-only PTY synchronization. Production code has no test delays or hooks.
    Stop after the real UI callback has drawn; release when input is queued. */
 typedef struct { OperationCallback callback; void *context; bool copy, gated; } Gate;
