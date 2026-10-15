@@ -1134,3 +1134,92 @@ PASS: marked/cursor separation, find/input/preview isolation, menu select/clear/
 python3 tests/batch_progress_pty.py
 PASS: single/dual pipe-gated batch copy/delete partial cancellation, move-between targets, mouse/Esc/resize, exact statuses/residue and queued background commands discarded
 make[1]: Leaving directory '/home/dongmin/workspace/file_manager_project'
+
+===== CI follow-up: remote logs (failed assertions) =====
+
+ci-mutation-failed
+regression	Build and full regression (includes architecture)	2026-10-15T11:58:25.2518338Z python3 tests/progress_pty.py
+regression	Build and full regression (includes architecture)	2026-10-15T11:58:25.3848133Z Traceback (most recent call last):
+regression	Build and full regression (includes architecture)	2026-10-15T11:58:25.3849479Z   File "/home/runner/work/terminal-file-manager/terminal-file-manager/tests/progress_pty.py", line 69, in <module>
+regression	Build and full regression (includes architecture)	2026-10-15T11:58:25.3850921Z     assert line[1:3]==([b'0',b'65536'] if copy else [b'2',b'0']),line
+regression	Build and full regression (includes architecture)	2026-10-15T11:58:25.3851812Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+regression	Build and full regression (includes architecture)	2026-10-15T11:58:25.3852623Z AssertionError: [b'cancelled', b'0', b'131072', b'1']
+regression	Build and full regression (includes architecture)	2026-10-15T11:58:25.3984551Z make[1]: *** [Makefile:115: check-isolated] Error 1
+regression	Build and full regression (includes architecture)	2026-10-15T11:58:25.3985200Z make[1]: Leaving directory '/home/runner/work/terminal-file-manager/terminal-file-manager'
+regression	Build and full regression (includes architecture)	2026-10-15T11:58:25.4032868Z make: *** [Makefile:197: check] Error 2
+regression	Build and full regression (includes architecture)	2026-10-15T11:58:25.4048566Z ##[error]Process completed with exit code 2.
+sanitizer	Sanitized terminal and editor PTY	﻿2026-10-15T11:56:14.7361666Z ##[group]Run python3 tests/isolated_check.py python3 tests/run_terminal_sanitizers.py --output-directory /tmp/tfile-terminal-sanitizers-ci 2>&1 | tee /tmp/tfile-ci-logs/terminal.log
+sanitizer	Sanitized terminal and editor PTY	2026-10-15T11:56:14.7363334Z [36;1mpython3 tests/isolated_check.py python3 tests/run_terminal_sanitizers.py --output-directory /tmp/tfile-terminal-sanitizers-ci 2>&1 | tee /tmp/tfile-ci-logs/terminal.log[0m
+sanitizer	Sanitized terminal and editor PTY	2026-10-15T11:56:14.7437165Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+sanitizer	Sanitized terminal and editor PTY	2026-10-15T11:56:14.7437488Z env:
+sanitizer	Sanitized terminal and editor PTY	2026-10-15T11:56:14.7437657Z   TERM: xterm-256color
+sanitizer	Sanitized terminal and editor PTY	2026-10-15T11:56:14.7437843Z   LC_ALL: C.UTF-8
+sanitizer	Sanitized terminal and editor PTY	2026-10-15T11:56:14.7438009Z ##[endgroup]
+sanitizer	Sanitized terminal and editor PTY	2026-10-15T11:56:48.2203444Z PASS: terminal, /tmp/tfile-terminal-sanitizers-ci/terminal.log
+sanitizer	Sanitized terminal and editor PTY	2026-10-15T11:56:48.2338513Z PASS: input, /tmp/tfile-terminal-sanitizers-ci/input.log
+sanitizer	Sanitized terminal and editor PTY	2026-10-15T11:56:48.2485689Z PASS: probe, /tmp/tfile-terminal-sanitizers-ci/probe.log
+sanitizer	Sanitized terminal and editor PTY	2026-10-15T11:57:43.4542544Z PASS: pty, /tmp/tfile-terminal-sanitizers-ci/pty.log
+sanitizer	Sanitized terminal and editor PTY	2026-10-15T11:58:40.2080751Z FAIL: auto_pty, /tmp/tfile-terminal-sanitizers-ci/auto_pty.log
+sanitizer	Sanitized terminal and editor PTY	2026-10-15T11:58:40.2191837Z ##[error]Process completed with exit code 1.
+
+ci-integration-regression
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:43.7177768Z SKIP: real pdftotext fallback unavailable
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0698166Z Traceback (most recent call last):
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0699524Z   File "/home/runner/work/terminal-file-manager/terminal-file-manager/tests/integrated_session_pty.py", line 120, in <module>
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0701012Z     until(t,lambda:not vim_running() and 'EDIT01' in text(t));assert (source/'alpha.txt').read_text().startswith('EDIT01\n')
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0701959Z     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0703540Z   File "/home/runner/work/terminal-file-manager/terminal-file-manager/tests/preview_latency_pty.py", line 18, in until
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0705082Z     while not fn():
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0705680Z               ^^^^
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0706564Z   File "/home/runner/work/terminal-file-manager/terminal-file-manager/tests/integrated_session_pty.py", line 120, in <lambda>
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0708595Z     until(t,lambda:not vim_running() and 'EDIT01' in text(t));assert (source/'alpha.txt').read_text().startswith('EDIT01\n')
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0709982Z                        ^^^^^^^^^^^^^
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0711921Z   File "/home/runner/work/terminal-file-manager/terminal-file-manager/tests/integrated_session_pty.py", line 116, in vim_running
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0713869Z     if Path(f'/proc/{pid}/comm').read_text().strip().startswith('vim'):return True
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0714871Z        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0715921Z   File "/usr/lib/python3.12/pathlib.py", line 1030, in read_text
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0716978Z     return f.read()
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0717631Z            ^^^^^^^^
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0718283Z ProcessLookupError: [Errno 3] No such process
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0964671Z make[1]: *** [Makefile:327: check-integration] Error 1
+regression	Build and full regression (includes architecture)	2026-10-15T12:28:45.0965572Z make[1]: *** Waiting for unfinished jobs....
+regression	Build and full regression (includes architecture)	2026-10-15T12:29:24.5638987Z PASS: explicit terminal setup, split/invalid/no/late replies, display/erase failures, recheck, F7 focus, Unicode, no implicit persistence and fresh-session isolation at 50x9/100x24
+regression	Build and full regression (includes architecture)	2026-10-15T12:29:24.5641614Z PASS: measured manual input, missing tools vs unknown cells, ioctl fallback, advanced environment preservation, active converter/FD/temp cleanup and resize abort
+regression	Build and full regression (includes architecture)	2026-10-15T12:29:24.5643581Z PASS: F7 verification followed by navigation, search, explicit mouse copy and late reply isolation
+regression	Build and full regression (includes architecture)	2026-10-15T12:29:24.5713378Z python3 tests/terminal_auto_pty.py
+regression	Build and full regression (includes architecture)	2026-10-15T12:30:26.6134112Z PASS: lazy Auto PNG/JPEG/PDF, session reuse/restart/resize, ioctl, Off, failed/late/malformed replies, missing tools, selection/modal/child cleanup, UTF-8/mouse/keys, delayed startup and idle waits
+
+===== ci-cancel-before =====
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/progress_pty.py", line 66, in <module>
+    assert b'Cancellation requested' not in output, 'Cancel was displayed before its command was queued'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Cancel was displayed before its command was queued
+
+===== ci-cancel-after =====
+PASS: pipe-gated PTY Cancel/Esc/resize, 50x9 modal, exact partial results and blocked background input
+
+===== ci-batch-after =====
+PASS: single/dual pipe-gated batch copy/delete partial cancellation, move-between targets, mouse/Esc/resize, exact statuses/residue and queued background commands discarded
+
+===== ci-cancel-asan =====
+PASS: pipe-gated PTY Cancel/Esc/resize, 50x9 modal, exact partial results and blocked background input
+
+===== ci-integrated-after =====
+PASS connected session 50x9: navigation/sort/filter/search/history, marks/dual/copy/move/results, PNG/PDF/text, Vim, replacement, partial Trash/delete/cancel, settings restart
+PASS connected session 100x24: navigation/sort/filter/search/history, marks/dual/copy/move/results, PNG/PDF/text, Vim, replacement, partial Trash/delete/cancel, settings restart
+
+===== ci-auto-after =====
+PASS: lazy Auto PNG/JPEG/PDF, session reuse/restart/resize, ioctl, Off, failed/late/malformed replies, missing tools, selection/modal/child cleanup, UTF-8/mouse/keys, delayed startup and idle waits
+
+===== CI follow-up terminal ASan/UBSan (exit 0, LSan disabled) =====
+PASS: terminal, /tmp/ci-fix-terminal-sanitizers/terminal.log
+PASS: input, /tmp/ci-fix-terminal-sanitizers/input.log
+PASS: probe, /tmp/ci-fix-terminal-sanitizers/probe.log
+PASS: pty, /tmp/ci-fix-terminal-sanitizers/pty.log
+PASS: auto_pty, /tmp/ci-fix-terminal-sanitizers/auto_pty.log
+PASS: vim_pty, /tmp/ci-fix-terminal-sanitizers/vim_pty.log
+PASS: editor_shutdown_pty, /tmp/ci-fix-terminal-sanitizers/editor_shutdown_pty.log
+PASS: mark_discovery_pty, /tmp/ci-fix-terminal-sanitizers/mark_discovery_pty.log
+PASS: reads_pty, /tmp/ci-fix-terminal-sanitizers/reads_pty.log
+LSan disabled; incomplete.

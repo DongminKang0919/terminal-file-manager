@@ -22,10 +22,11 @@ for case,(action,gate,how,w,h) in enumerate(cases + [('copy','partial','esc',50,
                 (root/name).mkdir()
                 for i in range(4):(root/name/str(i)).write_bytes(b'x')
             else:(root/name).write_bytes(b'x'*262144)
+        cancel_gate=Path(directory)/'cancel-gate';cancel_gate.touch()
         master,slave=pty.openpty();fcntl.ioctl(slave,termios.TIOCSWINSZ,struct.pack('HHHH',h,w,0,0))
         er,ew=os.pipe();cr,cw=os.pipe()
         proc=subprocess.Popen([binary,str(root)],stdin=slave,stdout=slave,stderr=slave,pass_fds=(ew,cr),
-            env={**os.environ,'TERM':'xterm-256color','LC_ALL':'C.UTF-8','TFILE_GATE_EVENT':str(ew),'TFILE_GATE_COMMAND':str(cr),'TFILE_BATCH_GATE':gate})
+            env={**os.environ,'TERM':'xterm-256color','LC_ALL':'C.UTF-8','TFILE_GATE_EVENT':str(ew),'TFILE_GATE_COMMAND':str(cr),'TFILE_BATCH_GATE':gate,'TFILE_GATE_CANCEL':str(cancel_gate)})
         os.close(slave);os.close(ew);os.close(cr);screen=Screen(h,w);events=bytearray()
         def body():return '\n'.join(screen.row(y) for y in range(screen.height))
         def pump(test):
@@ -57,7 +58,10 @@ for case,(action,gate,how,w,h) in enumerate(cases + [('copy','partial','esc',50,
                 queued+=f'\x1b[<0;{rx+5};{py+ph-1}M'
             else:
                 screen=Screen(h+1,w+2);fcntl.ioctl(master,termios.TIOCSWINSZ,struct.pack('HHHH',h+1,w+2,0,0));os.kill(proc.pid,signal.SIGWINCH)
-            send(queued);pump(lambda:'Cancellation requested' in body())
+            send(queued);pump(lambda:b'C\n' in events)
+            while select.select([master],[],[],0)[0]:screen.feed(os.read(master,65536))
+            assert 'Cancellation requested' not in body(), 'Cancel was displayed before its command was queued'
+            cancel_gate.unlink();pump(lambda:'Cancellation requested' in body())
             os.write(cw,b'x');pump(lambda:b'R ' in events)
             result=events.split(b'R ')[1].splitlines()[0].split()
             assert result[0]==b'11' and result[1]==b'1' and result[-1]==b'0',(action,how,dual,events,body())
@@ -70,6 +74,7 @@ for case,(action,gate,how,w,h) in enumerate(cases + [('copy','partial','esc',50,
             if dual: assert 'Left*' in body() or '* Left' in body()
             send('!');pump(lambda:'Recent operation result' in body());send('\x1b');pump(lambda:'[Cancelled]' in body());send('q');assert proc.wait(timeout=3)==0
         finally:
+            cancel_gate.unlink(missing_ok=True)
             if proc.poll() is None:proc.kill();proc.wait()
             for fd in [master,er,cw]:os.close(fd)
 print('PASS: single/dual pipe-gated batch copy/delete partial cancellation, move-between targets, mouse/Esc/resize, exact statuses/residue and queued background commands discarded')

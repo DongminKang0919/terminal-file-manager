@@ -11,6 +11,7 @@ import tempfile
 import zlib
 import display_pty
 from preview_latency_pty import until, text
+from process_probe import process_name
 
 HOME='\x1bOH'; DOWN='\x1bOB'; DELETE='\x1b[3~'
 F3='\x1bOR'; F5='\x1b[15~'; F6='\x1b[17~'; F7='\x1b[18~'; F8='\x1b[19~'; F9='\x1b[20~'
@@ -112,9 +113,7 @@ for width,height in ([(100,24)] if '--normal' in sys.argv else [(50,9),(100,24)]
                 t.send('e')
                 def vim_running():
                     for pid in Path(f'/proc/{t.proc.pid}/task/{t.proc.pid}/children').read_text().split():
-                        try:
-                            if Path(f'/proc/{pid}/comm').read_text().strip().startswith('vim'):return True
-                        except FileNotFoundError:pass
+                        if (process_name(pid) or '').startswith('vim'):return True
                     return False
                 until(t,vim_running);t.send('gg0iEDIT01\n\x1b:wq\r')
                 until(t,lambda:not vim_running() and 'EDIT01' in text(t));assert (source/'alpha.txt').read_text().startswith('EDIT01\n')

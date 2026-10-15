@@ -25,3 +25,20 @@ int __wrap_close_range(unsigned first,unsigned last,int flags) {
     }
     return first<=last?__real_close_range(first,last,flags):0;
 }
+
+/* Hold the UI immediately before forwarding Cancel. This makes a premature
+   acknowledgement observable without relying on how the scheduler runs. */
+#include <time.h>
+void __real_core_mutation_cancel(MutationJob *);
+void __wrap_core_mutation_cancel(MutationJob *job) {
+    static bool held;
+    const char *path=getenv("TFILE_GATE_CANCEL");
+    if(path && !held) {
+        held=true;
+        dprintf(atoi(getenv("TFILE_GATE_EVENT")),"C\n");
+        while(access(path,F_OK)==0) {
+            struct timespec pause={0,1000000};nanosleep(&pause,NULL);
+        }
+    }
+    __real_core_mutation_cancel(job);
+}

@@ -15,17 +15,18 @@ binary = os.path.abspath(os.environ.get('TFILE_PROGRESS_BINARY', 'tests/tfile_pr
 for copy, action, width, height in [(True,'esc',100,24),(True,'mouse',50,9),(True,'resize',100,24),
                                    (False,'esc',100,24),(False,'mouse',50,9),(False,'resize',100,24)]:
     with tempfile.TemporaryDirectory(prefix='tfile-progress-pty-') as directory:
-        root=Path(directory); source=root/'source'; target=root/'copy-source'
+        root=Path(directory)/'files';root.mkdir(); source=root/'source'; target=root/'copy-source'
         if copy: source.write_bytes(b'x'*1048576)
         else:
             source.mkdir()
             for i in range(8): (source/str(i)).write_text('keep')
+        cancel_gate=Path(directory)/'.cancel-gate';cancel_gate.touch()
         master,slave=pty.openpty()
         fcntl.ioctl(slave,termios.TIOCSWINSZ,struct.pack('HHHH',height,width,0,0))
         event_r,event_w=os.pipe(); command_r,command_w=os.pipe()
-        proc=subprocess.Popen([binary,directory],stdin=slave,stdout=slave,stderr=slave,
+        proc=subprocess.Popen([binary,str(root)],stdin=slave,stdout=slave,stderr=slave,
             pass_fds=(event_w,command_r),env={**os.environ,'TERM':'xterm-256color','LC_ALL':'C.UTF-8',
-                'TFILE_GATE_EVENT':str(event_w),'TFILE_GATE_COMMAND':str(command_r)})
+                'TFILE_GATE_EVENT':str(event_w),'TFILE_GATE_COMMAND':str(command_r),'TFILE_GATE_CANCEL':str(cancel_gate)})
         os.close(slave); os.close(event_w); os.close(command_r)
         output=bytearray(); events=bytearray()
         def pump_until(predicate):
@@ -60,7 +61,11 @@ for copy, action, width, height in [(True,'esc',100,24),(True,'mouse',50,9),(Tru
                 os.kill(proc.pid,signal.SIGWINCH)
             payload+=b'qqq\x1bOP\x1b[19~'  # queued commands after Cancel must be discarded
             send(payload)
-            # The new UI must acknowledge cancellation while the worker remains held.
+            pump_until(lambda:b'C\n' in events)
+            while select.select([master],[],[],0)[0]:output.extend(os.read(master,65536))
+            assert b'Cancellation requested' not in output, 'Cancel was displayed before its command was queued'
+            cancel_gate.unlink()
+            # The UI acknowledges after queuing Cancel, while the worker is held.
             pump_until(lambda:b'Cancellation requested' in output)
             os.write(command_w,b'x')
             pump_until(lambda:b'R cancelled ' in events)
@@ -76,6 +81,7 @@ for copy, action, width, height in [(True,'esc',100,24),(True,'mouse',50,9),(Tru
             # End explicitly after proving that the modal consumed queued Quit.
             send(b'q'); assert proc.wait(timeout=4)==0
         finally:
+            cancel_gate.unlink(missing_ok=True)
             if proc.poll() is None: proc.kill(); proc.wait()
             for fd in (master,event_r,command_w): os.close(fd)
 print('PASS: pipe-gated PTY Cancel/Esc/resize, 50x9 modal, exact partial results and blocked background input')

@@ -10,6 +10,7 @@ import tempfile
 import time
 import display_pty
 from preview_latency_pty import until, text
+from process_probe import process_name
 
 F3='\x1bOR'; F5='\x1b[15~'; F10=b'\x1b[21~'
 CASE=sys.argv[1] if len(sys.argv)>1 else 'all'
@@ -54,7 +55,7 @@ for width,height in [(50,9),(100,24)]:
                     t.send('\t\n');until(t,lambda:'Name collision' in text(t))
                     assert 'F10: exit' in text(t),text(t)
                     children=Path(f'/proc/{t.proc.pid}/task/{t.proc.pid}/children').read_text().split()
-                    worker=next(int(x) for x in children if Path(f'/proc/{x}/comm').read_text().strip()=='tfile-mutation')
+                    worker=next(int(x) for x in children if process_name(x)=='tfile-mutation')
                 start=time.monotonic()
                 if action=='conflict-crash':
                     os.kill(worker,signal.SIGKILL)

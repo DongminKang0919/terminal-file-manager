@@ -4,6 +4,7 @@
    Drawing is throttled; input polling is not. */
 typedef struct {
     WINDOW *win;
+    MutationJob *job;
     bool copy, trash, move, drawn, cancelled, asynchronous, cancel_drawn, uncertain;
     int height, width;
     uint64_t last_draw;
@@ -56,6 +57,9 @@ static bool operation_progress(const OperationProgress *progress, void *context)
             }
         }
     }
+    /* Queue the request before publishing its acknowledgement. The worker may
+       reach its next safe point as soon as that frame is visible. */
+    if(view->asynchronous && view->cancelled && view->job)core_mutation_cancel(view->job);
     if(view->asynchronous && view->cancelled && (!view->cancel_drawn || now-view->last_draw>=100)) {
         int h,w;getmaxyx(view->win,h,w);
         if(view->win==stdscr)erase();else dialog_frame(view->win,view->uncertain?"Result uncertain":"Cancellation requested");
@@ -80,6 +84,7 @@ static void run_async(UiContext *ui,BatchJob *batch,OperationView *view) {
     if(view->cancelled) { batch_cancel(batch);return; }
     MutationJob *job=NULL;Result r=core_mutation_start(batch,&job);
     if(r.code!=RESULT_OK) { batch->result=r;return; }
+    view->job=job;
     bool done=false;
     while(!done) {
         (void)core_mutation_poll(job,&done);
@@ -107,7 +112,7 @@ static void run_async(UiContext *ui,BatchJob *batch,OperationView *view) {
         }
         if(!done)napms(10);
     }
-    core_mutation_close(job);
+    core_mutation_close(job);view->job=NULL;
 }
 static Result run_single(UiContext *ui,BatchAction action,const char *source,const char *directory,const char *name,char **destination,OperationView *view) {
     BatchJob batch={.action=action};

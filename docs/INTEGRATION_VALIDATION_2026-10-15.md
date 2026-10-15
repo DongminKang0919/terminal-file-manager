@@ -222,3 +222,37 @@ first_run/설정/연결 검사와 대조했다. 취소 요청 접수와 실제 �
 - 증거: [재현·검사 출력 원문](INTEGRATION_EVIDENCE_2026-10-15.txt).
 
 원격 푸시는 하지 않는다. 검증한 수정·회귀 검사·README·이 기록을 로컬 커밋으로 남긴다.
+
+## 후속: GitHub Actions에서 드러난 경쟁 조건
+
+로컬 통과가 CI 통과를 뜻하지 않았다. 실제 로그를 대조했다.
+
+- [81a28fd 실행](https://github.com/DongminKang0919/terminal-file-manager/actions/runs/38730618036):
+  progress PTY의 정확한 부분 복사 기대값 65536B에 대해 131072B가 기록됐다.
+  UI의 `Cancellation requested` 출력 후 실제 Cancel 명령 전송 전에 worker gate를
+  해제할 수 있었다. 명령을 보내기 직전 UI를 별도 gate로 붙잡으면 이 잘못된
+  순서를 로컬에서도 결정적으로 재현한다. 기대 동작은 UI가 명령을 먼저 전송한 뒤
+  요청 접수를 표시하는 것이다. worker 완료/현재 syscall 즉시 중단을 뜻하지 않는다.
+- [e36f846 실행](https://github.com/DongminKang0919/terminal-file-manager/actions/runs/38734584910):
+  연결 세션에서 회수 중 자식의 `/proc/PID/comm` read가 ENOENT 대신 ESRCH
+  (`ProcessLookupError`)를 냈다. child 이름 관측은 둘 다 “이미 사라짐”으로 다뤄야
+  하지만 다른 오류(예: EACCES)는 숨기지 않아야 한다.
+- 첫 실행의 terminal sanitizer `auto_pty.log`: quick find가 끝난 뒤 고정 80ms send
+  읽기 구간만으로 async text preview 완료를 가정해 `ordinary text` assertion이
+  실패했다. 실제 본문 도착을 기존 wait 한도 내에서 기다리며 이미지 없음/idle
+  assertion은 유지한다. 제한 시간을 늘리지 않는다.
+
+부분 결과 byte/item/status assertion은 그대로 유지하고, UI Cancel 전송 전 gate와
+worker 파일 작업 gate를 독립적으로 제어해 순서를 검증한다. procfs는 ENOENT/ESRCH
+및 숨기면 안 되는 access 오류를 별도 검사한다.
+
+후속 관련 검사: Cancel 전송 전 UI gate의 수정 전 assertion 실패를 확인했고,
+수정 후 단일/일괄 progress PTY와 정확한 부분 결과, procfs 예외 검사, 두 크기의
+연결 세션, Auto PTY가 통과했다. ASan/UBSan progress PTY 및
+`run_terminal_sanitizers.py --disable-leaks`의 terminal/input/probe/pty/auto_pty/
+vim_pty/editor_shutdown_pty/mark_discovery_pty/reads_pty가 모두 통과했다.
+LSan을 끈 로컬 실행이므로 누수 검사 성공은 포함하지 않는다. 취소 전송 실패 시의
+기존 비차단 재전송 정책은 유지하며, UI는 전송을 먼저 시도한 뒤 요청 접수를 표시한다.
+전체 `make -j2 check`와 원격 CI도 후속 커밋으로 재실행하며, 원격 실행 결과는
+[Linux checks 실행 기록](https://github.com/DongminKang0919/terminal-file-manager/actions/workflows/linux.yml)에서
+커밋별로 구분해야 한다. 이전 로컬 통과만으로 CI 통과라고 보고하지 않는다.

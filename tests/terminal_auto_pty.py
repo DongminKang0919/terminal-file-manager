@@ -191,7 +191,8 @@ with tempfile.TemporaryDirectory(prefix='tfile-auto-switch-') as d:
         assert all('PNG:' not in ' '.join(e['args']) for e in t.records()),t.records()
         assert any('JPEG:' in ' '.join(e['args']) for e in t.records())
         # Quick find owns text while detection/preview work still uses bounded input waits.
-        t.send('\x06z.txt\n');assert 'ordinary text' in t.text() and t.screen.image is None
+        t.send('\x06z.txt\n');t.wait(lambda:'ordinary text' in t.text())
+        assert t.screen.image is None
         t.send('\x1bOH');t.wait(lambda:any(e['mode']=='slow' for e in t.records()))
         pid=t.records()[-1]['pid'];t.send('\x1bOP');assert 'Help' in t.text()
         t.wait(lambda:not Path(f'/proc/{pid}').exists())
@@ -226,7 +227,8 @@ with tempfile.TemporaryDirectory(prefix='tfile-auto-find-') as d:
         # inspect the completed interactive frame, not that intermediate flush.
         t.wait(lambda:'No terminal reply' in t.text() and 'Find:' in t.text())
         t.reply();t.send('z.txt\n')
-        assert 'ordinary text' in t.text() and not t.screen.images;t.idle()
+        t.wait(lambda:'ordinary text' in t.text())
+        assert not t.screen.images;t.idle()
     finally:t.close()
 
 for action in ['resize','exit','signal']:
@@ -252,7 +254,8 @@ with tempfile.TemporaryDirectory(prefix='tfile-auto-delayed-start-') as d:
         t=AutoTerminal(base);t.send('\x06')
         t.wait(lambda:'No terminal reply' in t.text() and 'Find:' in t.text())
         t.reply();t.send('z.txt\n')
-        assert 'ordinary text' in t.text() and not t.screen.images,t.text()
+        t.wait(lambda:'ordinary text' in t.text())
+        assert not t.screen.images,t.text()
     finally:
         if t is not None:t.close()
         BINARY=actual

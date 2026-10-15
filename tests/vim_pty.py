@@ -5,6 +5,7 @@ import fcntl,json,os,shutil,signal,struct,tempfile,termios,time
 from pathlib import Path
 from display_pty import Terminal,Screen
 from vim_tools import VIM_STUB
+from process_probe import process_name
 
 class VimScreen(Screen):
  def __init__(self,*args):
@@ -29,14 +30,13 @@ def wait(t,test):
 def children(t):
  result=[]
  for x in Path(f'/proc/{t.proc.pid}/task/{t.proc.pid}/children').read_text().split():
-  try: name=Path(f'/proc/{x}/comm').read_text().strip()
-  except FileNotFoundError: continue # Reaped between the two /proc reads.
-  if name!='tfile-preview':result.append(int(x))
+  name=process_name(x)
+  if name is not None and name!='tfile-preview':result.append(int(x))
  return result
 def editor(t):
  wait(t,lambda:bool(children(t)))
  pid=children(t)[0]
- wait(t,lambda:Path(f'/proc/{pid}/comm').read_text().strip().startswith('vim'))
+ wait(t,lambda:(process_name(pid) or '').startswith('vim'))
  t.read();return pid
 
 def restored(t):

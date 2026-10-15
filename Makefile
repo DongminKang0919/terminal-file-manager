@@ -82,7 +82,7 @@ tests/tfile_search: tests/search_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/search_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_search,--wrap=core_search_unsorted,--wrap=core_read_cancel
 
 tests/tfile_progress: tests/progress_gate.c tests/mutation_gate_fds.h $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
-	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/progress_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_transfer_progress,--wrap=core_delete_progress,--wrap=platform_mutation_open,--wrap=close,--wrap=close_range
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/progress_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_transfer_progress,--wrap=core_delete_progress,--wrap=platform_mutation_open,--wrap=core_mutation_cancel,--wrap=close,--wrap=close_range
 
 tests/progress_ui_test: tests/progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=core_monotonic_ms,--wrap=input_wide,--wrap=wrefresh
@@ -153,7 +153,7 @@ tests/batch_ui_test: tests/batch_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/batch_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=app_refresh,--wrap=platform_directory_open,--wrap=platform_reader_line,--wrap=qsort,--wrap=core_monotonic_ms,--wrap=wrefresh,--wrap=input_key,--wrap=input_wide,--wrap=batch_prepare,--wrap=newwin,--wrap=delwin,--wrap=malloc,--wrap=calloc,--wrap=realloc
 
 tests/tfile_batch: tests/batch_gate.c tests/mutation_gate_fds.h $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
-	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/batch_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=batch_execute,--wrap=platform_mutation_open,--wrap=close,--wrap=close_range
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/batch_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=batch_execute,--wrap=platform_mutation_open,--wrap=core_mutation_cancel,--wrap=close,--wrap=close_range
 
 
 tests/panels_ui_test: tests/panels_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
@@ -321,6 +321,7 @@ check-mutations: tests/mutation_worker_test tests/tfile_operation_latency
 
 # Connected sessions and worker/modal lifetime boundaries use temporary HOME/XDG.
 check-integration: tfile tests/tfile_read tests/panels_ui_test tests/controller_test
+	python3 tests/process_probe_test.py
 	python3 tests/isolated_check.py ./tests/panels_ui_test
 	python3 tests/isolated_check.py python3 tests/run_regressions.py controller
 	python3 tests/isolated_check.py python3 tests/async_boundaries_pty.py
