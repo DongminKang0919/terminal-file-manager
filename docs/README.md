@@ -11,6 +11,7 @@
 
 | 주제 | 문서 |
 | --- | --- |
+| 미리보기·최초 이중 패널·변경 작업 지연 | [2026-10-15 재현·구현·측정](ASYNC_PREVIEW_VALIDATION_2026-10-15.md) |
 | 진행 점검·최적화·비동기 판단 | [2026-10-13 검토](OPTIMIZATION_REVIEW_2026-10-13.md), [느린 읽기 비동기 개선](ASYNC_READ_VALIDATION_2026-10-13.md) |
 | 빌드·첫 실행·CI·sanitizer | [2026-10-10 배포 준비](RELEASE_READINESS_2026-10-10.md), [상세 검사 명령](USER_GUIDE.md#검증) |
 | WSL 수동 검사 | [미디어 native·PTY 수동 결과](MEDIA_PREVIEW_VALIDATION.md#수정-후-사용자-wsl-터미널의-수동-sanitizer-결과-검토), [전송 수동 누수 검사](TRANSFER_VALIDATION.md#별도-wsl-터미널의-수동-누수-검사-검토), [산출물 버전 확인 한계](STABILIZATION_2026-10-04.md#기존-수동-누수-검사-산출물-재검토) |

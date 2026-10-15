@@ -23,12 +23,13 @@ int main(int argc, char **argv) {
         bool external_changed=external_prepare(ui);
         if(redraw||external_changed) draw(ui);
         bool media_wait=media_pending(ui)||core_media_cleanup_pending();
-        bool read_wait=core_read_cleanup_pending();
+        bool read_wait=core_read_cleanup_pending() || ui->preview_busy || ui->preview_queued || (ui->async_reads && ui_preview_enabled(ui) && ui->preview_path && !ui->preview_ready && ui->preview_result.code==RESULT_OK);
         wtimeout(stdscr,(media_wait || ui->external_job || core_external_cleanup_pending() || read_wait)?40:-1);
         key = input_key(stdscr);
         wtimeout(stdscr, -1); /* Forms and inline find retain their blocking input policy. */
-        if (key == ERR) {redraw=media_wait;continue;}
+        if (key == ERR) {redraw=media_wait||read_wait;continue;}
         redraw=true;
+        ui->preview_focus_requested=false;
         int h, w; getmaxyx(stdscr, h, w); UiScreenLayout screen=ui_screen_layout(ui,w,h); UiLayout layout=screen.list; int rows = layout.list_rows; if (rows < 1) rows = 1;
         if (key == KEY_MOUSE) {
             MEVENT event;

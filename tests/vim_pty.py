@@ -27,7 +27,12 @@ def wait(t,test):
   assert time.monotonic()<end,text(t)
   t.read()
 def children(t):
- return [int(x) for x in Path(f'/proc/{t.proc.pid}/task/{t.proc.pid}/children').read_text().split()]
+ result=[]
+ for x in Path(f'/proc/{t.proc.pid}/task/{t.proc.pid}/children').read_text().split():
+  try: name=Path(f'/proc/{x}/comm').read_text().strip()
+  except FileNotFoundError: continue # Reaped between the two /proc reads.
+  if name!='tfile-preview':result.append(int(x))
+ return result
 def editor(t):
  wait(t,lambda:bool(children(t)))
  pid=children(t)[0]

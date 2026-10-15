@@ -143,7 +143,7 @@ for name,response,hint in [
             if response:t.reply(response)
             t.wait(lambda:hint in t.text());assert not t.screen.images and not t.records()
             t.idle();t.reply();t.idle();assert not t.screen.images and t.queries()==(1,1)
-            t.send(DOWN);assert hint in t.text();t.send(DOWN)
+            t.send(DOWN);t.wait(lambda:hint in t.text());assert hint in t.text();t.send(DOWN)
             t.wait(lambda:'PDF page 1 (text' in t.text())
             assert any(e['tool']=='pdftotext' for e in t.records()) and not t.screen.images
             t.send('\x1b[999~'+F7);assert 'Options' in t.text();t.send('\x1b');t.idle()

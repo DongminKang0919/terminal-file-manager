@@ -158,3 +158,5 @@ void core_read_close(ReadJob *job) {
 }
 bool core_read_cleanup_pending(void) { return platform_task_cleanup_pending(); }
 void core_read_shutdown(void) { platform_task_shutdown(); }
+
+bool core_read_available(void) { return platform_read_available(); }

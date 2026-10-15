@@ -33,8 +33,10 @@ status details scroll from the top; short messages retain the inset layout.
 Unavailable previews consume mouse wheel events without scrolling the file list.
 
 When content or viewport changes remove scrolling, focus returns to the list
-without altering its selection, marks or viewport. Completing preparation never
-requests focus. Enter may focus an already actionable preview; pending conversion
+without altering its selection, marks or viewport. Completing an ordinary selection never
+requests focus. An explicit Enter-to-text request may retain its generation-bound
+focus intent until preparation finishes; further input or a modal cancels it.
+Enter may focus an already actionable preview; pending conversion
 stays in Files until the user explicitly switches. Dual-list Tab and modal input
 remain independent.
 
@@ -59,3 +61,8 @@ No graphical terminal was available for a manual color or real Sixel pixel
 inspection. PTY graphics checks validate emitted bytes, placement, clearing and
 lifecycle, not how a real terminal paints pixels. No manual pixel verification
 is claimed.
+
+The UI uses a cancellable preview worker for file opening, peeking, metadata,
+directory probes and text pages. Loading appears after 100 ms; the worker retains
+the 512-row cache. See [implementation and measurements](ASYNC_PREVIEW_VALIDATION_2026-10-15.md)
+for generations, geometry validation, cancellation and sanitizer limits.

@@ -50,6 +50,12 @@ static Result load_directory(AppState *app, const char *path, bool hidden, char 
         if (r.code != RESULT_OK) { free(*resolved); *resolved = NULL; }
         return r;
     }
+    while (!core_read_available()) {
+        if (!app->load_progress(0, false, true, app->load_context)) {
+            app->load_progress(0, true, false, app->load_context);
+            return result_make(RESULT_CANCELLED, "Directory load cancelled; previous list kept");
+        }
+    }
     ReadJob *job = NULL;
     Result r = core_read_directory_start(app->directory, path, hidden, false, &job);
     bool done = false;

@@ -70,6 +70,13 @@ typedef struct {
     bool preview_more, preview_scrollable;
     char *preview_path, *preview_link;
     PreviewSession *preview_session;
+    PreviewJob *preview_job;
+    PreviewMediaKind preview_detected_media;
+    PreviewRequest preview_request;
+    uint64_t preview_generation, preview_started;
+    int preview_width, preview_rows;
+    bool preview_busy, preview_queued, preview_loading, preview_focus_requested;
+    uint64_t preview_focus_generation;
     PreviewText preview_page;
     Result preview_result;
     size_t preview_start, preview_limit;

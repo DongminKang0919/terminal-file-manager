@@ -36,7 +36,10 @@ static int raw_wide(WINDOW *win,wint_t *out) {
 }
 void terminal_input_reset(void) { armed=false; capture=NULL; capture_deadline=0; used=0; has_queued=false; overflow=false; esc_delivered=false; utf_remaining=0; byte_queued=-1; report_escape=false; }
 bool terminal_input_armed(void) { return armed; }
-void input_terminal_begin(TerminalReply *reply) { armed=true; capture=reply; capture_deadline=0; *reply=(TerminalReply){0}; }
+void input_terminal_begin(TerminalReply *reply) {
+    /* Initialize terminfo key definitions before staying in raw decode mode. */
+    if(!armed && stdscr) keypad(stdscr,TRUE);
+    armed=true; capture=reply; capture_deadline=0; *reply=(TerminalReply){0}; }
 void input_terminal_begin_timed(TerminalReply *reply,uint64_t deadline) { input_terminal_begin(reply); capture_deadline=deadline; }
 void input_terminal_end(void) { capture=NULL; capture_deadline=0; }
 static bool report_frame(void) {
@@ -98,9 +101,9 @@ static int sequence_key(WINDOW *win) {
 int terminal_input_wide(WINDOW *win,wint_t *key) {
     int original=wgetdelay(win);
     uint64_t deadline=core_monotonic_ms()+(original<0?25u:(unsigned)original);
-    keypad(win,FALSE);
+    if(is_keypad(win)) keypad(win,FALSE);
     for(unsigned work=0;work<256;work++) {
-        if(work && core_monotonic_ms()>=deadline) { keypad(win,TRUE); return ERR; }
+        if(work && core_monotonic_ms()>=deadline) return ERR;
         wint_t c=0; int kind;
         if(has_queued) { c=queued; has_queued=false; kind=OK; }
         else {
@@ -116,22 +119,24 @@ int terminal_input_wide(WINDOW *win,wint_t *key) {
         }
         if(kind==4) continue;
         if(kind==3) { frame[0]=27;frame[1]='[';used=2;overflow=false;report_escape=false;continue; }
-        if(kind==KEY_CODE_YES) { *key=c; keypad(win,TRUE); return kind; }
+        if(kind==KEY_CODE_YES) { *key=c; return kind; }
         if(kind==ERR) {
-            keypad(win,TRUE);
+            /* Raw decoding stays armed across calls, including timed worker
+               polls. Re-enabling keypad here emits terminal control bytes on
+               completion even when the viewport did not change. */
             if((used==1 || report_escape) && !esc_delivered && core_monotonic_ms()-escape_started>=(capture?100u:25u)) { esc_delivered=true; *key=27; return OK; }
             return ERR;
         }
         if(!used) {
-            if(c!=27) { *key=c; keypad(win,TRUE); return OK; }
+            if(c!=27) { *key=c; return OK; }
             frame[0]=27; used=1; escape_started=core_monotonic_ms(); esc_delivered=false; overflow=false; report_escape=false; continue;
         }
         if(used==1) {
             if(c==27) { escape_started=core_monotonic_ms(); esc_delivered=false; continue; }
             if(c=='['||c=='O') { frame[used++]=(char)c; continue; }
             used=0;
-            if(esc_delivered) { *key=c; keypad(win,TRUE); return OK; }
-            queued=c; has_queued=true; *key=27; keypad(win,TRUE); return OK;
+            if(esc_delivered) { *key=c; return OK; }
+            queued=c; has_queued=true; *key=27; return OK;
         }
         if(report_escape) {
             if(c==27) { escape_started=core_monotonic_ms(); esc_delivered=false; continue; }
@@ -142,7 +147,7 @@ int terminal_input_wide(WINDOW *win,wint_t *key) {
             }
             if(!esc_delivered) {
                 esc_delivered=true; queued=c; has_queued=true;
-                *key=27; keypad(win,TRUE); return OK; /* Preserve the quarantined body. */
+                *key=27; return OK; /* Preserve the quarantined body. */
             }
         }
         bool report=report_frame();
@@ -159,7 +164,7 @@ int terminal_input_wide(WINDOW *win,wint_t *key) {
         if(!final) continue;
         int decoded=sequence_key(win);
         used=0; overflow=false; report_escape=false;
-        if(decoded) { *key=(wint_t)decoded; keypad(win,TRUE); return KEY_CODE_YES; }
+        if(decoded) { *key=(wint_t)decoded; return KEY_CODE_YES; }
     }
-    keypad(win,TRUE); return ERR; /* Bound work for hostile/noisy streams. */
+    return ERR; /* Bound work for hostile/noisy streams. */
 }

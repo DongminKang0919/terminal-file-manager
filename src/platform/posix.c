@@ -17,6 +17,7 @@
 #include <sys/prctl.h>
 #include <limits.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 
 #define TASK_MESSAGE_MAX (1024u * 1024u)
 typedef struct { unsigned type; size_t len; } TaskHeader;
@@ -25,27 +26,31 @@ struct PlatformTask {
     int fd, diagnostic; pid_t pid;
     TaskHeader header; size_t header_read, body_read;
     void *body;
+    unsigned lane;
 };
-static pid_t task_retiring;
-static PlatformTask *task_active;
+static pid_t task_retiring[2];
+static PlatformTask *task_active[2];
 
-bool platform_task_cleanup_pending(void) {
-    if (task_retiring) {
-        pid_t p = waitpid(task_retiring, NULL, WNOHANG);
-        if (p == task_retiring || (p < 0 && errno == ECHILD)) task_retiring = 0;
+static bool task_cleanup(unsigned lane) {
+    if (task_retiring[lane]) {
+        pid_t p = waitpid(task_retiring[lane], NULL, WNOHANG);
+        if (p == task_retiring[lane] || (p < 0 && errno == ECHILD)) task_retiring[lane] = 0;
     }
-    return task_retiring != 0;
+    return task_retiring[lane] != 0;
 }
-Result platform_task_open(PlatformTaskWork work, void *context, PlatformTask **out) {
+bool platform_task_cleanup_pending(void) { return task_cleanup(0) | task_cleanup(1); }
+bool platform_read_available(void) { return !task_cleanup(0) && !task_active[0]; }
+bool platform_preview_available(void) { return !task_cleanup(1) && !task_active[1]; }
+static Result task_open(PlatformTaskWork work, void *context, unsigned lane, PlatformTask **out) {
     *out = NULL;
-    if (task_active || platform_task_cleanup_pending())
+    if (task_active[lane] || task_cleanup(lane))
         return result_make(RESULT_CANCELLED, "Previous read worker is still closing; retry");
     PlatformTask *task = calloc(1, sizeof *task);
     if (!task) return result_make(RESULT_NO_MEMORY, "Out of memory");
     task->diagnostic = memfd_create("tfile-read-errors", MFD_CLOEXEC);
     if (task->diagnostic < 0) { free(task); return result_make(RESULT_IO, "Cannot create read worker diagnostics"); }
     int pipefd[2];
-    if (pipe2(pipefd, O_CLOEXEC) < 0) { close(task->diagnostic); free(task); return result_make(RESULT_IO, "Cannot create read worker pipe"); }
+    if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, pipefd) < 0) { close(task->diagnostic); free(task); return result_make(RESULT_IO, "Cannot create read worker pipe"); }
     int flags = fcntl(pipefd[0], F_GETFL);
     if (flags < 0 || fcntl(pipefd[0], F_SETFL, flags | O_NONBLOCK) < 0) {
         close(pipefd[0]); close(pipefd[1]); close(task->diagnostic); free(task);
@@ -63,6 +68,7 @@ Result platform_task_open(PlatformTaskWork work, void *context, PlatformTask **o
         sigemptyset(&action.sa_mask);
         const int signals[] = {SIGINT, SIGTERM, SIGHUP, SIGPIPE, SIGWINCH};
         for (size_t i = 0; i < sizeof signals / sizeof *signals; i++) sigaction(signals[i], &action, NULL);
+        (void)prctl(PR_SET_NAME, lane ? "tfile-preview" : "tfile-read");
         if (prctl(PR_SET_PDEATHSIG, SIGKILL) < 0 || getppid() != parent) _exit(1);
         if (dup2(task->diagnostic, STDERR_FILENO) < 0) _exit(1);
         close(pipefd[0]);
@@ -77,8 +83,34 @@ Result platform_task_open(PlatformTaskWork work, void *context, PlatformTask **o
         close(pipefd[1]); _exit(0);
     }
     close(pipefd[1]); task->fd = pipefd[0]; task->pid = pid;
-    task_active = task; *out = task;
+    task->lane = lane; task_active[lane] = task; *out = task;
     return result_make(RESULT_OK, NULL);
+}
+Result platform_task_open(PlatformTaskWork work, void *context, PlatformTask **out) {
+    return task_open(work, context, 0, out);
+}
+Result platform_preview_open(PlatformTaskWork work, void *context, PlatformTask **out) {
+    return task_open(work, context, 1, out);
+}
+/* Preview commands are fixed, small records, with one outstanding command.
+   Never wait for a worker from the UI process. */
+bool platform_task_request(PlatformTask *task, const void *data, size_t len) {
+    struct sigaction ignore = {0}, previous;
+    ignore.sa_handler = SIG_IGN; sigemptyset(&ignore.sa_mask);
+    if (sigaction(SIGPIPE, &ignore, &previous) < 0) return false;
+    ssize_t n = write(task->fd, data, len);
+    sigaction(SIGPIPE, &previous, NULL);
+    return n == (ssize_t)len;
+}
+bool platform_task_command(PlatformTaskWriter *writer, void *data, size_t len) {
+    unsigned char *p = data;
+    while (len) {
+        ssize_t n = read(writer->fd, p, len);
+        if (n < 0 && errno == EINTR) continue;
+        if (n <= 0) return false;
+        p += n; len -= (size_t)n;
+    }
+    return true;
 }
 static bool task_write(int fd, const void *data, size_t len) {
     const unsigned char *p = data;
@@ -128,15 +160,16 @@ Result platform_task_receive(PlatformTask *task, unsigned *type, void **data, si
 void platform_task_close(PlatformTask *task) {
     if (!task) return;
     close(task->fd); close(task->diagnostic); free(task->body);
-    if (task_active == task) task_active = NULL;
+    if (task_active[task->lane] == task) task_active[task->lane] = NULL;
     pid_t p = waitpid(task->pid, NULL, WNOHANG);
     if (p == 0 || (p < 0 && errno == EINTR)) {
-        kill(task->pid, SIGKILL); task_retiring = task->pid;
+        kill(task->pid, SIGKILL); task_retiring[task->lane] = task->pid;
     }
     free(task); (void)platform_task_cleanup_pending();
 }
 void platform_task_shutdown(void) {
-    platform_task_close(task_active);
+    platform_task_close(task_active[0]);
+    platform_task_close(task_active[1]);
     /* No blocking wait on a possibly uninterruptible filesystem read. Kernel
        parent-death cleanup remains armed; exited children are reaped now. */
     for (unsigned i = 0; i < 20 && platform_task_cleanup_pending(); i++) {

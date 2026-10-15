@@ -76,7 +76,7 @@ WINDOW *dialog_open(UiContext *ui, const char *title, int height, int width) {
     if (height > h - 2) height = h - 2;
     if (width > w - 4) width = w - 4;
     WINDOW *win = newwin(height, width, (h - height) / 2, (w - width) / 2);
-    if (win) { graphics_probe_cancel(ui); if(ui->media_job) media_reset(ui); ui->modal_depth++; draw_cached(ui); keypad(win, TRUE); wbkgd(win, COLOR_PAIR(UI_BASE)); dialog_frame(win, title); }
+    if (win) { ui->preview_focus_requested=false; graphics_probe_cancel(ui); if(ui->media_job) media_reset(ui); ui->modal_depth++; draw_cached(ui); keypad(win, TRUE); wbkgd(win, COLOR_PAIR(UI_BASE)); dialog_frame(win, title); }
     return win;
 }
 bool dialog_closed(WINDOW *win, const MEVENT *e) {

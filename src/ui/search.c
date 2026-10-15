@@ -119,7 +119,9 @@ void search_items(UiContext *ui) {
         s = (Search){ .win = host, .asynchronous = ui->async_reads }; memcpy(s.term, term, sizeof term);
         if (ui->async_reads) {
             ReadJob *job = NULL;
-            Result started = core_read_search_start(ui_panel(ui)->app.directory, s.term, search_default_limits(), &job);
+            SearchResult waiting={0}; s.poll_delay=40;
+            while(!core_read_available() && !s.stopped) (void)search_progress(&waiting,NULL,&s);
+            Result started = s.stopped ? result_make(RESULT_CANCELLED,"Search cancelled") : core_read_search_start(ui_panel(ui)->app.directory, s.term, search_default_limits(), &job);
             if (started.code != RESULT_OK) result.result = started;
             else {
                 bool done = false;

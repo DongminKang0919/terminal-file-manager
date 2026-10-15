@@ -23,8 +23,7 @@ Result ui_init(UiContext *ui,const char *directory) {
     return r;
 }
 void ui_free(UiContext *ui) {
-    core_read_shutdown();
-    graphics_probe_cancel(ui); graphics_clear(ui); notice_clear(ui); preview_reset(ui); core_media_shutdown();
+    graphics_probe_cancel(ui); graphics_clear(ui); notice_clear(ui); preview_reset(ui); core_read_shutdown(); core_media_shutdown();
     for(unsigned i=0;i<2;i++) app_free(&ui->panels[i].app);
     core_external_close(ui->external_job);ui->external_job=NULL;
     settings_free(&ui->settings); favorites_free(&ui->favorites);
@@ -55,6 +54,8 @@ Result ui_set_mode(UiContext *ui,UiMode mode) {
     if(mode==UI_LIST_LIST) {
         if(!ui->second_initialized) {
             UiFilePanel candidate={0};
+            candidate.app.load_progress=ui_panel(ui)->app.load_progress;
+            candidate.app.load_context=ui_panel(ui)->app.load_context;
             r=initialize_panel(&candidate.app,ui_panel(ui)->app.directory,&ui->settings.defaults);
             if(r.code!=RESULT_OK) { app_free(&candidate.app); message(ui,r.detail); ui->status_kind=NOTICE_ERROR; ui->status_priority=true; return r; }
             ui->panels[other]=candidate; /* Move ownership only after full initialization. */

@@ -20,7 +20,7 @@ void quick_find(UiContext *ui) {
         draw_text(h-1,1,w-2,"Enter: select  Esc: undo  Up/Down: match");
         attrset(A_NORMAL); curs_set(1); move(h-2,11+cursor); refresh();
         int delay=wgetdelay(stdscr);
-        if(media_pending(ui) || core_media_cleanup_pending()) wtimeout(stdscr,40);
+        if(media_pending(ui) || core_media_cleanup_pending() || ui->preview_busy || ui->preview_queued || core_read_cleanup_pending()) wtimeout(stdscr,40);
         wint_t key; int kind=input_wide(stdscr,&key);
         wtimeout(stdscr,delay);
         if (kind==ERR) continue;

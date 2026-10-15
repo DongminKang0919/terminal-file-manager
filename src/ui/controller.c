@@ -94,6 +94,12 @@ void enter_item(UiContext *ui) {
             preview_update_actions(ui,w-layout.list_width,layout.panel_height);
         }
         ui->focus = preview_can_focus(ui) ? UI_FOCUS_PREVIEW : UI_FOCUS_FILES;
+        /* Preserve explicit Enter-to-text focus across asynchronous preparation.
+           Further input, selection changes or a modal revoke this intent. */
+        if(ui->async_reads && (ui->preview_busy || ui->preview_queued) && !ui->preview_ready) {
+            ui->preview_focus_requested=true;
+            ui->preview_focus_generation=ui->preview_generation;
+        }
     }
 }
 /* Fixed-size buffers belong only to the terminal forms, never to core paths. */

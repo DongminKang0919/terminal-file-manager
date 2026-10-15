@@ -213,4 +213,25 @@ bool core_media_cleanup_pending(void);
 void core_media_install_signals(void);
 bool core_media_shutdown_requested(void);
 bool core_terminal_pixels(unsigned *width, unsigned *height);
+
+/* Cancellable preview session. The worker retains the reader and text ring;
+   only bounded, owned page copies cross the process boundary. */
+typedef struct PreviewJob PreviewJob;
+typedef struct { uint64_t generation; size_t start, limit; } PreviewRequest;
+typedef struct {
+    PreviewRequest request;
+    Result result;
+    PreviewMediaKind media;
+    PreviewText page;
+    char *link;
+    bool changed, directory_empty;
+} PreviewReply;
+bool core_read_available(void);
+bool core_preview_available(void);
+Result core_preview_start(const char *path, FileKind kind, PreviewRequest request, PreviewJob **out);
+Result core_preview_request(PreviewJob *job, PreviewRequest request);
+Result core_preview_poll(PreviewJob *job, bool *done, PreviewReply *reply);
+void core_preview_close(PreviewJob *job);
+void core_preview_reply_free(PreviewReply *reply);
+
 #endif

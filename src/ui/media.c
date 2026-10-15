@@ -123,7 +123,7 @@ static void geometry(UiContext *ui,unsigned *width,unsigned *height) {
 
 void media_prepare(UiContext *ui,int rows,bool changed) {
     core_media_reap();
-    PreviewMediaKind kind=preview_session_media(ui->preview_session);
+    PreviewMediaKind kind=ui->async_reads?ui->preview_detected_media:preview_session_media(ui->preview_session);
     if(kind!=PREVIEW_NOT_MEDIA) graphics_probe_prepare(ui,rows);
     unsigned width,height; geometry(ui,&width,&height);
     bool text=kind==PREVIEW_PDF && (ui->media_fallback || !ui->image_auto || !ui->sixel_confirmed || !width || !height);

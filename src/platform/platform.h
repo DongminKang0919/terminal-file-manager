@@ -52,6 +52,12 @@ typedef struct PlatformTask PlatformTask;
 typedef struct PlatformTaskWriter PlatformTaskWriter;
 typedef void (*PlatformTaskWork)(PlatformTaskWriter *, void *);
 Result platform_task_open(PlatformTaskWork work, void *context, PlatformTask **out);
+/* Independent bounded preview lane; directory/search retain their own lane. */
+bool platform_read_available(void);
+bool platform_preview_available(void);
+Result platform_preview_open(PlatformTaskWork work, void *context, PlatformTask **out);
+bool platform_task_request(PlatformTask *task, const void *data, size_t len);
+bool platform_task_command(PlatformTaskWriter *writer, void *data, size_t len);
 bool platform_task_send(PlatformTaskWriter *writer, unsigned type, const void *data, size_t len);
 Result platform_task_receive(PlatformTask *task, unsigned *type, void **data, size_t *len, bool *ready);
 void platform_task_close(PlatformTask *task);

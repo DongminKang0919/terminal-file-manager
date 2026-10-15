@@ -86,3 +86,8 @@ __pycache__/
 /tests/vim_test
 
 /tests/mark_policy_test
+
+/tests/preview_async_test
+/tests/tfile_preview
+/tests/tfile_operation_latency
+/tests/preview_worker_test

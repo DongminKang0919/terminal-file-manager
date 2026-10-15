@@ -2,6 +2,11 @@
 
 
 void preview_reset(UiContext *ui) {
+    core_preview_close(ui->preview_job); ui->preview_job = NULL;
+    ui->preview_busy = ui->preview_queued = ui->preview_loading = false;
+    ui->preview_started = 0; ui->preview_focus_requested = false;
+    ui->preview_detected_media = PREVIEW_NOT_MEDIA;
+    ui->preview_generation++;
     ui->preview_scrollable = false;
     media_reset(ui);
     preview_session_close(ui->preview_session); ui->preview_session = NULL;
@@ -18,11 +23,86 @@ void preview_scroll(UiContext *ui, bool down) {
     else ui->preview_offset = ui->preview_offset > (size_t)ui->wheel_step ? ui->preview_offset - ui->wheel_step : 0;
 }
 
+/* Each request is tied to selection generation, viewport, and geometry.
+   A busy obsolete worker is killed before accepting any of its messages. */
+static void preview_prepare_async(UiContext *ui, int rows) {
+    core_media_reap(); graphics_probe_poll(ui);
+    if(rows<1 || !ui_preview_enabled(ui) || ui_panel(ui)->selected>=ui_panel(ui)->app.files.len) {
+        preview_reset(ui); if(rows<1) graphics_probe_cancel(ui); return;
+    }
+    const Item *it=&ui_panel(ui)->app.files.entries[ui_panel(ui)->selected];
+    if(!ui->preview_path || strcmp(ui->preview_path,it->path)) {
+        preview_reset(ui); ui->preview_path=text_copy(it->path);
+        if(!ui->preview_path) { ui->preview_result=result_make(RESULT_NO_MEMORY,"Out of memory"); return; }
+    }
+    if(!it->valid || it->kind==FILE_OTHER) { ui->preview_ready=true; return; }
+    int width=stdscr?getmaxx(stdscr):0;
+    int bounded=rows<PREVIEW_PAGE_MAX?rows:PREVIEW_PAGE_MAX-1;
+    size_t limit=(size_t)(bounded>PREVIEW_METADATA_ROWS?bounded-PREVIEW_METADATA_ROWS:1)+1;
+    bool geometry=ui->preview_rows!=rows || ui->preview_width!=width;
+    bool obsolete=geometry || ui->preview_request.start!=ui->preview_offset || ui->preview_request.limit!=limit;
+    if(ui->preview_busy && obsolete) {
+        core_preview_close(ui->preview_job); ui->preview_job=NULL;
+        ui->preview_busy=false; ui->preview_generation++;
+    }
+    if(geometry) { ui->preview_rows=rows; ui->preview_width=width; ui->preview_generation++; }
+    if(ui->preview_busy) {
+        PreviewReply reply={0}; bool done=false;
+        Result r=core_preview_poll(ui->preview_job,&done,&reply);
+        if(r.code!=RESULT_OK) {
+            ui->preview_result=r; ui->preview_busy=false; media_reset(ui);
+            core_preview_close(ui->preview_job); ui->preview_job=NULL;
+        } else if(done) {
+            ui->preview_busy=false;
+            if(reply.request.generation==ui->preview_generation && reply.request.limit==limit) {
+                ui->preview_result=reply.result;
+                ui->preview_directory_empty=reply.directory_empty;
+                if(reply.changed || (reply.media==PREVIEW_NOT_MEDIA && ui->media_kind!=PREVIEW_NOT_MEDIA)) media_reset(ui);
+                ui->preview_detected_media=reply.media;
+                preview_text_free(&ui->preview_page); ui->preview_page=reply.page; reply.page=(PreviewText){0};
+                free(ui->preview_link); ui->preview_link=reply.link; reply.link=NULL;
+                ui->preview_offset=ui->preview_start=reply.request.start;
+                ui->preview_request.start=reply.request.start;
+                ui->preview_limit=limit; ui->preview_ready=true; ui->preview_loading=false;
+                ui->preview_checked=core_monotonic_ms();
+            }
+            core_preview_reply_free(&reply);
+            if(ui->preview_result.code!=RESULT_OK) {
+                core_preview_close(ui->preview_job); ui->preview_job=NULL;
+            }
+        }
+    }
+    uint64_t now=core_monotonic_ms();
+    bool viewport=!ui->preview_ready || ui->preview_start!=ui->preview_offset || ui->preview_limit!=limit || geometry;
+    if(!ui->preview_busy && ui->preview_result.code==RESULT_OK && (viewport || now-ui->preview_checked>=1000)) {
+        PreviewRequest request={ui->preview_generation,ui->preview_offset,limit};
+        Result r=result_make(RESULT_OK,NULL);
+        if(!ui->preview_job) {
+            if(!core_preview_available()) {
+                if(!ui->preview_queued) ui->preview_started=now;
+                ui->preview_queued=true; ui->preview_loading=now-ui->preview_started>=100;
+                return; /* Retirement is polled, never surfaced as an error. */
+            }
+            r=core_preview_start(it->path,it->kind,request,&ui->preview_job);
+        } else r=core_preview_request(ui->preview_job,request);
+        if(r.code!=RESULT_OK) {
+            ui->preview_result=r; core_preview_close(ui->preview_job); ui->preview_job=NULL;
+            ui->preview_queued=false; return;
+        }
+        ui->preview_request=request; ui->preview_busy=true;
+        if(!ui->preview_queued) ui->preview_started=now;
+        ui->preview_queued=false;
+    }
+    if(ui->preview_busy) ui->preview_loading=now-ui->preview_started>=100;
+    if(ui->preview_detected_media!=PREVIEW_NOT_MEDIA && ui->preview_result.code==RESULT_OK) media_prepare(ui,rows,false);
+}
+
 /* Preparation owns all I/O; rendering below only consumes the prepared page.
    No idle timer: file metadata or directory emptiness is checked on viewport
    changes or the next redraw after one second. Explicit refresh resets even
    a latched error. Directory checks stop at the first actual entry. */
 void preview_prepare(UiContext *ui, int rows) {
+    if(ui->async_reads) { preview_prepare_async(ui,rows); return; }
     core_media_reap();
     graphics_probe_poll(ui);
     if (rows < 1) { graphics_probe_cancel(ui); media_reset(ui); ui->preview_ready = false; return; }
@@ -189,6 +269,10 @@ static void preview_header(UiContext *ui, View *v, const Item *it) {
 }
 static void preview_content(UiContext *ui, View *v, const Item *it) {
     char text[UI_INPUT_CAP + 80];
+    if(ui->async_reads && !ui->preview_ready && !ui->preview_loading && ui->preview_result.code==RESULT_OK) return;
+    if(ui->async_reads && (ui->preview_busy || ui->preview_queued) && ui->preview_loading) {
+        preview_status(ui,v,"[...] Loading preview","Reading preview.",NULL,UI_DIR); return;
+    }
     if (!it->valid) {
         preview_status(ui,v,"[!] Preview failed","Cannot read file metadata.","Refresh to retry.",UI_SPECIAL); return;
     }
@@ -258,6 +342,7 @@ static void preview_content(UiContext *ui, View *v, const Item *it) {
 
 }
 void preview_update_actions(UiContext *ui, int w, int h) {
+    if(ui->async_reads && (ui->preview_busy || ui->preview_queued) && ui->preview_ready) return;
     ui->preview_scrollable = false;
     ui->preview_more = false;
     UiPreviewBody body = ui_preview_body(h);
@@ -271,6 +356,11 @@ void preview_update_actions(UiContext *ui, int w, int h) {
         if (ui->preview_offset > max) ui->preview_offset = max;
         ui->preview_scrollable = max > 0;
         ui->preview_more = v.line > ui->preview_offset + (size_t)v.rows;
+    }
+    if(ui->preview_focus_requested && !ui->preview_busy && !ui->preview_queued && ui->preview_ready) {
+        if(ui->preview_focus_generation==ui->preview_generation && ui->preview_detected_media==PREVIEW_NOT_MEDIA && preview_can_focus(ui))
+            ui->focus=UI_FOCUS_PREVIEW;
+        ui->preview_focus_requested=false;
     }
     if (!preview_can_focus(ui) && !ui->modal_depth) ui->focus = UI_FOCUS_FILES;
 }
@@ -294,6 +384,7 @@ void preview(UiContext *ui, int x, int y, int w, int h) {
     if (v.rows < 1) { ui->preview_more = false; return; }
     if (v.rows > PREVIEW_PAGE_MAX - 1) v.rows = PREVIEW_PAGE_MAX - 1;
     preview_content(ui, &v, it);
+    if(ui->async_reads && (ui->preview_busy || ui->preview_queued)) return;
     ui->preview_more = v.line > ui->preview_offset + (size_t)v.rows;
     if (!v.line) { ui->preview_offset = 0; return; }
     if (!ui->preview_more) {

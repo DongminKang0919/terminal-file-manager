@@ -1,0 +1,214 @@
+Reproduction/measurement logs; temporary fixtures only.
+Times are local observations, not guaranteed bounds.
+
+Preview baseline (one 1s stall)
+before open 50x9 navigation+quit: 990.4 ms
+before peek 50x9 navigation+quit: 990.7 ms
+before directory 50x9 navigation+quit: 991.1 ms
+before line 50x9 navigation+quit: 990.7 ms
+before metadata 50x9 navigation+quit: 990.5 ms
+before page 50x9 navigation+quit: 990.4 ms
+before open 100x24 navigation+quit: 990.5 ms
+before peek 100x24 navigation+quit: 990.8 ms
+before directory 100x24 navigation+quit: 990.7 ms
+before line 100x24 navigation+quit: 990.5 ms
+before metadata 100x24 navigation+quit: 990.4 ms
+before page 100x24 navigation+quit: 990.4 ms
+
+Preview after (same stall)
+after open 50x9 navigation+quit: 1.8 ms
+after peek 50x9 navigation+quit: 0.5 ms
+after directory 50x9 navigation+quit: 0.3 ms
+after line 50x9 navigation+quit: 0.4 ms
+after metadata 50x9 navigation+quit: 0.5 ms
+after page 50x9 navigation+quit: 1.6 ms
+after open 100x24 navigation+quit: 1.8 ms
+after peek 100x24 navigation+quit: 0.6 ms
+after directory 100x24 navigation+quit: 0.7 ms
+after line 100x24 navigation+quit: 0.4 ms
+after metadata 100x24 navigation+quit: 0.6 ms
+after page 100x24 navigation+quit: 1.6 ms
+
+First dual baseline (held call, manually released after 800ms)
+before first dual/cancel: 818.0ms worker_is_ui=True
+before first dual/success: 11.1ms worker_is_ui=True
+
+First dual after (cancel while still held)
+after first dual/cancel: 251.6ms worker_is_ui=False
+after first dual/success: 21.0ms worker_is_ui=False
+
+Operations final run (real and synthetic separated)
+large-copy/real: operation=102.018ms max_callback_gap=5.058ms cancel_input=not requested result=0 items=1 bytes=67108864 partial=0 target_size_or_children=67108864 source_size_or_children=67108864
+large-copy/cancel: operation=25.632ms max_callback_gap=0.069ms cancel_input=25.9ms result=11 items=0 bytes=393216 partial=1 target_size_or_children=393216 source_size_or_children=67108864
+large-copy/read: operation=1025.693ms max_callback_gap=1000.148ms cancel_input=1025.7ms result=11 items=0 bytes=0 partial=1 target_size_or_children=0 source_size_or_children=67108864
+large-copy/write: operation=1026.071ms max_callback_gap=1000.469ms cancel_input=1026.4ms result=11 items=0 bytes=65536 partial=1 target_size_or_children=65536 source_size_or_children=67108864
+large-copy/metadata: operation=1025.738ms max_callback_gap=1000.367ms cancel_input=1025.8ms result=11 items=0 bytes=0 partial=1 target_size_or_children=0 source_size_or_children=67108864
+tree-copy/real: operation=46.993ms max_callback_gap=2.522ms cancel_input=not requested result=0 items=2001 bytes=1024000 partial=0 target_size_or_children=2000 source_size_or_children=2000
+tree-copy/cancel: operation=36.031ms max_callback_gap=0.440ms cancel_input=26.0ms result=11 items=436 bytes=223232 partial=1 target_size_or_children=436 source_size_or_children=2000
+tree-copy/read: operation=1026.713ms max_callback_gap=1000.220ms cancel_input=1016.3ms result=11 items=0 bytes=0 partial=1 target_size_or_children=1 source_size_or_children=2000
+tree-copy/write: operation=1026.114ms max_callback_gap=1000.165ms cancel_input=1016.2ms result=11 items=0 bytes=512 partial=1 target_size_or_children=1 source_size_or_children=2000
+tree-copy/metadata: operation=1026.261ms max_callback_gap=1000.796ms cancel_input=1026.4ms result=11 items=0 bytes=0 partial=1 target_size_or_children=0 source_size_or_children=2000
+tree-copy/readdir: operation=1026.067ms max_callback_gap=1000.607ms cancel_input=1026.2ms result=11 items=0 bytes=0 partial=1 target_size_or_children=0 source_size_or_children=2000
+tree-delete/real: operation=14.072ms max_callback_gap=0.248ms cancel_input=not requested result=0 items=2001 bytes=0 partial=0 target_size_or_children=0 source_size_or_children=0
+tree-delete/cancel: operation=26.087ms max_callback_gap=0.270ms cancel_input=26.4ms result=11 items=38 bytes=0 partial=1 target_size_or_children=0 source_size_or_children=1962
+tree-delete/metadata: operation=1026.199ms max_callback_gap=1000.852ms cancel_input=1026.3ms result=11 items=0 bytes=0 partial=0 target_size_or_children=0 source_size_or_children=2000
+tree-delete/readdir: operation=1025.867ms max_callback_gap=1000.424ms cancel_input=1026.0ms result=11 items=0 bytes=0 partial=0 target_size_or_children=0 source_size_or_children=2000
+tree-delete/unlink: operation=1026.092ms max_callback_gap=1000.285ms cancel_input=1026.5ms result=11 items=1 bytes=0 partial=1 target_size_or_children=0 source_size_or_children=1999
+
+asan-preview
+PASS: async-only I/O, persistent cache, 40 cancellations, stale selections, page/resize cancellation, modal/mode cleanup, FD bound, transactional first dual creation
+
+asan-worker
+PASS: worker body normal teardown, forward/backward/distant cache pages, directory/error cleanup (in-process harness)
+
+asan-preview-sync
+PASS: empty file/directory, hidden-only directory, permission and directory read failures, cached directory probes, metadata retained
+PASS: 1000 sequential pages: 1 open, 1020 chunk reads, 12240 bytes; 100 unchanged redraws: 0 reads/opens; backward cache, EOF, changes, cleanup; sort preserves reader/page/selection without content or list I/O; refresh resets safely
+
+asan-panels
+PASS: independent panels/modes/history/find/search/marks; 2 initial directory opens + 1 sort per panel, zero focus I/O; narrow geometry/marks; modal isolation; one refresh per panel, failures/stale write guard; batch outcomes; 100 initial/second/reopen allocation failure positions; owned memory/windows/FD cleanup
+
+asan-read
+large listing: 10027 entries, sync 41 ms, isolated 163 ms (1 ms test polling)
+PASS: async/sync result equality, tail results, recursion, hidden list, limits, errors, interrupted IPC, parent OOM, transactional cancellation, 32 cancellations and FD/child cleanup
+
+asan-input
+PASS: split/late/malformed terminal report isolation, Esc/resize, regular keys, Unicode and mouse preservation
+
+lsan-preview
+==4==LeakSanitizer has encountered a fatal error.
+==4==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==4==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+
+lsan-worker
+==3==LeakSanitizer has encountered a fatal error.
+==3==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==3==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+
+Final full regression: make -j4 check, exit 0
+PASS: large search and preview jump/cache/restart
+PASS: raw-byte marks/snapshot/order/filter/history, allocation failure, copy/move/delete success/first-middle error/pre-between cancellation, partial writes and FD cleanup
+PASS: 100 allocation-failure positions in listing/refresh/search/preview release explicit ownership and FDs; failed refresh retains list
+PASS: eight sort orders, boundary values/comparator consistency, raw identity, independent app state, navigation/search and unchanged picker/search order
+PASS: deterministic start/chunk/item/delete cancellation, counters, residual modes/data, no-clobber, FD cleanup and subsequent operations
+PASS: UI -> core -> platform dependency boundaries
+PASS: POSIX paths, metadata, links, errors, no-replace move and monotonic clock
+PASS: core state, operations, search limits/cancellation, paged preview (without ncurses)
+PASS: pinned move parents, late no-clobber/EXDEV, controlled source/destination swaps, outside markers, non-root 0555/umask, links, no-clobber, partial failures, depth/FD limits and FD cleanup
+PASS: search omissions/metadata errors/OOM/cancellation/limits, retained results, hidden selection and transactional failures
+PASS: favorites persistence/raw bytes/limits/canonical duplicates, failed save rollback, corrupt/symlink storage, preserved defaults/history and inaccessible navigation
+PASS: favorites add/rename/go/history/unregister/restart, independent startup storage (PTY)
+PASS: contains/glob/raw Unicode, independent panels, hidden/sort/history/refresh rules, transactional failure, visible-only batches, mark clearing and empty/no-match distinction
+PASS: copy/move preflight/late real no-clobber collisions, skip/skip-all/stop/cancel, skipped marks, error isolation and partial-copy refusal
+PASS: filter prompts/clear, Unicode/glob/no-match/marks/refresh and independent dual panel at 50x9/100x24
+PASS: Trash payload/metadata, no-clobber, failures/cancel/crash, pinned parents, leaf refusal, private mount routing (simulated), marks and FD lifetime
+PASS: Vim ignores editor env, UTF-8/empty/extensionless content check, media/binary/link/special refusal, read-only argv, missing tool, exit/signal and signal restoration
+PASS: exact Vim argv (including -R/--), literal hostile filename, no shell or fallback
+PASS: argv grammar/priority/vi, literal shell-looking filenames, editor signal restoration, no shell fallback/limits, GUI ack/failure/live-detach/reap and FD cleanup
+PASS: actual exec argv, inherited user limits, no extra FDs, original filename bytes and no shell execution
+PASS: cooked editor terminal, resize/input/media restore, cursor vs marked file, literal argv and asynchronous xdg-open result (PTY)
+PASS: entry-point local document links and heading anchors
+PASS: Trash/default cancel/frozen marks/batch/no-delete fallback, separate permanent delete, resize cancellation at 50x9/100x24 (PTY)
+PASS: real installed Vim edit/write/quit, hostile cursor path vs marks, -R, signal termination, resize, ncurses/input/mouse/preview restoration (automated PTY)
+PASS: missing Vim, ENOEXEC/no shell fallback, failed exit, binary/link refusal and immediate menu restoration (PTY)
+PASS: batch conflict skip/skip-all/stop/Esc/resize, exact file effects and marks for copy/move (PTY)
+PASS: parent TERM/HUP forwarded only to editor, grace/reap and shell termios restored
+PASS: async/sync result equality, tail results, recursion, hidden list, limits, errors, interrupted IPC, parent OOM, transactional cancellation, 32 cancellations and FD/child cleanup
+PASS: curses-free settings defaults, full value ranges and transactional validation
+PASS: settings parsing, restart, panel isolation, 50x9 options, atomic failure preservation and path safety
+PASS: bounded terminal DA/cell protocol, full-format validation and transactional replies (no curses)
+PASS: split/late/malformed terminal report isolation, Esc/resize, regular keys, Unicode and mouse preservation
+PASS: lazy bounded session probe, Off/failure/cancellation, geometry refresh and capture lifetime
+after first dual/cancel: 251.9ms worker_is_ui=False
+after first dual/success: 20.7ms worker_is_ui=False
+PASS: single-mark target priority, absent/multiple mark refusal, filtered visible-only marks, independent panels and owned cleanup
+PASS: real-process settings save/restart, dual CLI path, startup warning and explicit replacement at 50x9/100x24
+PASS: worker body normal teardown, forward/backward/distant cache pages, directory/error cleanup (in-process harness)
+PASS: async-only I/O, persistent cache, 40 cancellations, stale selections, page/resize cancellation, modal/mode cleanup, FD bound, transactional first dual creation
+after page 50x9 navigation+quit: 1.3 ms
+after page 100x24 navigation+quit: 1.4 ms
+PASS: fixed cursor/mark symbols, footer/count/target cues, menu/direct all-clear, exactly-one copy/move/delete/Trash/rename, filtered batch Cancel/list/permanent label and independent dual marks at 50x9/100x24
+PASS: explicit terminal setup, split/invalid/no/late replies, display/erase failures, recheck, F7 focus, Unicode, no implicit persistence and fresh-session isolation at 50x9/100x24
+PASS: measured manual input, missing tools vs unknown cells, ioctl fallback, advanced environment preservation, active converter/FD/temp cleanup and resize abort
+PASS: F7 verification followed by navigation, search, explicit mouse copy and late reply isolation
+PASS: lazy Auto PNG/JPEG/PDF, session reuse/restart/resize, ioctl, Off, failed/late/malformed replies, missing tools, selection/modal/child cleanup, UTF-8/mouse/keys, delayed startup and idle waits
+PASS: non-root permission denial/deleted path are not empty or usable; empty destination/source, blocked use, explicit path and Parent recovery
+PASS: signatures/empty/special names, PNG/JPEG/PDF-page-1, bounded text, missing tools/errors/encryption/timeout/output validation, 50 cancellations, stale identity, FIFO rejection, FD/child/temp cleanup, UI cache/focus/modal/off modes
+PASS: PTY protocol ordering/bounds/clear/modal/resize, responsive selection/exit cancellation, focus cache, Auto/Off/files-only, PDF-first-page/text fallback, safe errors, unchanged text scrolling, zero/fake image, missing tools; real graphics remain unverified
+PASS: portrait/landscape/square/tiny/large/PDF centering, bounds/aspect/no upscale, larger cap, resize coalescing, small-original cache, modal and minimum-screen clearing (protocol oracle)
+PASS: real ImageMagick/Poppler portrait/landscape/square/tiny/large/PDF output fits, preserves aspect and centers at 80x24/260x80; no visual terminal claim
+PASS: independent panels/modes/history/find/search/marks; 2 initial directory opens + 1 sort per panel, zero focus I/O; narrow geometry/marks; modal isolation; one refresh per panel, failures/stale write guard; batch outcomes; 100 initial/second/reopen allocation failure positions; owned memory/windows/FD cleanup
+PASS: marks without I/O/sort, focus, safe Cancel paging, batch outcomes/one refresh/failure, frozen draw with polling, details preserve cursor/scroll/focus/cache at 50x9/80x24/160x24
+PASS: one initial list read, one main sort per load/refresh, unchanged picker order and raw-name ties at 50x9/100x24
+PASS: frozen-clock search suppresses redundant frames but polls every callback, keeps cancellation/results/notice and UI state at 50x9/100x24
+PASS: history identity/raw bytes/scroll, changed sort, missing/hidden fallback, failed navigation transaction, Parent, forward trim/button state, dual isolation and 128-entry ownership
+PASS: name/path empty and encoded overflow warnings, preserved edit cursor/raw bytes, one Options window with retained focus/scroll and visible refresh failure at 50x9/100x24
+PASS: 256/8/mono Location label/path, enabled/disabled history styles and exact click bounds; popup surfaces, title/border/footer/focus/disabled attributes, wide glyph preservation and exact background restoration at 50x9/80x24/100x24/160x32
+PASS: frozen-clock UI draws once while checking input at least 34 times during 1 MiB copy
+PASS: empty file/directory, hidden-only directory, permission and directory read failures, cached directory probes, metadata retained
+PASS: 1000 sequential pages: 1 open, 1020 chunk reads, 12240 bytes; 100 unchanged redraws: 0 reads/opens; backward cache, EOF, changes, cleanup; sort preserves reader/page/selection without content or list I/O; refresh resets safely
+PASS: display escapes, Unicode cell widths, zero-width marks, pagination and exact byte round trips
+PASS: curses cell inspection keeps text within its row/region and preserves guards
+PASS: refresh errors preserve UI state; create/copy/move/delete success remains distinct from refresh failure
+PASS: pipe-gated PTY Cancel/Esc/resize, 50x9 modal, exact partial results and blocked background input
+PASS: Unicode/key separation, search states/hidden results, refresh failures, mouse/history, modals, file operations and preview
+PASS: clean HOME/XDG and no optional tools; create/delete/cancel, media reasons, Vim/xdg-open missing guidance, navigation/copy/move, no-argument startup, no unsolicited preview focus; non-TTY/TERM failures; suite environment isolation
+PASS: PTY popup guards, escaped names, full delete-name paging and byte-exact copy/rename/delete
+PASS: Options keyboard/mouse/Menu, 50x9 frames, selected identity/scroll/preview, refresh success/failure/fallback, picker order and restart defaults
+PASS: main panel cells at 50x9/80x24/100x24/160x32, selection, columns, empty list, short/EOF/binary/link/error previews
+PASS: loaded/hidden counts, overflow ranges, empty/fitting list, Korean names, full-width preview toggle identity/scroll, retained cancellation, group gaps and resize
+PASS: Back/Forward restores exact selected Unicode item and list viewport at 50x9/80x24/160x32
+PASS: keyboard/mouse/mixed history, bracket/Alt CSI mappings, plain arrows, empty forward, branch trim, deleted path retry and independent dual histories
+PASS: bracket/Alt and mixed history after terminal query activates raw escape parsing
+PASS: status summary, keyboard/mouse/menu details, scroll, dismiss/ack/reopen/replacement and retained alerts at 50x9/100x24
+PASS: loaded-list find Unicode editing/no match/wrap/commit/cancel, literal command letters, menu and empty list at 50x9/80x24/160x32
+PASS: direct menu rename no-op, retained collision/edit, exact selection and original invalid/control bytes at 50x9/80x24/160x32
+PASS: destination-first forms, explicit execution, absolute/relative base, complete path paging, Browse retention/mouse, collision/error retry, permissions, long Unicode paths and raw control names at all sizes
+PASS: keyboard preview pages/EOF/Home/Esc, Tab/click focus, Enter cache viewport, hidden preview, directory/link/binary/error/empty states, retained Options keyboard/mouse focus, recoverable name/path input and resize at 50x9/80x24/160x32
+PASS: short text/binary/empty file/directory Tab/click/wheel isolation; scroll footer/border/input; modal restore; resize/content loss; no automatic focus on resize completion; list wheel
+PASS: static statuses stay unfocusable at minimum 50x9 geometry
+PASS: cursor/marked distinction; search Tab/Shift+Tab/Enter; disabled Open; permanent delete Shift+Tab; acknowledgement and modal restoration at 50x9/100x24
+PASS: search input/result geometry, unicode edit, focus flow, buttons/gaps, restore, resize; gated Cancel/Esc/Enter keeps 64 results, x/resize closes, background blocked
+PASS: complete wrapped Help at 50x9/80x24/160x32, explicit display-line ranges, both scroll boundaries, footer guards, blocked background commands, exact restore and resize
+PASS: dual keyboard/mouse/geometry/resizing, independent path/sort/hidden/history/find/search/marks, preview and popup return, active-only batch/rename/delete and retained destination flow at 50x9/80x24/160x32
+PASS: opposite defaults, explicit mouse execution, peer marks/path, relative edits, collision, deleted-path retry/Browse, move, single/preview defaults at 50x9/80x24/160x32
+PASS workflow 50x9: normal chained operations/modes/history; FD=3, RSS=3192..3192 KiB
+PASS workflow 80x24: normal chained operations/modes/history; FD=3, RSS=3356..3356 KiB
+PASS workflow 160x32: normal chained operations/modes/history; FD=3, RSS=3648..3648 KiB
+PASS: 50x9 denied navigation overrides old success
+PASS: 50x9 prior file result retained
+PASS: 50x9 incomplete search overrides old success
+PASS: 50x9 prior file result retained
+PASS: 50x9 failed refresh overrides old success
+PASS: 50x9 missing history location overrides old success
+PASS: 50x9 prior file result retained
+PASS: 50x9 empty dual transfer stays in list
+PASS: 50x9 empty dual transfer stays in list
+PASS: 50x9 prior file result retained
+PASS: 50x9 Paths resize cancels parent transfer
+PASS: 80x24 denied navigation overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 incomplete search overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 failed refresh overrides old success
+PASS: 80x24 missing history location overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 empty dual transfer stays in list
+PASS: 80x24 empty dual transfer stays in list
+PASS: 80x24 prior file result retained
+PASS: 80x24 Paths resize cancels parent transfer
+PASS: 160x32 denied navigation overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 incomplete search overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 failed refresh overrides old success
+PASS: 160x32 missing history location overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 empty dual transfer stays in list
+PASS: 160x32 empty dual transfer stays in list
+PASS: 160x32 prior file result retained
+PASS: 160x32 Paths resize cancels parent transfer
+PASS: recovery flows and prior result preservation at all sizes
+PASS: batch destination errors/edit/picker/review/cancel/resize/Unicode paths at all sizes
+PASS: marked/cursor separation, find/input/preview isolation, menu select/clear/rename guard, batch cancel/collision/copy/move/delete/details keyboard+mouse at 50x9/80x24/160x32
+PASS: single/dual pipe-gated batch copy/delete partial cancellation, move-between targets, mouse/Esc/resize, exact statuses/residue and queued background commands discarded
