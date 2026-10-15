@@ -89,7 +89,7 @@ for w,h in [(50,9),(80,24),(160,32)]:
             t.send('\x1b'); focus(True)
             # Return sort to name before testing each non-text state.
             t.send('\x1b[18~'+DOWN*3+'\n\n\x1b\x1b')
-            for index,expected in [(3,'Preview'),(4,'Link target:')]:
+            for index,expected in [(3,'Unavailable' if h==9 else 'Preview unavailable'),(4,'Link target:')]:
                 t.send(HOME+DOWN*index)
                 actionable='Tab: Preview' in t.screen.row(h-1)
                 t.send('\n'); focus(actionable)

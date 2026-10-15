@@ -82,6 +82,7 @@ static bool search_progress(const SearchResult *progress, const char *path, void
             else if (dialog_button_hit(s->win,&event,h-2,2,"[ Cancel ]",true)) s->stopped = true;
         }
     }
+    if(key==KEY_F(10)) core_request_shutdown();
     if (key == KEY_RESIZE || key == KEY_F(10)) s->close_requested = s->stopped = true;
     if (key == 27 || key == '\n' || key == KEY_ENTER) s->stopped = true;
     if (core_media_shutdown_requested() || core_editor_shutdown_requested()) s->close_requested = s->stopped = true;
@@ -173,6 +174,7 @@ void search_items(UiContext *ui) {
                     } else continue;
                 } else continue;
             }
+            if(key==KEY_F(10)) core_request_shutdown();
             if (key == KEY_RESIZE || key == 27 || key == KEY_F(10)) goto search_done;
             if (key == '/' || key == KEY_F(3)) break;
             if(key=='\t' || key==KEY_BTAB) { s.focus=dialog_focus_next(s.focus,3,key==KEY_BTAB,s.len?0:1u<<2); continue; }

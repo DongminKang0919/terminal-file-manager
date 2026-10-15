@@ -318,6 +318,20 @@ int main(void) {
         calls=0;fail_at=fault;result=ui_init(&ui,a);fail_at=0;
         ui_free(&ui);assert(live==baseline&&fds()==initial_fds);
     }
+    /* A deferred exit must not launch fresh directory workers during result
+       refresh. Preserve each panel snapshot/marks and record a separate cancel. */
+    {
+        UiContext ui={0};current=&ui;ok(ui_init(&ui,a));ok(ui_set_mode(&ui,UI_LIST_LIST));
+        FileInfo *left=ui.panels[0].app.files.entries,*right=ui.panels[1].app.files.entries;
+        size_t opens=directories;reset_refresh();
+        core_request_shutdown();
+        assert(ui_refresh_panel(&ui,0,NULL,true).code==RESULT_CANCELLED);
+        assert(ui_refresh_panel(&ui,1,NULL,true).code==RESULT_CANCELLED);
+        assert(ui.panels[0].app.files.entries==left&&ui.panels[1].app.files.entries==right);
+        assert(ui.panels[0].stale&&ui.panels[1].stale&&directories==opens);
+        assert(!refreshes[0]&&!refreshes[1]);
+        ui_free(&ui);assert(live==baseline&&fds()==initial_fds);
+    }
     endwin();delscreen(screen);fclose(out);fclose(in);ok(core_delete(root));assert(!live);
     puts("PASS: independent panels/modes/history/find/search/marks; 2 initial directory opens + 1 sort per panel, zero focus I/O; narrow geometry/marks; modal isolation; one refresh per panel, failures/stale write guard; batch outcomes; 100 initial/second/reopen allocation failure positions; owned memory/windows/FD cleanup");
 }

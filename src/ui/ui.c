@@ -279,7 +279,7 @@ static void draw_screen(UiContext *ui, bool prepare) {
     NoticeKind alert_kind=ui->status_kind;
     if (ui->notice.present && ui->notice.visible && !ui->status_priority) {
         OperationNotice *n=&ui->notice;
-        const char *label=n->operation.partial && n->kind!=NOTICE_CANCELLED ? "Partial" : notice_label(n->kind);
+        const char *label=n->operation.code==RESULT_UNCERTAIN ? "Uncertain" : n->operation.partial && n->kind!=NOTICE_CANCELLED ? "Partial" : notice_label(n->kind);
         snprintf(alert,sizeof alert,"[%s] ! %s%s%s",label,
             refresh_issue ? "refresh failed" : n->operation.partial && n->kind==NOTICE_CANCELLED ? "Partial; details" : "Details",
             w>=90 ? ": " : "",w>=90 ? n->action : "");

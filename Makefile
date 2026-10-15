@@ -318,3 +318,12 @@ check-mutations: tests/mutation_worker_test tests/tfile_operation_latency
 	./tests/mutation_worker_test
 	python3 tests/isolated_check.py ./tests/mutation_job_test
 	python3 tests/isolated_check.py python3 tests/mutation_shutdown_pty.py
+
+# Connected sessions and worker/modal lifetime boundaries use temporary HOME/XDG.
+check-integration: tfile tests/tfile_read tests/panels_ui_test tests/controller_test
+	python3 tests/isolated_check.py ./tests/panels_ui_test
+	python3 tests/isolated_check.py python3 tests/run_regressions.py controller
+	python3 tests/isolated_check.py python3 tests/async_boundaries_pty.py
+	python3 tests/isolated_check.py python3 tests/integrated_session_pty.py
+check-isolated: check-integration
+.PHONY: check-integration

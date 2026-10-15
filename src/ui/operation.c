@@ -1,7 +1,7 @@
 #include "ui.h"
 
-/* The synchronous callback is the only input handler while a job is active.
-   It never dispatches commands. Drawing is throttled; polling is not. */
+/* UI-only progress/input handler; background commands are never dispatched.
+   Drawing is throttled; input polling is not. */
 typedef struct {
     WINDOW *win;
     bool copy, trash, move, drawn, cancelled, asynchronous, cancel_drawn, uncertain;
@@ -66,6 +66,13 @@ static bool operation_progress(const OperationProgress *progress, void *context)
     }
     return !view->cancelled;
 }
+typedef struct { MutationJob *job; BatchJob *batch; bool *done; } ConflictWait;
+static bool conflict_pending(void *context) {
+    ConflictWait *wait=context;
+    (void)core_mutation_poll(wait->job,wait->done);
+    return !*wait->done && wait->batch->result.code!=RESULT_UNCERTAIN &&
+        !core_media_shutdown_requested() && !core_editor_shutdown_requested();
+}
 static void run_async(UiContext *ui,BatchJob *batch,OperationView *view) {
     view->asynchronous=true;
     OperationProgress initial={.path=batch->targets[0].source};
@@ -93,8 +100,9 @@ static void run_async(UiContext *ui,BatchJob *batch,OperationView *view) {
         if(!done && !view->cancelled && core_mutation_conflict(job,&index)) {
             char title[160];snprintf(title,sizeof title,"Name collision: %.120s",batch->targets[index].name);
             const char *choices[]={"Stop batch (no overwrite)","Skip this target","Skip all later name collisions"};
-            int selected=ui_choices(ui,title,choices,3);
-            core_mutation_decide(job,selected<0?CONFLICT_CANCEL:(BatchConflictDecision)selected);
+            ConflictWait wait={job,batch,&done};
+            int selected=ui_choices_poll(ui,title,choices,3,conflict_pending,&wait);
+            if(!done)core_mutation_decide(job,selected<0?CONFLICT_CANCEL:(BatchConflictDecision)selected);
             view->drawn=false;touchwin(view->win);
         }
         if(!done)napms(10);

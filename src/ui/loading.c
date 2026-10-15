@@ -35,6 +35,7 @@ static bool directory_progress(size_t entries, bool complete, bool waiting, void
     wtimeout(host, waiting ? 40 : 0);
     int key = input_key(host);
     wtimeout(host, -1);
+    if(key==KEY_F(10)) core_request_shutdown();
     bool cancel = key == 27 || key == KEY_RESIZE || key == KEY_F(10) || core_media_shutdown_requested() || core_editor_shutdown_requested();
     if (key == KEY_MOUSE) {
         MEVENT event;

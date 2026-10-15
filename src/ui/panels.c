@@ -31,6 +31,10 @@ void ui_free(UiContext *ui) {
 }
 Result ui_refresh_panel(UiContext *ui,unsigned index,const char *highlight,bool require_fresh) {
     UiFilePanel *p=&ui->panels[index];
+    if(core_media_shutdown_requested() || core_editor_shutdown_requested()) {
+        if(require_fresh)p->stale=true;
+        return result_make(RESULT_CANCELLED,"List refresh skipped during shutdown");
+    }
     size_t previous=p->selected;
     const char *wanted=highlight ? highlight : previous<p->app.files.len ? p->app.files.entries[previous].name : NULL;
     char *name=wanted ? text_copy(wanted) : NULL;
@@ -95,6 +99,8 @@ void refresh_peer_after_operation(UiContext *ui) {
 }
 void refresh_operation_lists(UiContext *ui,const char *highlight) {
     ui->notice.refresh=load_dir(ui,highlight);
+    /* A mutation can invalidate cached content even when the old list survives. */
+    if(ui->notice.refresh.code!=RESULT_OK) preview_reset(ui);
     ui->notice.refresh_attempted=true;
     refresh_peer_after_operation(ui);
     /* Both refresh outcomes belong to this operation's retained notice. Show

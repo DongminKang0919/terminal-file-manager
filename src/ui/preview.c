@@ -222,6 +222,17 @@ static void status_wrap(UiContext *ui, View *v, int *row, const char *text, int 
 }
 static void preview_status(UiContext *ui, View *v, const char *title,
                            const char *reason, const char *help, int color) {
+    bool failed=!strcmp(title,"[!] Preview failed");
+    /* A single body row cannot show the distinguishing word on a second line. */
+    if(v->rows==1) {
+        if(failed) title="[!] Error";
+        else if(!strcmp(title,"[i] Preview disabled")) title="[i] Disabled";
+        else if(!strcmp(title,"[i] Preview unavailable")) title="[i] Unavailable";
+        else if(!strcmp(title,"[i] Missing preview tool")) title="[i] No tool";
+        else if(!strcmp(title,"[...] Loading preview")) title="[...] Loading";
+        else if(!strcmp(title,"[...] Converting preview")) title="[...] Convert";
+        else if(!strcmp(title,"[i] Empty directory")) title="[i] Empty dir";
+    }
     View block = *v;
     int pad = v->width >= 36 ? 2 : 0;
     block.x += pad; block.width -= pad * 2;
@@ -232,7 +243,7 @@ static void preview_status(UiContext *ui, View *v, const char *title,
     status_wrap(ui, &block, &row, reason, UI_BASE, false);
     if (help && v->rows >= 8 && v->width >= 28)
         status_wrap(ui, &block, &row, help, UI_BASE, false);
-    bool long_message = row > v->rows && !strcmp(title,"[!] Preview failed");
+    bool long_message = row > v->rows && failed;
     block.measure = v->measure;
     int total = row;
     row = !long_message && v->rows >= 9 ? v->rows / 3 : 0;

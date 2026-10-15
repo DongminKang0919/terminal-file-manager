@@ -1,5 +1,6 @@
 #include "../src/ui/ui.h"
 #include <assert.h>
+#include <time.h>
 static bool fail_refresh, cancel_operation, cancel_confirmation;
 static bool cancel_callback(const OperationProgress *p, void *context) {
     unsigned *calls = context;
@@ -67,8 +68,18 @@ int main(int argc, char **argv) {
         assert(main_file_compare(&ui_panel(&ui)->app.files.entries[i - 1], &ui_panel(&ui)->app.files.entries[i], ui_panel(&ui)->app.sort) <= 0);
     files = ui_panel(&ui)->app.files.entries; len = ui_panel(&ui)->app.files.len; fail_refresh = true;
     ok(app_mark_toggle(&ui_panel(&ui)->app,"moved.txt"));
+    bool was_async=ui.async_reads;ui.async_reads=true;
+    uint64_t deadline=core_monotonic_ms()+3000;
+    do {
+        preview_prepare(&ui,17);
+        struct timespec pause={0,1000000};nanosleep(&pause,NULL);
+        assert(core_monotonic_ms()<deadline);
+    } while(ui.preview_busy || ui.preview_queued || !ui.preview_ready);
+    assert(ui.preview_job && ui.preview_result.code==RESULT_OK);
     delete_entry(&ui); preserved(&ui, files, len, "Deleted");
     assert(!app_marked(&ui_panel(&ui)->app,"moved.txt"));
+    assert(!ui.preview_job && !ui.preview_ready && !ui.preview_page.lines && !ui.preview_path);
+    ui.async_reads=was_async; /* Remaining terminal-less legacy scenarios keep their original policy. */
     char *moved = core_path_join(root, "moved.txt"); assert(core_info(moved, &info).code == RESULT_NOT_FOUND);
     /* Failed deletion and failed refresh must both survive in the message. */
     delete_entry(&ui); assert(strstr(ui.status, "Delete: No changes") && strstr(ui.status, "list refresh failed"));

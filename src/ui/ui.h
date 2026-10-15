@@ -214,6 +214,7 @@ void show_favorites(UiContext *ui);
 void show_filter(UiContext *ui);
 void external_entry(UiContext *ui,bool edit);
 bool external_prepare(UiContext *ui);
+int ui_choices_poll(UiContext *ui,const char *title,const char **labels,int count,bool (*pending)(void *),void *context);
 int ui_choices(UiContext *ui,const char *title,const char **labels,int count);
 void graphics_init(UiContext *ui);
 void graphics_probe_poll(UiContext *ui);
