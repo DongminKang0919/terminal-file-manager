@@ -78,6 +78,7 @@ jobs:
             /tmp/tfile-sanitizers-ci/*.log
             /tmp/tfile-sanitizers-ci/summary.json
             /tmp/tfile-media-sanitizers-ci/*.log
+            /tmp/tfile-media-sanitizers-ci/summary.json
             /tmp/tfile-terminal-sanitizers-ci/*.log
             /tmp/tfile-terminal-sanitizers-ci/summary.json
           retention-days: 14

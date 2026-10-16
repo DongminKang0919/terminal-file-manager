@@ -1,0 +1,408 @@
+Media lifetime evidence, baseline d08ea44, 2026-10-16.
+
+Expected negative-control tracebacks are followed by PASS markers.
+These logs prove a lifecycle-observation mismatch, not the historical PID state.
+
+
+=== /tmp/tfile-ux-full-verified.log ===
+sha256 706656e50101751ad5c8777331615f8c6a92e9f6a713a789edb900f1b5377307
+NORMAL after tools 100x24: observable result 53.0ms (no gate; includes PTY delivery)
+./tests/picker_test
+PASS: non-root permission denial/deleted path are not empty or usable; empty destination/source, blocked use, explicit path and Parent recovery
+python3 tests/media_tools.py
+Child soft limits: AS=536870912 CPU=5 FSIZE=65536 CORE=0
+PASS: signatures/empty/special names, PNG/JPEG/PDF-page-1, bounded text, missing tools/errors/encryption/timeout/output validation, 50 cancellations, stale identity, FIFO rejection, FD/child/temp cleanup, UI cache/focus/modal/off modes
+python3 tests/media_pty.py
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/media_pty.py", line 185, in <module>
+    assert not Path(f'/proc/{pid}').exists()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+make[1]: *** [Makefile:99: check-isolated] Error 1
+make[1]: Leaving directory '/home/dongmin/workspace/file_manager_project'
+make: *** [Makefile:198: check] Error 2
+
+=== /tmp/tfile-ux-media-probe.log ===
+sha256 d81347617c749ab5033f11cf044ad081b0229483807178eda473d5e3fec3f164
+BINARY /tmp/tfile-ux-before
+PASS: PTY protocol ordering/bounds/clear/modal/resize, responsive selection/exit cancellation, focus cache, Auto/Off/files-only, PDF-first-page/text fallback, safe errors, unchanged text scrolling, zero/fake image, missing tools; real graphics remain unverified
+exit 0
+BINARY /tmp/tfile-ux-fixed
+PASS: PTY protocol ordering/bounds/clear/modal/resize, responsive selection/exit cancellation, focus cache, Auto/Off/files-only, PDF-first-page/text fallback, safe errors, unchanged text scrolling, zero/fake image, missing tools; real graphics remain unverified
+exit 0
+
+=== /tmp/tfile-media-full.log ===
+sha256 e83a749e0d4dd3fb8ef1bcfe787b6f97f8fea8389570f27285149e966e36b145
+PROCESS STOPPED {"identity": {"pid": 2499, "state": "S", "ppid": 2498, "pgid": 2498, "start": 7540992, "exit": 0}, "observed": {"pid": 2499, "state": "Z", "ppid": 2399, "pgid": 2498, "start": 7540992, "exit": 9}, "reaped": false, "history": [{"pid": 2499, "state": "Z", "ppid": 2399, "pgid": 2498, "start": 7540992, "exit": 9}]}
+ADOPTED REAP 2499 9
+PASS repeat-1 descendant True 0.087 seconds
+EVENTS repeat-2 [{"event": "descendant", "start": 7541002, "seconds": 75410.027288328, "pid": 2506, "ppid": 2505, "pgid": 2504, "temporary": "/tmp/tfile-media-YGskss"}, {"event": "started", "start": 7541000, "seconds": 75410.028055139, "pid": 2505, "ppid": 2504, "pgid": 2504, "temporary": "/tmp/tfile-media-YGskss"}]
+UI EXIT repeat-2 [{"pid": 2506, "state": "Z", "ppid": 2505, "pgid": 2504, "start": 7541002, "exit": 9}, {"pid": 2505, "state": "R", "ppid": 2399, "pgid": 2504, "start": 7541000, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 2506, "state": "S", "ppid": 2505, "pgid": 2504, "start": 7541002, "exit": 0}, "observed": {"pid": 2506, "state": "Z", "ppid": 2505, "pgid": 2504, "start": 7541002, "exit": 9}, "reaped": false, "history": [{"pid": 2506, "state": "Z", "ppid": 2505, "pgid": 2504, "start": 7541002, "exit": 9}]}
+FAIL EVENTS repeat-2 [{"event": "descendant", "start": 7541002, "seconds": 75410.027288328, "pid": 2506, "ppid": 2505, "pgid": 2504, "temporary": "/tmp/tfile-media-YGskss"}, {"event": "started", "start": 7541000, "seconds": 75410.028055139, "pid": 2505, "ppid": 2504, "pgid": 2504, "temporary": "/tmp/tfile-media-YGskss"}]
+FAIL STATES [{"pid": 2506, "state": "Z", "ppid": 2505, "pgid": 2504, "start": 7541002, "exit": 9}, {"pid": 2505, "state": "R", "ppid": 2399, "pgid": 2504, "start": 7541000, "exit": 9}, null]
+PROCESS STOPPED {"identity": {"pid": 2506, "state": "S", "ppid": 2505, "pgid": 2504, "start": 7541002, "exit": 0}, "observed": {"pid": 2506, "state": "Z", "ppid": 2505, "pgid": 2504, "start": 7541002, "exit": 9}, "reaped": false, "history": [{"pid": 2506, "state": "Z", "ppid": 2505, "pgid": 2504, "start": 7541002, "exit": 9}]}
+PROCESS STOPPED {"identity": {"pid": 2505, "state": "S", "ppid": 2504, "pgid": 2504, "start": 7541000, "exit": 0}, "observed": {"pid": 2505, "state": "Z", "ppid": 2399, "pgid": 2504, "start": 7541000, "exit": 9}, "reaped": false, "history": [{"pid": 2505, "state": "Z", "ppid": 2399, "pgid": 2504, "start": 7541000, "exit": 9}]}
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/media_lifecycle_pty.py", line 197, in <module>
+    scenario(base,'repeat-'+str(i),True)
+  File "/home/dongmin/workspace/file_manager_project/tests/media_lifecycle_pty.py", line 143, in scenario
+    for identity in identities:collect(identity)
+                               ^^^^^^^^^^^^^^^^^
+  File "/home/dongmin/workspace/file_manager_project/tests/media_lifecycle_pty.py", line 62, in collect
+    pid,status=os.waitpid(identity['pid'],0)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ChildProcessError: [Errno 10] No child processes
+make[1]: *** [Makefile:100: check-isolated] Error 1
+make[1]: Leaving directory '/home/dongmin/workspace/file_manager_project'
+make: *** [Makefile:202: check] Error 2
+
+=== /tmp/tfile-media-full.time ===
+sha256 614e5f58e78c00efdc48529433a7d571d12f35350c5714503985a48d8848c60f
+Command exited with non-zero status 2
+wall=191.89 rss_kib=31876 exit=2
+
+=== /tmp/tfile-media-san-final-cases.log ===
+sha256 a6755629f18c877a20a699b49e751b466da50700198c3844eb2cd2009a818f8b
+PASS negative control: live leftover rejected
+EVENTS exit [{"event": "started", "start": 7554595, "seconds": 75545.973386463, "pid": 12, "ppid": 11, "pgid": 11, "temporary": "/tmp/tfile-media-8AN2Dg"}]
+RUNNING exit {"ui": {"pid": 8, "state": "S", "ppid": 6, "pgid": 1, "start": 7554589, "exit": 0}, "worker": {"pid": 11, "state": "S", "ppid": 8, "pgid": 11, "start": 7554595, "exit": 0}, "converters": [{"pid": 12, "state": "S", "ppid": 11, "pgid": 11, "start": 7554595, "exit": 0}]}
+UI EXIT exit [{"pid": 12, "state": "Z", "ppid": 6, "pgid": 11, "start": 7554595, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 12, "state": "S", "ppid": 11, "pgid": 11, "start": 7554595, "exit": 0}, "observed": {"pid": 12, "state": "Z", "ppid": 6, "pgid": 11, "start": 7554595, "exit": 9}, "reaped": false, "history": [{"pid": 12, "state": "Z", "ppid": 6, "pgid": 11, "start": 7554595, "exit": 9}]}
+ADOPTION STATE {"pid": 12, "state": "Z", "ppid": 6, "pgid": 11, "start": 7554595, "exit": 9}
+ADOPTED REAP 12 9
+PASS exit descendant False 0.095 seconds
+EVENTS selection [{"event": "started", "start": 7554605, "seconds": 75546.069323468, "pid": 17, "ppid": 16, "pgid": 16, "temporary": "/tmp/tfile-media-IuRj2e"}]
+RUNNING selection {"ui": {"pid": 13, "state": "S", "ppid": 6, "pgid": 1, "start": 7554598, "exit": 0}, "worker": {"pid": 16, "state": "S", "ppid": 13, "pgid": 16, "start": 7554604, "exit": 0}, "converters": [{"pid": 17, "state": "S", "ppid": 16, "pgid": 16, "start": 7554605, "exit": 0}]}
+PROCESS STOPPED {"identity": {"pid": 17, "state": "S", "ppid": 16, "pgid": 16, "start": 7554605, "exit": 0}, "observed": {"pid": 17, "state": "Z", "ppid": 6, "pgid": 16, "start": 7554605, "exit": 9}, "reaped": false, "history": [{"pid": 17, "state": "Z", "ppid": 6, "pgid": 16, "start": 7554605, "exit": 9}]}
+UI EXIT selection [{"pid": 17, "state": "Z", "ppid": 6, "pgid": 16, "start": 7554605, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 17, "state": "S", "ppid": 16, "pgid": 16, "start": 7554605, "exit": 0}, "observed": {"pid": 17, "state": "Z", "ppid": 6, "pgid": 16, "start": 7554605, "exit": 9}, "reaped": false, "history": [{"pid": 17, "state": "Z", "ppid": 6, "pgid": 16, "start": 7554605, "exit": 9}]}
+ADOPTION STATE {"pid": 17, "state": "Z", "ppid": 6, "pgid": 16, "start": 7554605, "exit": 9}
+ADOPTED REAP 17 9
+PASS selection descendant False 0.33 seconds
+EVENTS off [{"event": "started", "start": 7554638, "seconds": 75546.399162326, "pid": 23, "ppid": 22, "pgid": 22, "temporary": "/tmp/tfile-media-7snPaE"}]
+RUNNING off {"ui": {"pid": 19, "state": "S", "ppid": 6, "pgid": 1, "start": 7554632, "exit": 0}, "worker": {"pid": 22, "state": "S", "ppid": 19, "pgid": 22, "start": 7554638, "exit": 0}, "converters": [{"pid": 23, "state": "S", "ppid": 22, "pgid": 22, "start": 7554638, "exit": 0}]}
+PROCESS STOPPED {"identity": {"pid": 23, "state": "S", "ppid": 22, "pgid": 22, "start": 7554638, "exit": 0}, "observed": {"pid": 23, "state": "Z", "ppid": 6, "pgid": 22, "start": 7554638, "exit": 9}, "reaped": false, "history": [{"pid": 23, "state": "Z", "ppid": 6, "pgid": 22, "start": 7554638, "exit": 9}]}
+UI EXIT off [{"pid": 23, "state": "Z", "ppid": 6, "pgid": 22, "start": 7554638, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 23, "state": "S", "ppid": 22, "pgid": 22, "start": 7554638, "exit": 0}, "observed": {"pid": 23, "state": "Z", "ppid": 6, "pgid": 22, "start": 7554638, "exit": 9}, "reaped": false, "history": [{"pid": 23, "state": "Z", "ppid": 6, "pgid": 22, "start": 7554638, "exit": 9}]}
+ADOPTION STATE {"pid": 23, "state": "Z", "ppid": 6, "pgid": 22, "start": 7554638, "exit": 9}
+ADOPTED REAP 23 9
+PASS off descendant False 0.278 seconds
+EVENTS popup [{"event": "started", "start": 7554665, "seconds": 75546.679256899, "pid": 28, "ppid": 27, "pgid": 27, "temporary": "/tmp/tfile-media-ySzhKz"}]
+RUNNING popup {"ui": {"pid": 24, "state": "S", "ppid": 6, "pgid": 1, "start": 7554659, "exit": 0}, "worker": {"pid": 27, "state": "S", "ppid": 24, "pgid": 27, "start": 7554665, "exit": 0}, "converters": [{"pid": 28, "state": "S", "ppid": 27, "pgid": 27, "start": 7554665, "exit": 0}]}
+PROCESS STOPPED {"identity": {"pid": 28, "state": "S", "ppid": 27, "pgid": 27, "start": 7554665, "exit": 0}, "observed": {"pid": 28, "state": "Z", "ppid": 6, "pgid": 27, "start": 7554665, "exit": 9}, "reaped": false, "history": [{"pid": 28, "state": "Z", "ppid": 6, "pgid": 27, "start": 7554665, "exit": 9}]}
+UI EXIT popup [{"pid": 28, "state": "Z", "ppid": 6, "pgid": 27, "start": 7554665, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 28, "state": "S", "ppid": 27, "pgid": 27, "start": 7554665, "exit": 0}, "observed": {"pid": 28, "state": "Z", "ppid": 6, "pgid": 27, "start": 7554665, "exit": 9}, "reaped": false, "history": [{"pid": 28, "state": "Z", "ppid": 6, "pgid": 27, "start": 7554665, "exit": 9}]}
+ADOPTION STATE {"pid": 28, "state": "Z", "ppid": 6, "pgid": 27, "start": 7554665, "exit": 9}
+ADOPTED REAP 28 9
+PASS popup descendant False 0.29 seconds
+EVENTS resize [{"event": "started", "start": 7554695, "seconds": 75546.971785631, "pid": 33, "ppid": 32, "pgid": 32, "temporary": "/tmp/tfile-media-uOZzV1"}]
+RUNNING resize {"ui": {"pid": 29, "state": "S", "ppid": 6, "pgid": 1, "start": 7554689, "exit": 0}, "worker": {"pid": 32, "state": "S", "ppid": 29, "pgid": 32, "start": 7554695, "exit": 0}, "converters": [{"pid": 33, "state": "S", "ppid": 32, "pgid": 32, "start": 7554695, "exit": 0}]}
+PROCESS STOPPED {"identity": {"pid": 33, "state": "S", "ppid": 32, "pgid": 32, "start": 7554695, "exit": 0}, "observed": {"pid": 33, "state": "Z", "ppid": 6, "pgid": 32, "start": 7554695, "exit": 9}, "reaped": false, "history": [{"pid": 33, "state": "Z", "ppid": 6, "pgid": 32, "start": 7554695, "exit": 9}]}
+UI EXIT resize [{"pid": 33, "state": "Z", "ppid": 6, "pgid": 32, "start": 7554695, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 33, "state": "S", "ppid": 32, "pgid": 32, "start": 7554695, "exit": 0}, "observed": {"pid": 33, "state": "Z", "ppid": 6, "pgid": 32, "start": 7554695, "exit": 9}, "reaped": false, "history": [{"pid": 33, "state": "Z", "ppid": 6, "pgid": 32, "start": 7554695, "exit": 9}]}
+ADOPTION STATE {"pid": 33, "state": "Z", "ppid": 6, "pgid": 32, "start": 7554695, "exit": 9}
+ADOPTED REAP 33 9
+PASS resize descendant False 0.287 seconds
+EVENTS vim [{"event": "started", "start": 7554724, "seconds": 75547.262411494, "pid": 38, "ppid": 37, "pgid": 37, "temporary": "/tmp/tfile-media-StFQFQ"}]
+RUNNING vim {"ui": {"pid": 34, "state": "S", "ppid": 6, "pgid": 1, "start": 7554717, "exit": 0}, "worker": {"pid": 37, "state": "S", "ppid": 34, "pgid": 37, "start": 7554723, "exit": 0}, "converters": [{"pid": 38, "state": "S", "ppid": 37, "pgid": 37, "start": 7554724, "exit": 0}]}
+PROCESS STOPPED {"identity": {"pid": 38, "state": "S", "ppid": 37, "pgid": 37, "start": 7554724, "exit": 0}, "observed": {"pid": 38, "state": "Z", "ppid": 6, "pgid": 37, "start": 7554724, "exit": 9}, "reaped": false, "history": [{"pid": 38, "state": "Z", "ppid": 6, "pgid": 37, "start": 7554724, "exit": 9}]}
+UI EXIT vim [{"pid": 38, "state": "Z", "ppid": 6, "pgid": 37, "start": 7554724, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 38, "state": "S", "ppid": 37, "pgid": 37, "start": 7554724, "exit": 0}, "observed": {"pid": 38, "state": "Z", "ppid": 6, "pgid": 37, "start": 7554724, "exit": 9}, "reaped": false, "history": [{"pid": 38, "state": "Z", "ppid": 6, "pgid": 37, "start": 7554724, "exit": 9}]}
+ADOPTION STATE {"pid": 38, "state": "Z", "ppid": 6, "pgid": 37, "start": 7554724, "exit": 9}
+ADOPTED REAP 38 9
+PASS vim descendant False 0.523 seconds
+EVENTS signal [{"event": "started", "start": 7554776, "seconds": 75547.781401313, "pid": 47, "ppid": 46, "pgid": 46, "temporary": "/tmp/tfile-media-lIsJnM"}]
+RUNNING signal {"ui": {"pid": 43, "state": "S", "ppid": 6, "pgid": 1, "start": 7554770, "exit": 0}, "worker": {"pid": 46, "state": "S", "ppid": 43, "pgid": 46, "start": 7554776, "exit": 0}, "converters": [{"pid": 47, "state": "S", "ppid": 46, "pgid": 46, "start": 7554776, "exit": 0}]}
+UI EXIT signal [{"pid": 47, "state": "Z", "ppid": 6, "pgid": 46, "start": 7554776, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 47, "state": "S", "ppid": 46, "pgid": 46, "start": 7554776, "exit": 0}, "observed": {"pid": 47, "state": "Z", "ppid": 6, "pgid": 46, "start": 7554776, "exit": 9}, "reaped": false, "history": [{"pid": 47, "state": "Z", "ppid": 6, "pgid": 46, "start": 7554776, "exit": 9}]}
+ADOPTION STATE {"pid": 47, "state": "Z", "ppid": 6, "pgid": 46, "start": 7554776, "exit": 9}
+ADOPTED REAP 47 9
+PASS signal descendant False 0.096 seconds
+EVENTS stopped-converter [{"event": "started", "start": 7554785, "seconds": 75547.877591779, "pid": 52, "ppid": 51, "pgid": 51, "temporary": "/tmp/tfile-media-HAXKPq"}]
+RUNNING stopped-converter {"ui": {"pid": 48, "state": "S", "ppid": 6, "pgid": 1, "start": 7554779, "exit": 0}, "worker": {"pid": 51, "state": "S", "ppid": 48, "pgid": 51, "start": 7554785, "exit": 0}, "converters": [{"pid": 52, "state": "S", "ppid": 51, "pgid": 51, "start": 7554785, "exit": 0}]}
+UI EXIT stopped-converter [{"pid": 52, "state": "Z", "ppid": 6, "pgid": 51, "start": 7554785, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 52, "state": "S", "ppid": 51, "pgid": 51, "start": 7554785, "exit": 0}, "observed": {"pid": 52, "state": "Z", "ppid": 6, "pgid": 51, "start": 7554785, "exit": 9}, "reaped": false, "history": [{"pid": 52, "state": "Z", "ppid": 6, "pgid": 51, "start": 7554785, "exit": 9}]}
+ADOPTION STATE {"pid": 52, "state": "Z", "ppid": 6, "pgid": 51, "start": 7554785, "exit": 9}
+ADOPTED REAP 52 9
+PASS stopped-converter descendant False 0.135 seconds
+EVENTS complete-before-reap [{"event": "started", "start": 7554799, "seconds": 75548.014864236, "pid": 57, "ppid": 56, "pgid": 56, "temporary": "/tmp/tfile-media-HtgWAG"}]
+RUNNING complete-before-reap {"ui": {"pid": 53, "state": "S", "ppid": 6, "pgid": 1, "start": 7554793, "exit": 0}, "worker": {"pid": 56, "state": "S", "ppid": 53, "pgid": 56, "start": 7554799, "exit": 0}, "converters": [{"pid": 57, "state": "S", "ppid": 56, "pgid": 56, "start": 7554799, "exit": 0}]}
+BOUNDARY: converter exited; stopped worker has not reaped it
+UI EXIT complete-before-reap [{"pid": 57, "state": "Z", "ppid": 6, "pgid": 56, "start": 7554799, "exit": 0}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 57, "state": "S", "ppid": 56, "pgid": 56, "start": 7554799, "exit": 0}, "observed": {"pid": 57, "state": "Z", "ppid": 6, "pgid": 56, "start": 7554799, "exit": 0}, "reaped": false, "history": [{"pid": 57, "state": "Z", "ppid": 6, "pgid": 56, "start": 7554799, "exit": 0}]}
+ADOPTION STATE {"pid": 57, "state": "Z", "ppid": 6, "pgid": 56, "start": 7554799, "exit": 0}
+ADOPTED REAP 57 0
+PASS complete-before-reap descendant False 0.219 seconds
+EVENTS complete-visible [{"event": "started", "start": 7554821, "seconds": 75548.238170645, "pid": 62, "ppid": 61, "pgid": 61, "temporary": "/tmp/tfile-media-z14cGh"}]
+RUNNING complete-visible {"ui": {"pid": 58, "state": "S", "ppid": 6, "pgid": 1, "start": 7554815, "exit": 0}, "worker": {"pid": 61, "state": "S", "ppid": 58, "pgid": 61, "start": 7554821, "exit": 0}, "converters": [{"pid": 62, "state": "S", "ppid": 61, "pgid": 61, "start": 7554821, "exit": 0}]}
+UI EXIT complete-visible [null]
+PROCESS STOPPED {"identity": {"pid": 62, "state": "S", "ppid": 61, "pgid": 61, "start": 7554821, "exit": 0}, "observed": null, "reaped": true, "history": [null]}
+PASS complete-visible descendant False 0.179 seconds
+EVENTS complete-popup [{"event": "started", "start": 7554839, "seconds": 75548.414998238, "pid": 67, "ppid": 66, "pgid": 66, "temporary": "/tmp/tfile-media-fJoRtC"}]
+RUNNING complete-popup {"ui": {"pid": 63, "state": "S", "ppid": 6, "pgid": 1, "start": 7554833, "exit": 0}, "worker": {"pid": 66, "state": "S", "ppid": 63, "pgid": 66, "start": 7554839, "exit": 0}, "converters": [{"pid": 67, "state": "S", "ppid": 66, "pgid": 66, "start": 7554839, "exit": 0}]}
+BOUNDARY: converter exited; stopped worker has not reaped it
+UI EXIT complete-popup [{"pid": 67, "state": "Z", "ppid": 6, "pgid": 66, "start": 7554839, "exit": 0}, {"pid": 69, "state": "Z", "ppid": 6, "pgid": 68, "start": 7554872, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 67, "state": "S", "ppid": 66, "pgid": 66, "start": 7554839, "exit": 0}, "observed": {"pid": 67, "state": "Z", "ppid": 6, "pgid": 66, "start": 7554839, "exit": 0}, "reaped": false, "history": [{"pid": 67, "state": "Z", "ppid": 6, "pgid": 66, "start": 7554839, "exit": 0}]}
+ADOPTION STATE {"pid": 67, "state": "Z", "ppid": 6, "pgid": 66, "start": 7554839, "exit": 0}
+ADOPTED REAP 67 0
+PROCESS STOPPED {"identity": {"pid": 69, "state": "Z", "ppid": 6, "pgid": 68, "start": 7554872, "exit": 9}, "observed": {"pid": 69, "state": "Z", "ppid": 6, "pgid": 68, "start": 7554872, "exit": 9}, "reaped": false, "history": [{"pid": 69, "state": "Z", "ppid": 6, "pgid": 68, "start": 7554872, "exit": 9}]}
+ADOPTION STATE {"pid": 69, "state": "Z", "ppid": 6, "pgid": 68, "start": 7554872, "exit": 9}
+ADOPTED REAP 69 9
+PASS complete-popup descendant False 0.523 seconds
+EVENTS complete-resize [{"event": "started", "start": 7554892, "seconds": 75548.939846259, "pid": 74, "ppid": 73, "pgid": 73, "temporary": "/tmp/tfile-media-mUXHyO"}]
+RUNNING complete-resize {"ui": {"pid": 70, "state": "S", "ppid": 6, "pgid": 1, "start": 7554885, "exit": 0}, "worker": {"pid": 73, "state": "S", "ppid": 70, "pgid": 73, "start": 7554892, "exit": 0}, "converters": [{"pid": 74, "state": "S", "ppid": 73, "pgid": 73, "start": 7554892, "exit": 0}]}
+BOUNDARY: converter exited; stopped worker has not reaped it
+UI EXIT complete-resize [{"pid": 74, "state": "Z", "ppid": 6, "pgid": 73, "start": 7554892, "exit": 0}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 74, "state": "S", "ppid": 73, "pgid": 73, "start": 7554892, "exit": 0}, "observed": {"pid": 74, "state": "Z", "ppid": 6, "pgid": 73, "start": 7554892, "exit": 0}, "reaped": false, "history": [{"pid": 74, "state": "Z", "ppid": 6, "pgid": 73, "start": 7554892, "exit": 0}]}
+ADOPTION STATE {"pid": 74, "state": "Z", "ppid": 6, "pgid": 73, "start": 7554892, "exit": 0}
+ADOPTED REAP 74 0
+PASS complete-resize descendant False 0.36 seconds
+EVENTS complete-vim [{"event": "started", "start": 7554928, "seconds": 75549.307710147, "pid": 79, "ppid": 78, "pgid": 78, "temporary": "/tmp/tfile-media-ok8mvq"}]
+RUNNING complete-vim {"ui": {"pid": 75, "state": "S", "ppid": 6, "pgid": 1, "start": 7554922, "exit": 0}, "worker": {"pid": 78, "state": "S", "ppid": 75, "pgid": 78, "start": 7554928, "exit": 0}, "converters": [{"pid": 79, "state": "S", "ppid": 78, "pgid": 78, "start": 7554928, "exit": 0}]}
+BOUNDARY: converter exited; stopped worker has not reaped it
+UI EXIT complete-vim [{"pid": 79, "state": "Z", "ppid": 6, "pgid": 78, "start": 7554928, "exit": 0}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 79, "state": "S", "ppid": 78, "pgid": 78, "start": 7554928, "exit": 0}, "observed": {"pid": 79, "state": "Z", "ppid": 6, "pgid": 78, "start": 7554928, "exit": 0}, "reaped": false, "history": [{"pid": 79, "state": "Z", "ppid": 6, "pgid": 78, "start": 7554928, "exit": 0}]}
+ADOPTION STATE {"pid": 79, "state": "Z", "ppid": 6, "pgid": 78, "start": 7554928, "exit": 0}
+ADOPTED REAP 79 0
+PASS complete-vim descendant False 0.602 seconds
+EVENTS descendant-exit [{"event": "descendant", "start": 7554990, "seconds": 75549.90458797, "pid": 89, "ppid": 88, "pgid": 87, "temporary": "/tmp/tfile-media-w8r7TE"}, {"event": "started", "start": 7554988, "seconds": 75549.905024049, "pid": 88, "ppid": 87, "pgid": 87, "temporary": "/tmp/tfile-media-w8r7TE"}]
+RUNNING descendant-exit {"ui": {"pid": 84, "state": "S", "ppid": 6, "pgid": 1, "start": 7554982, "exit": 0}, "worker": {"pid": 87, "state": "S", "ppid": 84, "pgid": 87, "start": 7554988, "exit": 0}, "converters": [{"pid": 89, "state": "S", "ppid": 88, "pgid": 87, "start": 7554990, "exit": 0}, {"pid": 88, "state": "S", "ppid": 87, "pgid": 87, "start": 7554988, "exit": 0}]}
+UI EXIT descendant-exit [{"pid": 89, "state": "Z", "ppid": 6, "pgid": 87, "start": 7554990, "exit": 9}, {"pid": 88, "state": "Z", "ppid": 6, "pgid": 87, "start": 7554988, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 89, "state": "S", "ppid": 88, "pgid": 87, "start": 7554990, "exit": 0}, "observed": {"pid": 89, "state": "Z", "ppid": 6, "pgid": 87, "start": 7554990, "exit": 9}, "reaped": false, "history": [{"pid": 89, "state": "Z", "ppid": 6, "pgid": 87, "start": 7554990, "exit": 9}]}
+ADOPTION STATE {"pid": 89, "state": "Z", "ppid": 6, "pgid": 87, "start": 7554990, "exit": 9}
+ADOPTED REAP 89 9
+PROCESS STOPPED {"identity": {"pid": 88, "state": "S", "ppid": 87, "pgid": 87, "start": 7554988, "exit": 0}, "observed": {"pid": 88, "state": "Z", "ppid": 6, "pgid": 87, "start": 7554988, "exit": 9}, "reaped": false, "history": [{"pid": 88, "state": "Z", "ppid": 6, "pgid": 87, "start": 7554988, "exit": 9}]}
+ADOPTION STATE {"pid": 88, "state": "Z", "ppid": 6, "pgid": 87, "start": 7554988, "exit": 9}
+ADOPTED REAP 88 9
+PASS descendant-exit descendant True 0.085 seconds
+EVENTS complete-descendant [{"event": "descendant", "start": 7554999, "seconds": 75549.99179642, "pid": 95, "ppid": 94, "pgid": 93, "temporary": "/tmp/tfile-media-Ttf3Dk"}, {"event": "started", "start": 7554997, "seconds": 75549.992426378, "pid": 94, "ppid": 93, "pgid": 93, "temporary": "/tmp/tfile-media-Ttf3Dk"}]
+RUNNING complete-descendant {"ui": {"pid": 90, "state": "S", "ppid": 6, "pgid": 1, "start": 7554990, "exit": 0}, "worker": {"pid": 93, "state": "S", "ppid": 90, "pgid": 93, "start": 7554997, "exit": 0}, "converters": [{"pid": 95, "state": "S", "ppid": 94, "pgid": 93, "start": 7554999, "exit": 0}, {"pid": 94, "state": "S", "ppid": 93, "pgid": 93, "start": 7554997, "exit": 0}]}
+BOUNDARY: converter exited; stopped worker has not reaped it
+UI EXIT complete-descendant [{"pid": 95, "state": "Z", "ppid": 6, "pgid": 93, "start": 7554999, "exit": 0}, {"pid": 94, "state": "Z", "ppid": 6, "pgid": 93, "start": 7554997, "exit": 0}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 95, "state": "S", "ppid": 94, "pgid": 93, "start": 7554999, "exit": 0}, "observed": {"pid": 95, "state": "Z", "ppid": 6, "pgid": 93, "start": 7554999, "exit": 0}, "reaped": false, "history": [{"pid": 95, "state": "Z", "ppid": 6, "pgid": 93, "start": 7554999, "exit": 0}]}
+ADOPTION STATE {"pid": 95, "state": "Z", "ppid": 6, "pgid": 93, "start": 7554999, "exit": 0}
+ADOPTED REAP 95 0
+PROCESS STOPPED {"identity": {"pid": 94, "state": "S", "ppid": 93, "pgid": 93, "start": 7554997, "exit": 0}, "observed": {"pid": 94, "state": "Z", "ppid": 6, "pgid": 93, "start": 7554997, "exit": 0}, "reaped": false, "history": [{"pid": 94, "state": "Z", "ppid": 6, "pgid": 93, "start": 7554997, "exit": 0}]}
+ADOPTION STATE {"pid": 94, "state": "Z", "ppid": 6, "pgid": 93, "start": 7554997, "exit": 0}
+ADOPTED REAP 94 0
+PASS complete-descendant descendant True 0.214 seconds
+EVENTS repeat-0 [{"event": "descendant", "start": 7555020, "seconds": 75550.208657802, "pid": 101, "ppid": 100, "pgid": 99, "temporary": "/tmp/tfile-media-Ouf02W"}, {"event": "started", "start": 7555018, "seconds": 75550.209196439, "pid": 100, "ppid": 99, "pgid": 99, "temporary": "/tmp/tfile-media-Ouf02W"}]
+RUNNING repeat-0 {"ui": {"pid": 96, "state": "S", "ppid": 6, "pgid": 1, "start": 7555012, "exit": 0}, "worker": {"pid": 99, "state": "S", "ppid": 96, "pgid": 99, "start": 7555018, "exit": 0}, "converters": [{"pid": 101, "state": "S", "ppid": 100, "pgid": 99, "start": 7555020, "exit": 0}, {"pid": 100, "state": "S", "ppid": 99, "pgid": 99, "start": 7555018, "exit": 0}]}
+UI EXIT repeat-0 [{"pid": 101, "state": "Z", "ppid": 6, "pgid": 99, "start": 7555020, "exit": 9}, {"pid": 100, "state": "Z", "ppid": 6, "pgid": 99, "start": 7555018, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 101, "state": "S", "ppid": 100, "pgid": 99, "start": 7555020, "exit": 0}, "observed": {"pid": 101, "state": "Z", "ppid": 6, "pgid": 99, "start": 7555020, "exit": 9}, "reaped": false, "history": [{"pid": 101, "state": "Z", "ppid": 6, "pgid": 99, "start": 7555020, "exit": 9}]}
+ADOPTION STATE {"pid": 101, "state": "Z", "ppid": 6, "pgid": 99, "start": 7555020, "exit": 9}
+ADOPTED REAP 101 9
+PROCESS STOPPED {"identity": {"pid": 100, "state": "S", "ppid": 99, "pgid": 99, "start": 7555018, "exit": 0}, "observed": {"pid": 100, "state": "Z", "ppid": 6, "pgid": 99, "start": 7555018, "exit": 9}, "reaped": false, "history": [{"pid": 100, "state": "Z", "ppid": 6, "pgid": 99, "start": 7555018, "exit": 9}]}
+ADOPTION STATE {"pid": 100, "state": "Z", "ppid": 6, "pgid": 99, "start": 7555018, "exit": 9}
+ADOPTED REAP 100 9
+PASS repeat-0 descendant True 0.127 seconds
+EVENTS repeat-1 [{"event": "descendant", "start": 7555033, "seconds": 75550.335941792, "pid": 107, "ppid": 106, "pgid": 105, "temporary": "/tmp/tfile-media-xkhEFO"}, {"event": "started", "start": 7555031, "seconds": 75550.336389429, "pid": 106, "ppid": 105, "pgid": 105, "temporary": "/tmp/tfile-media-xkhEFO"}]
+RUNNING repeat-1 {"ui": {"pid": 102, "state": "S", "ppid": 6, "pgid": 1, "start": 7555025, "exit": 0}, "worker": {"pid": 105, "state": "S", "ppid": 102, "pgid": 105, "start": 7555031, "exit": 0}, "converters": [{"pid": 107, "state": "S", "ppid": 106, "pgid": 105, "start": 7555033, "exit": 0}, {"pid": 106, "state": "S", "ppid": 105, "pgid": 105, "start": 7555031, "exit": 0}]}
+UI EXIT repeat-1 [{"pid": 107, "state": "Z", "ppid": 6, "pgid": 105, "start": 7555033, "exit": 9}, {"pid": 106, "state": "Z", "ppid": 6, "pgid": 105, "start": 7555031, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 107, "state": "S", "ppid": 106, "pgid": 105, "start": 7555033, "exit": 0}, "observed": {"pid": 107, "state": "Z", "ppid": 6, "pgid": 105, "start": 7555033, "exit": 9}, "reaped": false, "history": [{"pid": 107, "state": "Z", "ppid": 6, "pgid": 105, "start": 7555033, "exit": 9}]}
+ADOPTION STATE {"pid": 107, "state": "Z", "ppid": 6, "pgid": 105, "start": 7555033, "exit": 9}
+ADOPTED REAP 107 9
+PROCESS STOPPED {"identity": {"pid": 106, "state": "S", "ppid": 105, "pgid": 105, "start": 7555031, "exit": 0}, "observed": {"pid": 106, "state": "Z", "ppid": 6, "pgid": 105, "start": 7555031, "exit": 9}, "reaped": false, "history": [{"pid": 106, "state": "Z", "ppid": 6, "pgid": 105, "start": 7555031, "exit": 9}]}
+ADOPTION STATE {"pid": 106, "state": "Z", "ppid": 6, "pgid": 105, "start": 7555031, "exit": 9}
+ADOPTED REAP 106 9
+PASS repeat-1 descendant True 0.098 seconds
+EVENTS repeat-2 [{"event": "descendant", "start": 7555043, "seconds": 75550.433733919, "pid": 113, "ppid": 112, "pgid": 111, "temporary": "/tmp/tfile-media-1Xgesv"}, {"event": "started", "start": 7555041, "seconds": 75550.434184503, "pid": 112, "ppid": 111, "pgid": 111, "temporary": "/tmp/tfile-media-1Xgesv"}]
+RUNNING repeat-2 {"ui": {"pid": 108, "state": "S", "ppid": 6, "pgid": 1, "start": 7555035, "exit": 0}, "worker": {"pid": 111, "state": "S", "ppid": 108, "pgid": 111, "start": 7555041, "exit": 0}, "converters": [{"pid": 113, "state": "S", "ppid": 112, "pgid": 111, "start": 7555043, "exit": 0}, {"pid": 112, "state": "S", "ppid": 111, "pgid": 111, "start": 7555041, "exit": 0}]}
+UI EXIT repeat-2 [{"pid": 113, "state": "Z", "ppid": 6, "pgid": 111, "start": 7555043, "exit": 9}, {"pid": 112, "state": "Z", "ppid": 6, "pgid": 111, "start": 7555041, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 113, "state": "S", "ppid": 112, "pgid": 111, "start": 7555043, "exit": 0}, "observed": {"pid": 113, "state": "Z", "ppid": 6, "pgid": 111, "start": 7555043, "exit": 9}, "reaped": false, "history": [{"pid": 113, "state": "Z", "ppid": 6, "pgid": 111, "start": 7555043, "exit": 9}]}
+ADOPTION STATE {"pid": 113, "state": "Z", "ppid": 6, "pgid": 111, "start": 7555043, "exit": 9}
+ADOPTED REAP 113 9
+PROCESS STOPPED {"identity": {"pid": 112, "state": "S", "ppid": 111, "pgid": 111, "start": 7555041, "exit": 0}, "observed": {"pid": 112, "state": "Z", "ppid": 6, "pgid": 111, "start": 7555041, "exit": 9}, "reaped": false, "history": [{"pid": 112, "state": "Z", "ppid": 6, "pgid": 111, "start": 7555041, "exit": 9}]}
+ADOPTION STATE {"pid": 112, "state": "Z", "ppid": 6, "pgid": 111, "start": 7555041, "exit": 9}
+ADOPTED REAP 112 9
+PASS repeat-2 descendant True 0.097 seconds
+EVENTS repeat-3 [{"event": "descendant", "start": 7555053, "seconds": 75550.531750355, "pid": 119, "ppid": 118, "pgid": 117, "temporary": "/tmp/tfile-media-kDk7TR"}, {"event": "started", "start": 7555051, "seconds": 75550.532095714, "pid": 118, "ppid": 117, "pgid": 117, "temporary": "/tmp/tfile-media-kDk7TR"}]
+RUNNING repeat-3 {"ui": {"pid": 114, "state": "S", "ppid": 6, "pgid": 1, "start": 7555045, "exit": 0}, "worker": {"pid": 117, "state": "S", "ppid": 114, "pgid": 117, "start": 7555051, "exit": 0}, "converters": [{"pid": 119, "state": "S", "ppid": 118, "pgid": 117, "start": 7555053, "exit": 0}, {"pid": 118, "state": "S", "ppid": 117, "pgid": 117, "start": 7555051, "exit": 0}]}
+UI EXIT repeat-3 [{"pid": 119, "state": "Z", "ppid": 6, "pgid": 117, "start": 7555053, "exit": 9}, {"pid": 118, "state": "Z", "ppid": 6, "pgid": 117, "start": 7555051, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 119, "state": "S", "ppid": 118, "pgid": 117, "start": 7555053, "exit": 0}, "observed": {"pid": 119, "state": "Z", "ppid": 6, "pgid": 117, "start": 7555053, "exit": 9}, "reaped": false, "history": [{"pid": 119, "state": "Z", "ppid": 6, "pgid": 117, "start": 7555053, "exit": 9}]}
+ADOPTION STATE {"pid": 119, "state": "Z", "ppid": 6, "pgid": 117, "start": 7555053, "exit": 9}
+ADOPTED REAP 119 9
+PROCESS STOPPED {"identity": {"pid": 118, "state": "S", "ppid": 117, "pgid": 117, "start": 7555051, "exit": 0}, "observed": {"pid": 118, "state": "Z", "ppid": 6, "pgid": 117, "start": 7555051, "exit": 9}, "reaped": false, "history": [{"pid": 118, "state": "Z", "ppid": 6, "pgid": 117, "start": 7555051, "exit": 9}]}
+ADOPTION STATE {"pid": 118, "state": "Z", "ppid": 6, "pgid": 117, "start": 7555051, "exit": 9}
+ADOPTED REAP 118 9
+PASS repeat-3 descendant True 0.086 seconds
+EVENTS repeat-4 [{"event": "descendant", "start": 7555061, "seconds": 75550.618165616, "pid": 125, "ppid": 124, "pgid": 123, "temporary": "/tmp/tfile-media-VLIB7A"}, {"event": "started", "start": 7555059, "seconds": 75550.618714256, "pid": 124, "ppid": 123, "pgid": 123, "temporary": "/tmp/tfile-media-VLIB7A"}]
+RUNNING repeat-4 {"ui": {"pid": 120, "state": "S", "ppid": 6, "pgid": 1, "start": 7555053, "exit": 0}, "worker": {"pid": 123, "state": "S", "ppid": 120, "pgid": 123, "start": 7555059, "exit": 0}, "converters": [{"pid": 125, "state": "S", "ppid": 124, "pgid": 123, "start": 7555061, "exit": 0}, {"pid": 124, "state": "S", "ppid": 123, "pgid": 123, "start": 7555059, "exit": 0}]}
+UI EXIT repeat-4 [{"pid": 125, "state": "Z", "ppid": 6, "pgid": 123, "start": 7555061, "exit": 9}, {"pid": 124, "state": "Z", "ppid": 6, "pgid": 123, "start": 7555059, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 125, "state": "S", "ppid": 124, "pgid": 123, "start": 7555061, "exit": 0}, "observed": {"pid": 125, "state": "Z", "ppid": 6, "pgid": 123, "start": 7555061, "exit": 9}, "reaped": false, "history": [{"pid": 125, "state": "Z", "ppid": 6, "pgid": 123, "start": 7555061, "exit": 9}]}
+ADOPTION STATE {"pid": 125, "state": "Z", "ppid": 6, "pgid": 123, "start": 7555061, "exit": 9}
+ADOPTED REAP 125 9
+PROCESS STOPPED {"identity": {"pid": 124, "state": "S", "ppid": 123, "pgid": 123, "start": 7555059, "exit": 0}, "observed": {"pid": 124, "state": "Z", "ppid": 6, "pgid": 123, "start": 7555059, "exit": 9}, "reaped": false, "history": [{"pid": 124, "state": "Z", "ppid": 6, "pgid": 123, "start": 7555059, "exit": 9}]}
+ADOPTION STATE {"pid": 124, "state": "Z", "ppid": 6, "pgid": 123, "start": 7555059, "exit": 9}
+ADOPTED REAP 124 9
+PASS repeat-4 descendant True 0.097 seconds
+EVENTS repeat-5 [{"event": "descendant", "start": 7555071, "seconds": 75550.717424058, "pid": 131, "ppid": 130, "pgid": 129, "temporary": "/tmp/tfile-media-PbdGI7"}, {"event": "started", "start": 7555069, "seconds": 75550.717878922, "pid": 130, "ppid": 129, "pgid": 129, "temporary": "/tmp/tfile-media-PbdGI7"}]
+RUNNING repeat-5 {"ui": {"pid": 126, "state": "S", "ppid": 6, "pgid": 1, "start": 7555063, "exit": 0}, "worker": {"pid": 129, "state": "S", "ppid": 126, "pgid": 129, "start": 7555069, "exit": 0}, "converters": [{"pid": 131, "state": "S", "ppid": 130, "pgid": 129, "start": 7555071, "exit": 0}, {"pid": 130, "state": "S", "ppid": 129, "pgid": 129, "start": 7555069, "exit": 0}]}
+UI EXIT repeat-5 [{"pid": 131, "state": "Z", "ppid": 6, "pgid": 129, "start": 7555071, "exit": 9}, {"pid": 130, "state": "Z", "ppid": 6, "pgid": 129, "start": 7555069, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+PROCESS STOPPED {"identity": {"pid": 131, "state": "S", "ppid": 130, "pgid": 129, "start": 7555071, "exit": 0}, "observed": {"pid": 131, "state": "Z", "ppid": 6, "pgid": 129, "start": 7555071, "exit": 9}, "reaped": false, "history": [{"pid": 131, "state": "Z", "ppid": 6, "pgid": 129, "start": 7555071, "exit": 9}]}
+ADOPTION STATE {"pid": 131, "state": "Z", "ppid": 6, "pgid": 129, "start": 7555071, "exit": 9}
+ADOPTED REAP 131 9
+PROCESS STOPPED {"identity": {"pid": 130, "state": "S", "ppid": 129, "pgid": 129, "start": 7555069, "exit": 0}, "observed": {"pid": 130, "state": "Z", "ppid": 6, "pgid": 129, "start": 7555069, "exit": 9}, "reaped": false, "history": [{"pid": 130, "state": "Z", "ppid": 6, "pgid": 129, "start": 7555069, "exit": 9}]}
+ADOPTION STATE {"pid": 130, "state": "Z", "ppid": 6, "pgid": 129, "start": 7555069, "exit": 9}
+ADOPTED REAP 130 9
+PASS repeat-5 descendant True 0.085 seconds
+PASS: 21 event-gated cases; worker reaped, converters stopped/adopted/reaped, private artifacts removed, source unchanged; no FD/child accumulation
+PASS negative control: live leftover rejected
+EVENTS descendant-exit [{"event": "descendant", "start": 7555099, "seconds": 75550.995706298, "pid": 145, "ppid": 144, "pgid": 143, "temporary": "/tmp/tfile-media-wRMCNm"}, {"event": "started", "start": 7555097, "seconds": 75550.99629549, "pid": 144, "ppid": 143, "pgid": 143, "temporary": "/tmp/tfile-media-wRMCNm"}]
+RUNNING descendant-exit {"ui": {"pid": 140, "state": "S", "ppid": 138, "pgid": 1, "start": 7555091, "exit": 0}, "worker": {"pid": 143, "state": "R", "ppid": 140, "pgid": 143, "start": 7555097, "exit": 0}, "converters": [{"pid": 145, "state": "S", "ppid": 144, "pgid": 143, "start": 7555099, "exit": 0}, {"pid": 144, "state": "S", "ppid": 143, "pgid": 143, "start": 7555097, "exit": 0}]}
+UI EXIT descendant-exit [{"pid": 145, "state": "Z", "ppid": 138, "pgid": 143, "start": 7555099, "exit": 9}, {"pid": 144, "state": "Z", "ppid": 138, "pgid": 143, "start": 7555097, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+FAIL EVENTS descendant-exit [{"event": "descendant", "start": 7555099, "seconds": 75550.995706298, "pid": 145, "ppid": 144, "pgid": 143, "temporary": "/tmp/tfile-media-wRMCNm"}, {"event": "started", "start": 7555097, "seconds": 75550.99629549, "pid": 144, "ppid": 143, "pgid": 143, "temporary": "/tmp/tfile-media-wRMCNm"}]
+FAIL STATES [{"pid": 145, "state": "Z", "ppid": 138, "pgid": 143, "start": 7555099, "exit": 9}, {"pid": 144, "state": "Z", "ppid": 138, "pgid": 143, "start": 7555097, "exit": 9}, null]
+PROCESS STOPPED {"identity": {"pid": 145, "state": "S", "ppid": 144, "pgid": 143, "start": 7555099, "exit": 0}, "observed": {"pid": 145, "state": "Z", "ppid": 138, "pgid": 143, "start": 7555099, "exit": 9}, "reaped": false, "history": [{"pid": 145, "state": "Z", "ppid": 138, "pgid": 143, "start": 7555099, "exit": 9}]}
+ADOPTION STATE {"pid": 145, "state": "Z", "ppid": 138, "pgid": 143, "start": 7555099, "exit": 9}
+ADOPTED REAP 145 9
+PROCESS STOPPED {"identity": {"pid": 144, "state": "S", "ppid": 143, "pgid": 143, "start": 7555097, "exit": 0}, "observed": {"pid": 144, "state": "Z", "ppid": 138, "pgid": 143, "start": 7555097, "exit": 9}, "reaped": false, "history": [{"pid": 144, "state": "Z", "ppid": 138, "pgid": 143, "start": 7555097, "exit": 9}]}
+ADOPTION STATE {"pid": 144, "state": "Z", "ppid": 138, "pgid": 143, "start": 7555097, "exit": 9}
+ADOPTED REAP 144 9
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/media_lifecycle_pty.py", line 205, in <module>
+    scenario(base,args.case,True)
+  File "/home/dongmin/workspace/file_manager_project/tests/media_lifecycle_pty.py", line 161, in scenario
+    assert not Path(f'/proc/{identities[-1]["pid"]}').exists(), 'legacy immediate PID absence rejects stopped process'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: legacy immediate PID absence rejects stopped process
+
+PASS: unmodified cleanup FAILS legacy PID absence assertion; stopped/reaped policy accepts same process structure
+PASS negative control: live leftover rejected
+EVENTS descendant-exit [{"event": "descendant", "start": 7555124, "seconds": 75551.247499741, "pid": 153, "ppid": 152, "pgid": 151, "temporary": "/tmp/tfile-media-zuHlag"}, {"event": "started", "start": 7555121, "seconds": 75551.248099319, "pid": 152, "ppid": 151, "pgid": 151, "temporary": "/tmp/tfile-media-zuHlag"}]
+RUNNING descendant-exit {"ui": {"pid": 148, "state": "S", "ppid": 146, "pgid": 1, "start": 7555115, "exit": 0}, "worker": {"pid": 151, "state": "S", "ppid": 148, "pgid": 151, "start": 7555121, "exit": 0}, "converters": [{"pid": 153, "state": "S", "ppid": 152, "pgid": 151, "start": 7555124, "exit": 0}, {"pid": 152, "state": "S", "ppid": 151, "pgid": 151, "start": 7555121, "exit": 0}]}
+UI EXIT descendant-exit [{"pid": 153, "state": "S", "ppid": 146, "pgid": 151, "start": 7555124, "exit": 0}, {"pid": 152, "state": "Z", "ppid": 146, "pgid": 151, "start": 7555121, "exit": 9}]
+OLD immediate /proc absence assertion FAILS: stopped orphan zombie; not executing
+FAIL EVENTS descendant-exit [{"event": "descendant", "start": 7555124, "seconds": 75551.247499741, "pid": 153, "ppid": 152, "pgid": 151, "temporary": "/tmp/tfile-media-zuHlag"}, {"event": "started", "start": 7555121, "seconds": 75551.248099319, "pid": 152, "ppid": 151, "pgid": 151, "temporary": "/tmp/tfile-media-zuHlag"}]
+FAIL STATES [{"pid": 153, "state": "S", "ppid": 146, "pgid": 151, "start": 7555124, "exit": 0}, {"pid": 152, "state": "Z", "ppid": 146, "pgid": 151, "start": 7555121, "exit": 9}, null]
+PROCESS STOPPED {"identity": {"pid": 153, "state": "S", "ppid": 152, "pgid": 151, "start": 7555124, "exit": 0}, "observed": {"pid": 153, "state": "Z", "ppid": 146, "pgid": 151, "start": 7555124, "exit": 9}, "reaped": false, "history": [{"pid": 153, "state": "R", "ppid": 146, "pgid": 151, "start": 7555124, "exit": 9}, {"pid": 153, "state": "Z", "ppid": 146, "pgid": 151, "start": 7555124, "exit": 9}]}
+ADOPTION STATE {"pid": 153, "state": "Z", "ppid": 146, "pgid": 151, "start": 7555124, "exit": 9}
+ADOPTED REAP 153 9
+PROCESS STOPPED {"identity": {"pid": 152, "state": "S", "ppid": 151, "pgid": 151, "start": 7555121, "exit": 0}, "observed": {"pid": 152, "state": "Z", "ppid": 146, "pgid": 151, "start": 7555121, "exit": 9}, "reaped": false, "history": [{"pid": 152, "state": "Z", "ppid": 146, "pgid": 151, "start": 7555121, "exit": 9}]}
+ADOPTION STATE {"pid": 152, "state": "Z", "ppid": 146, "pgid": 151, "start": 7555121, "exit": 9}
+ADOPTED REAP 152 9
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/media_lifecycle_pty.py", line 205, in <module>
+    scenario(base,args.case,True)
+  File "/home/dongmin/workspace/file_manager_project/tests/media_lifecycle_pty.py", line 162, in scenario
+    for identity in identities:collect(identity)
+                               ^^^^^^^^^^^^^^^^^
+  File "/home/dongmin/workspace/file_manager_project/tests/media_lifecycle_pty.py", line 59, in collect
+    state=wait_stopped(identity)
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dongmin/workspace/file_manager_project/tests/process_probe.py", line 43, in wait_stopped
+    raise AssertionError(('process still executing after cleanup deadline', identity, history))
+AssertionError: ('process still executing after cleanup deadline', {'pid': 153, 'state': 'S', 'ppid': 152, 'pgid': 151, 'start': 7555124, 'exit': 0}, [{'pid': 153, 'state': 'S', 'ppid': 146, 'pgid': 151, 'start': 7555124, 'exit': 0}])
+
+PASS: deliberate missing group kill causes gated descendant regression to FAIL (live S state); no retries
+
+=== /tmp/tfile-media-body-final/summary.json ===
+sha256 0b1cb37edc848a51b46c892e9aa13ce56cb867461b6963ecf91bce91e3f81a27
+{
+  "lsan": {
+    "exit": 1,
+    "seconds": 0.288
+  },
+  "asan-ubsan-no-lsan": {
+    "exit": 0,
+    "seconds": 0.288
+  }
+}
+
+=== /tmp/tfile-media-body-final/lsan.log ===
+sha256 ee0161bdf32f7d93d336e72d5784d87ab8ff394106f411594c77debb3db39bab
+==45==LeakSanitizer has encountered a fatal error.
+==45==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==45==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+
+=== /tmp/tfile-media-body-final/asan-ubsan-no-lsan.log ===
+sha256 b853a527012f912d194f158bdc68a07a89716d84089b5081d9ee17240b4ffe7e
+PASS: media source/tool preparation, converter normal return, unsupported/missing/access cleanup (in-process body; no fork cancellation guarantee)
+
+=== /tmp/tfile-media-lifetime-san-verified/summary.log ===
+sha256 3e2ed514cd9a7fba9573b17a56c9af9872dba375bff9e457014e167cb55191f5
+### Media sanitizer results
+LSan: DISABLED — incomplete
+- media: PASS (exit 0, 1.628s)
+- preview: PASS (exit 0, 0.091s)
+- picker: PASS (exit 0, 0.015s)
+- media_pty: PASS (exit 0, 15.92s)
+- media_lifecycle_pty: PASS (exit 0, 4.813s)
+- media_lifecycle_fault: PASS (exit 0, 2.369s)
+- media_redraw: PASS (exit 0, 4.605s)
+Total: 7 required, 0 failed; 59.853s
+
+SHA256 tfile 96a6c49eb79b3f3f4cf50c93e9a87f83b2c09fe5d5a94a561d00e903483828b6
+
+SHA256 /tmp/tfile-media-lifetime-san-verified/tfile 2b6f86359882720899d05fae6d90012b66089487a3b2243cb69ecf67c1fdf222
+
+SHA256 /tmp/tfile-media-body-final/media_worker_test 42e5df1b20c7c60a0b84384cb1cbe334e4ac206f5042ddc43dae1094fe9badb6
+
+SHA256 /tmp/tfile-media-parent-lsan.log 5f9c31cd08db2e563cb14ff7cc607c0afabb9473404ac70e0c58e6f473c1286d
+
+SHA256 /tmp/tfile-media-latest-ci.log 1af927af4c5aab6c417a250172c7ea83f2f37da21513f67727079f1820d5cba3
+
+=== Remote d08ea44 CI selected execution evidence; full log hash above ===
+sanitizer	ASan UBSan and LSan native (includes async process and worker bodies)	2026-10-16T06:52:13.6441547Z Leak detection requested and enabled; inspect logs for runtime limitations. No suppressions are used.
+sanitizer	Sanitized media	2026-10-16T06:53:06.2116021Z PASS: media, /tmp/tfile-media-sanitizers-ci/media.log
+sanitizer	Sanitized media	2026-10-16T06:53:22.7948324Z PASS: media_pty, /tmp/tfile-media-sanitizers-ci/media_pty.log
+sanitizer	Sanitized media	2026-10-16T06:53:27.5492516Z Leak detection requested.
+regression	Build and full regression (includes architecture)	2026-10-16T06:55:21.8458276Z python3 tests/media_pty.py
+
+sanitizer	ASan UBSan and LSan native (includes async process and worker bodies)	2026-10-16T06:52:04.4549074Z media_worker_test: PASS (exit 0)
+sanitizer	ASan UBSan and LSan native (includes async process and worker bodies)	2026-10-16T06:52:13.6444006Z - media_worker_test: PASS (build exit 0, run exit 0)
+
+=== /tmp/tfile-media-full-final.time ===
+wall=597.79 rss_kib=155496 exit=0
+
+=== /tmp/tfile-media-san-verified.time ===
+wall=62.44 rss_kib=81816 exit=0
+
+=== /tmp/tfile-media-san-final-cases.time ===
+wall=8.07 rss_kib=32056 exit=0
+
+FULL REGRESSION SHA256 a6bce9d67d7061eeb99ea240e2b72ee35dec22291554000574222c261591a385
+
+=== Full regression selected final coverage ===
+PASS: real installed Vim edit/write/quit, hostile cursor path vs marks, -R, signal termination, resize, ncurses/input/mouse/preview restoration (automated PTY)
+PASS: signatures/empty/special names, PNG/JPEG/PDF-page-1, bounded text, missing tools/errors/encryption/timeout/output validation, 50 cancellations, stale identity, FIFO rejection, FD/child/temp cleanup, UI cache/focus/modal/off modes
+PASS: 21 event-gated cases; worker reaped, converters stopped/adopted/reaped, private artifacts removed, source unchanged; no FD/child accumulation
+PASS: unmodified cleanup FAILS legacy PID absence assertion; stopped/reaped policy accepts same process structure
+PASS: deliberate missing group kill causes gated descendant regression to FAIL (live S state); no retries
+PASS: dual keyboard/mouse/geometry/resizing, independent path/sort/hidden/history/find/search/marks, preview and popup return, active-only batch/rename/delete and retained destination flow at 50x9/80x24/160x32
+PASS: recovery flows and prior result preservation at all sizes
+PASS: single/dual pipe-gated batch copy/delete partial cancellation, move-between targets, mouse/Esc/resize, exact statuses/residue and queued background commands discarded
+
+=== Final test source identities ===
+tests/process_probe.py f400e64d04aec4cac8149366171df9607b26a6351c6ae75b432b7077d99c9a38
+tests/media_lifecycle_pty.py 900c74b92cdd96d0dbe574add642f89bea89dd43b7fd5b2d7eb385b7b522ecda
+tests/media_lifecycle_fault.py c6a120081fc8e2b1665a0ad5c8792a21bec50c1b3d78652d121abeda10c9ebd5
+tests/media_pty.py 385c57db7ec4d471cd06443ee6d3f06fa8324bb4d7bc126f5ed92e179df8f326
+tests/run_media_sanitizers.py 285f094dae34c3a996b9f40bee6831765e9565a6abb7e34f23bcca7f8ac2b7c1
+
+Parent default LSan command exited 1. Exact fatal diagnostic exists in its raw log (hash above):
+LeakSanitizer has encountered a fatal error.
+LeakSanitizer does not work under ptrace (strace, gdb, etc)

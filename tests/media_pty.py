@@ -15,6 +15,7 @@ import time
 import unicodedata
 from display_pty import Screen
 from media_tools import STUB
+from process_probe import process_state, wait_stopped
 
 BINARY=os.path.abspath(os.environ.get('TFILE_BINARY','./tfile'))
 
@@ -143,11 +144,11 @@ if __name__ == '__main__':
         try:
             t.wait(lambda:len(t.records())>=1)
             assert 'Converting preview' in t.text()
-            slow_pid=t.records()[0]['pid']
+            slow_pid=t.records()[0]['pid']; slow_identity=process_state(slow_pid); assert slow_identity
             start=time.monotonic(); t.send('\x1bOB')
             t.wait(lambda:t.screen.image is not None)
             assert time.monotonic()-start<1.5
-            assert not Path(f'/proc/{slow_pid}').exists()
+            wait_stopped(slow_identity)
             assert '한글' in t.text() and 'Modified:' in t.text()
             conversions=len(t.records()); initial=t.screen.image
             t.send('\t');t.send('\t');assert len(t.records())==conversions
@@ -181,8 +182,8 @@ if __name__ == '__main__':
             t.send('\x1bOB');assert 'ordinary text' in t.text()
             # Exit while converting: child and private artifacts are collected.
             conversions=len(t.records());t.send('\x1bOH');t.wait(lambda:len(t.records())>conversions)
-            pid=t.records()[-1]['pid'];t.close();t=None
-            assert not Path(f'/proc/{pid}').exists()
+            pid=t.records()[-1]['pid']; identity=process_state(pid); assert identity; t.close();t=None
+            wait_stopped(identity)
             # Another preview/test may create or remove a different directory.
             # Inspect only directories reported by this app's converters.
             with tempfile.TemporaryDirectory(prefix='tfile-media-unrelated-'):
@@ -195,9 +196,9 @@ if __name__ == '__main__':
             t=Terminal(root,tools,log)
             try:
                 t.wait(lambda:len(t.records())>=1)
-                pid=t.records()[0]['pid']
+                pid=t.records()[0]['pid']; identity=process_state(pid); assert identity
                 t.resize(49,8)
-                t.wait(lambda:not Path(f'/proc/{pid}').exists())
+                wait_stopped(identity)
                 t.read(.25)
                 start=len(t.output); ticks=Path(f'/proc/{t.proc.pid}/stat').read_text().split()[13:15]
                 t.read(.4)
@@ -216,19 +217,20 @@ if __name__ == '__main__':
         t=Terminal(root,tools,log)
         try:
             t.wait(lambda:len(t.records())>=1)
+            pid=t.records()[0]['pid']; identity=process_state(pid); assert identity
             t.send('\t');t.send('\t')
             t.wait(lambda:'timed out' in t.text(),seconds=10)
             assert t.screen.image is None
-            pid=t.records()[0]['pid'];t.wait(lambda:not Path(f'/proc/{pid}').exists())
+            wait_stopped(identity)
         finally:t.close()
         # SIGTERM during conversion follows the same cleanup path as q.
         log.write_text('')
         t=Terminal(root,tools,log)
         try:
             t.wait(lambda:len(t.records())>=1)
-            pid=t.records()[-1]['pid'];os.kill(t.proc.pid,signal.SIGTERM)
+            pid=t.records()[-1]['pid']; identity=process_state(pid); assert identity; os.kill(t.proc.pid,signal.SIGTERM)
             t.wait(lambda:t.proc.poll() is not None)
-            assert t.proc.returncode==0 and not Path(f'/proc/{pid}').exists()
+            assert t.proc.returncode==0; wait_stopped(identity)
             assert_artifacts_removed(log)
         finally:t.close()
         # Signal shutdown also unwinds a modal rather than leaving a dead input loop.
