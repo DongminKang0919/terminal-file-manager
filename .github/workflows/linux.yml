@@ -24,7 +24,7 @@ jobs:
           mkdir -p /tmp/tfile-ci-logs
           sudo apt-get update 2>&1 | tee /tmp/tfile-ci-logs/apt-update.log
           sudo apt-get install -y build-essential clang libncurses-dev ncurses-term python3 2>&1 | tee /tmp/tfile-ci-logs/apt-install.log
-      - name: Clean first run with GCC and Clang
+      - name: Clean build, first run and install/uninstall with GCC and Clang
         run: |
           test "$(id -u)" -ne 0
           python3 tests/clean_source_check.py gcc 2>&1 | tee /tmp/tfile-ci-logs/clean-gcc.log

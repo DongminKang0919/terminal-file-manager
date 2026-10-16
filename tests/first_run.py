@@ -33,6 +33,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-first-run-') as directory:
              'PATH': str(base / 'bin'), 'TERM': 'xterm-256color', 'LC_ALL': 'C.UTF-8'}
     # Either redirected stream must be rejected before emitting terminal controls.
     master, slave = pty.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 24, 100, 0, 0))
     try:
         for input_fd, output_fd in [(subprocess.DEVNULL, subprocess.PIPE),
                                     (slave, subprocess.PIPE), (subprocess.DEVNULL, slave)]:
@@ -49,6 +50,23 @@ with tempfile.TemporaryDirectory(prefix='tfile-first-run-') as directory:
             result = subprocess.run([BINARY, str(root)], stdin=slave, stdout=slave,
                                     stderr=subprocess.PIPE, env=environment, timeout=2)
             assert result.returncode == 1 and b'Terminal type unavailable' in result.stderr, result
+        for path, diagnostic in [(root / 'missing', b'No such file'),
+                                 (root / '00-text', b'Not a directory')]:
+            before = termios.tcgetattr(slave)
+            process = subprocess.Popen([BINARY, str(path)], stdin=slave, stdout=slave,
+                                       stderr=subprocess.PIPE, env=clean)
+            try:
+                deadline = time.monotonic() + 3
+                while process.poll() is None:
+                    assert time.monotonic() < deadline, 'Startup error did not exit'
+                    if select.select([master], [], [], .02)[0]:
+                        os.read(master, 65536)
+                _, error = process.communicate(timeout=2)
+                assert process.returncode == 1 and diagnostic in error, error
+                assert termios.tcgetattr(slave) == before, 'Startup error left terminal mode changed'
+            finally:
+                if process.poll() is None:
+                    process.kill(); process.wait()
     finally:
         os.close(master)
         os.close(slave)
@@ -65,6 +83,9 @@ with tempfile.TemporaryDirectory(prefix='tfile-first-run-') as directory:
         t.send('\x06' + name + '\n')
     try:
         assert 'text' in body() and 'Settings (F7)' not in body(), body()
+        t.send('\x1bOP')
+        assert 'Help' in body(), body()
+        t.send('\x1b')
         t.send('e')
         assert 'Vim' in body() and 'install' in body().lower(), body()
         t.send('\x1b')
@@ -103,10 +124,12 @@ with tempfile.TemporaryDirectory(prefix='tfile-first-run-') as directory:
         t.send('\x1b[?62;1c\x1b[6;16;8t')  # A terminal that declares no Sixel.
         t.read()
         assert 'Missing ImageMagick' in body() and 'no Sixel' in body(), body()
+        assert 'Install ImageMagick' in body(), body()
         t.send('\t')
         assert 'Tab: Preview' not in body(), body()
         find('page.pdf')
         assert 'Missing pdftotext (Poppler)' in body(), body()
+        assert 'Install Poppler' in body(), body()
         find('binary')
         assert 'Preview unavailable' in body(), body()
         find('empty')
@@ -141,7 +164,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-first-run-') as directory:
             process.wait()
         os.close(master)
     # The full-suite wrapper must remove inherited binary and graphics overrides.
-    subprocess.run([sys.executable, 'tests/isolated_check.py', sys.executable, '-c',
+    subprocess.run([sys.executable, str(Path(__file__).with_name('isolated_check.py')), sys.executable, '-c',
                     'import os; assert not any(k.startswith("TFILE_") for k in os.environ); '
                     'assert os.environ["HOME"] != "poison-home"; '
                     'assert all(os.environ[k].startswith(os.environ["HOME"] + "/") '
@@ -150,4 +173,4 @@ with tempfile.TemporaryDirectory(prefix='tfile-first-run-') as directory:
                         'TFILE_SIXEL': '1', 'TFILE_CELL_PIXELS': '1x1'}, check=True)
 print('PASS: clean HOME/XDG and no optional tools; create/delete/cancel, media reasons, '
       'Vim/xdg-open missing guidance, navigation/copy/move, no-argument startup, '
-      'no unsolicited preview focus; non-TTY/TERM failures; suite environment isolation')
+      'no unsolicited preview focus; built-in Help; non-TTY/TERM/startup errors and termios restoration; suite environment isolation')

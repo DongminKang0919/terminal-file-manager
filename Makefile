@@ -7,8 +7,25 @@ CORE_SOURCES = src/model.c $(wildcard src/core/*.c)
 PLATFORM_SOURCES = src/platform/$(PLATFORM).c src/platform/$(PLATFORM)_media.c src/platform/$(PLATFORM)_external.c
 UI_SOURCES = $(wildcard src/ui/*.c)
 HEADERS = src/model.h $(wildcard src/core/*.h src/platform/*.h src/ui/*.h)
+PREFIX ?= /usr/local
+DESTDIR ?=
+INSTALL ?= install
 
 all: tfile
+
+# Only the executable is installed; help is compiled in and preferences are
+# created by explicit user actions at runtime, never by install/uninstall.
+install: tfile
+	$(INSTALL) -d -m 755 -- "$(DESTDIR)$(PREFIX)/bin"
+	$(INSTALL) -m 755 -- tfile "$(DESTDIR)$(PREFIX)/bin/tfile"
+
+uninstall:
+	rm -f -- "$(DESTDIR)$(PREFIX)/bin/tfile"
+
+check-install:
+	python3 tests/clean_source_check.py $(CC)
+
+.PHONY: all install uninstall check-install
 
 tests/performance_test: tests/performance_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/performance_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) -Wl,--wrap=text_copy

@@ -1,4 +1,4 @@
-"""Build tracked source only, with disposable settings and absent optional tools.
+"""Build a source snapshot, check first run and installation in disposable roots.
 This uses the host libraries/terminfo; it is not a fresh OS installation.
 """
 import os
@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from install_check import check_install
 
 root = Path(__file__).resolve().parents[1]
 compiler = sys.argv[1] if len(sys.argv) > 1 else 'gcc'
@@ -16,7 +17,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-clean-source-') as directory:
     base = Path(directory)
     source = base / 'source'
     source.mkdir()
-    paths = subprocess.check_output(['git', 'ls-files', '-z'], cwd=root).split(b'\0')
+    paths = subprocess.check_output(['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], cwd=root).split(b'\0')
     for raw in paths:
         if not raw:
             continue
@@ -30,8 +31,9 @@ with tempfile.TemporaryDirectory(prefix='tfile-clean-source-') as directory:
     # Exclude inherited build flags, loader overrides and application preferences.
     env = {'PATH': os.environ.get('PATH', os.defpath),
            'TERM': 'xterm-256color', 'LC_ALL': 'C.UTF-8'}
-    env.update(HOME=str(base / 'home'), XDG_CONFIG_HOME=str(base / 'config'),
+    env.update(HOME=str(base / 'user home'), XDG_CONFIG_HOME=str(base / 'config'),
                XDG_DATA_HOME=str(base / 'data'), XDG_CACHE_HOME=str(base / 'cache'))
     subprocess.run(['make', f'CC={compiler}'], cwd=source, env=env, check=True)
     subprocess.run([sys.executable, 'tests/first_run.py'], cwd=source, env=env, check=True)
-print(f'PASS: clean tracked source, {compiler}, isolated HOME/XDG, no optional tools')
+    check_install(source, base, env)
+print(f'PASS: clean source + install/uninstall, {compiler}, isolated HOME/XDG, no optional tools; host OS/libraries')

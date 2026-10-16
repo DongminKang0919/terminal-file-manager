@@ -12,6 +12,7 @@
 | 주제 | 문서 |
 | --- | --- |
 | [비동기 통합 사용 흐름 점검 (2026-10-15)](INTEGRATION_VALIDATION_2026-10-15.md) | 연결 세션, 종료·충돌 팝업 수명, 불명확/최소 화면 상태, 회귀·sanitizer와 수동 점검 |
+| 설치·제거·첫 실행 | [2026-10-16 PREFIX/DESTDIR·독립 실행 검증](INSTALL_VALIDATION_2026-10-16.md) |
 | 미디어 종료·회수 관측 | [2026-10-16 gate 재현·좀비 구분·회귀 검증](MEDIA_LIFETIME_VALIDATION_2026-10-16.md) |
 | 작업 대상·하단 안내·전송 폼 | [2026-10-16 구현·검증](UX_TARGETS_VALIDATION_2026-10-16.md), [전후 PTY 화면](UX_TARGETS_COMPARISON_2026-10-16.md) |
 | 느린 시작 디렉터리 | [2026-10-16 시작 로딩·취소·검증](STARTUP_VALIDATION_2026-10-16.md) |

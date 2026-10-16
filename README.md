@@ -12,7 +12,7 @@
 
 ## 빠른 시작
 
-필수 의존성은 **C11 컴파일러, make, ncursesw 개발 라이브러리**입니다. Ubuntu 24.04 및 WSL의 Ubuntu에서 사용할 설치 예시는 다음과 같습니다. 새 환경에서의 설치부터 전체 검증한 결과는 아니며, 확인한 환경과 검사 범위는 [아래 검증 안내](#검증-범위)에 구분했습니다.
+빌드에는 **C11 컴파일러, make, ncursesw 개발 라이브러리**가 필요합니다. 저장소를 받는 데는 Git, 개발·검사 명령에는 Python 3가 추가로 필요합니다. Ubuntu/WSL Ubuntu의 패키지 설치 예시입니다. 앱이 패키지를 자동 설치하지 않습니다.
 
 ```sh
 sudo apt update
@@ -23,19 +23,68 @@ make
 ./tfile
 ```
 
-저장소가 이미 있다면 해당 디렉터리에서 `make`부터 실행하세요. 실행 파일은 저장소의 `tfile`이며 `make install`은 제공하지 않습니다.
+대화형 터미널, 유효한 `TERM`과 해당 terminfo가 필요하며 UTF-8 로캘을 권장합니다. 최소 화면은 **50열 × 9행**, 권장 화면은 **100열 × 24행**입니다. terminfo가 없는 경우 배포판의 터미널 정의 패키지를 확인하세요(Ubuntu: `ncurses-base`, 추가 터미널은 `ncurses-term`).
+
+### 설치 없이 실행
 
 ```sh
-./tfile /path/to/directory  # 생략하면 현재 디렉터리에서 시작
+./tfile /path/to/directory  # 생략하면 현재 작업 디렉터리에서 시작
 ```
 
-대화형 터미널, 유효한 `TERM`/terminfo가 필요하며 UTF-8 로캘을 권장합니다. 최소 화면은 **50열 × 9행**, 권장 화면은 **100열 × 24행**입니다.
+저장소 밖에서는 빌드한 실행 파일의 절대 경로를 사용합니다. 예: `/path/to/terminal-file-manager/tfile /path/to/directory`. 설정·도움말·미리보기는 저장소의 실행 위치에 의존하지 않습니다.
 
-**선택 의존성:** Vim 편집은 `vim`, 외부 뷰어 열기는 `xdg-utils`, 이미지·PDF 미리보기는 `imagemagick`·`poppler-utils`를 사용합니다. 필요한 도구만 설치하세요. **선택 도구가 없어도 탐색·텍스트 미리보기·파일 작업은 가능합니다.**
+### 사용자 경로에 설치
+
+빌드한 저장소에서 실행합니다. sudo는 필요 없습니다. 설치·제거에는 기본 도구 `install`·`rm`(Ubuntu의 coreutils)을 사용합니다.
 
 ```sh
-sudo apt install vim xdg-utils imagemagick poppler-utils
+make install PREFIX="$HOME/.local"
+"$HOME/.local/bin/tfile" /path/to/directory
 ```
+
+`$HOME/.local/bin`이 `PATH`에 있으면 `tfile`로 실행할 수 있습니다. `command not found`가 나오면 위 절대 경로로 실행하거나 사용 중인 셸에 맞춰 PATH를 추가하세요. 설치 명령은 셸 설정 파일을 변경하지 않습니다.
+
+### 시스템 설치와 staging
+
+기본 PREFIX는 `/usr/local`입니다. 빌드는 일반 사용자로 먼저 완료하고, 시스템 설치가 필요할 때만 권한을 사용합니다.
+
+```sh
+sudo make install PREFIX=/usr/local
+```
+
+관리자 권한 없이 별도 디렉터리에 파일 배치를 확인하려면:
+
+```sh
+make install PREFIX=/usr/local DESTDIR="$PWD/stage"
+# 배치 결과: ./stage/usr/local/bin/tfile
+```
+
+설치 파일은 **`$(DESTDIR)$(PREFIX)/bin/tfile` 하나(권한 0755)**입니다. 실행 시 ncursesw·terminfo 등 시스템 런타임은 필요하지만 저장소·빌드 디렉터리는 필요하지 않습니다. 도움말은 실행 파일에 포함되며 문서·설정·선택 도구는 설치하지 않습니다.
+
+### 제거
+
+설치에 사용한 PREFIX와 DESTDIR을 동일하게 지정합니다. 저장소의 Makefile을 사용합니다.
+
+```sh
+make uninstall PREFIX="$HOME/.local"
+# 시스템 설치: sudo make uninstall PREFIX=/usr/local
+# 위 staging: make uninstall PREFIX=/usr/local DESTDIR="$PWD/stage"
+```
+
+설치된 `bin/tfile`만 제거하며 빈 디렉터리는 남깁니다. HOME/XDG의 설정·즐겨찾기·사용자 파일과 같은 디렉터리의 다른 실행 파일은 삭제하지 않습니다. 소스 복사본을 지웠다면 사용자 설치 파일 하나를 `rm -f -- "$HOME/.local/bin/tfile"`로 직접 제거할 수도 있습니다.
+
+### 선택 기능에 필요한 도구
+
+| 기능 | 도구 / Ubuntu 패키지 |
+| --- | --- |
+| 커서 텍스트 파일 편집 | `vim` / `vim` |
+| 외부 앱 열기 요청 | `xdg-open` / `xdg-utils` — 데스크톱·뷰어 설정도 필요 |
+| PNG/JPEG 이미지 미리보기 | `magick` 또는 `convert` / `imagemagick` — Sixel 터미널 및 coder 지원 필요 |
+| PDF 첫 페이지 이미지·텍스트 | `pdftoppm`, `pdftotext` / `poppler-utils` — 이미지는 ImageMagick도 필요 |
+
+필요한 기능만 사용자가 설치하세요. 예: `sudo apt install vim xdg-utils imagemagick poppler-utils`. **도구가 없어도 탐색·텍스트 미리보기·기본 파일 작업은 가능합니다.** 이미지 지원이 미확인되거나 터미널이 Sixel을 지원하지 않아도 기본 기능은 동작합니다. `F7`의 Image display setup으로 상태를 확인하세요. 정상 첫 실행에는 설정 마법사나 저장 확인창이 없습니다.
+
+[설치 검증 기록](docs/INSTALL_VALIDATION_2026-10-16.md)은 임시 경로에서 실행한 명령과 한계를 구분합니다. 새 OS에 패키지를 설치해 검증한 결과는 아닙니다.
 
 ## 처음 사용하는 분께
 
@@ -51,7 +100,7 @@ printf 'Hello, tfile!\n' > "$practice_dir/hello.txt"
 연습은 목록+미리보기 화면 기준입니다. 다른 화면으로 시작하면 `F9`에서 **View: Files + Preview**를 선택하세요.
 
 1. **탐색:** `↑` / `↓`로 `hello.txt`를 선택해 오른쪽 내용을 확인합니다. `destination`을 선택하고 `Enter`로 연 뒤, `Backspace`로 돌아옵니다.
-2. **복사:** `hello.txt`를 선택하고 `F5`를 누릅니다. **To** 입력란에 `destination`을 입력하고 `Enter`를 누릅니다. **Name**은 `hello.txt`로 두고 다시 `Enter`를 눌러 **Copy now** 버튼으로 이동합니다. **Target**이 연습 폴더의 `destination/hello.txt`인지 확인하고 `Enter`로 실행합니다.
+2. **복사:** `hello.txt`를 선택하고 `F5`를 누릅니다. **To** 입력란에 `destination`을 입력하고 `Enter`를 누릅니다. **Name**은 `hello.txt`로 두고 다시 `Enter`를 눌러 **Copy 1 item** 버튼으로 이동합니다. **Target**이 연습 폴더의 `destination/hello.txt`인지 확인하고 `Enter`로 실행합니다.
 3. **결과 확인:** `!`로 최근 작업 결과를 읽고 `Esc`로 닫습니다. `destination` 폴더를 열어 복사된 파일을 확인합니다.
 4. **종료:** 메인 화면에서 `q` 또는 `F10`을 누릅니다. 연습 폴더와 파일은 종료 후에도 `/tmp`에 남습니다.
 
@@ -130,7 +179,8 @@ PDF 페이지 이동·확대/축소·OCR, tmux/screen 그래픽 passthrough는 �
 
 ```sh
 make                 # 제품 빌드
-make -j4 check       # 임시 HOME/XDG 환경의 단위·회귀·PTY·계층·문서 검사
+make -j2 check       # 임시 HOME/XDG 환경의 단위·회귀·PTY·계층·문서 검사
+make check-install   # 임시 소스·HOME/XDG·PREFIX/DESTDIR에서 설치·실행·제거
 make check-docs      # 주요 문서의 상대 링크와 제목 anchor 검사
 ```
 
@@ -140,6 +190,7 @@ make check-docs      # 주요 문서의 상대 링크와 제목 anchor 검사
 
 | 구분 | 확인한 범위와 근거 |
 | --- | --- |
+| 설치·첫 실행 (이번 변경) | Ubuntu 24.04.5의 기존 라이브러리에서 소스 복사본 빌드, 사용자 PREFIX·DESTDIR, 소스 삭제 후 실행·제거를 검사했습니다. 새 OS·실제 시스템 설치·최신 WSL 수동 검사는 미실행입니다. [설치 검증 기록](docs/INSTALL_VALIDATION_2026-10-16.md) |
 | 자동 작업 환경 | Ubuntu 24.04.5에서 GCC 빌드·전체 회귀·PTY·ASan/UBSan 검사 결과를 기록했습니다. 해당 실행의 LSan은 미완료입니다. [2026-10-10 기록](docs/RELEASE_READINESS_2026-10-10.md#직접-검증) |
 | 개발자의 실제 WSL 사용·수동 검사 | 개발자는 WSL Ubuntu에서 사용하고 수동 검사 결과를 전달했습니다. 당시 native 17개와 미디어 native·PTY의 ASan/UBSan/LSan 완료·누수 미검출을 로그 검토로 확인했습니다. [수동 결과](docs/MEDIA_PREVIEW_VALIDATION.md#수정-후-사용자-wsl-터미널의-수동-sanitizer-결과-검토) |
 | 아직 확인하지 않은 범위 | 다른 배포판, 모든 터미널·폰트·SSH/multiplexer 조합, 최신 커밋 전체의 WSL 재검증은 확인되지 않았습니다. 스크린샷과 과거 PASS는 모든 환경·기능의 보증이 아닙니다. |

@@ -1,0 +1,77 @@
+Install readiness evidence, base 1ce2ecf, 2026-10-16.
+Host Ubuntu 24.04.5 / GCC 13.3.0 / Python 3.12.3 / ncurses 6.4.
+No package changes, real user installation, sudo installation, new OS or physical Sixel inspection.
+
+Remote baseline CI 38866794112, head 1ce2ecf36063d912f15e2b6d395dca1e5c2bbced: completed/success (gh run list).
+This is not CI verification of the install changes.
+
+=== /tmp/tfile-install-gcc.log ===
+sha256 f0be59e36ca0393984aa33544c1af2e4d06ea69c1ecd2503a993833864be7041
+gcc  -D_XOPEN_SOURCE=700 -O2 -Wall -Wextra -Wpedantic -std=c11 -o tfile src/model.c src/core/batch.c src/core/external.c src/core/favorites.c src/core/files.c src/core/media.c src/core/mutation_job.c src/core/operations.c src/core/preview.c src/core/preview_job.c src/core/read_job.c src/core/search.c src/core/selection.c src/core/settings.c src/core/sort.c src/core/terminal.c src/platform/posix.c src/platform/posix_media.c src/platform/posix_external.c src/ui/batch.c src/ui/controller.c src/ui/dialogs.c src/ui/external.c src/ui/favorites.c src/ui/field.c src/ui/filter.c src/ui/graphics_probe.c src/ui/help.c src/ui/image_setup.c src/ui/input.c src/ui/loading.c src/ui/main.c src/ui/media.c src/ui/notice.c src/ui/operation.c src/ui/panels.c src/ui/path_query.c src/ui/preview.c src/ui/quick_find.c src/ui/search.c src/ui/terminal_input.c src/ui/text.c src/ui/text_window.c src/ui/theme.c src/ui/transfer.c src/ui/ui.c -lncursesw
+PASS: clean HOME/XDG and no optional tools; create/delete/cancel, media reasons, Vim/xdg-open missing guidance, navigation/copy/move, no-argument startup, no unsolicited preview focus; built-in Help; non-TTY/TERM/startup errors and termios restoration; suite environment isolation
+make: Entering directory '/tmp/tfile-clean-source-5wgc61_9/source'
+install -d -m 755 -- "/tmp/tfile-clean-source-5wgc61_9/user home/.local/bin"
+install -m 755 -- tfile "/tmp/tfile-clean-source-5wgc61_9/user home/.local/bin/tfile"
+make: Leaving directory '/tmp/tfile-clean-source-5wgc61_9/source'
+make: Entering directory '/tmp/tfile-clean-source-5wgc61_9/source'
+install -d -m 755 -- "/tmp/tfile-clean-source-5wgc61_9/user home/.local/bin"
+install -m 755 -- tfile "/tmp/tfile-clean-source-5wgc61_9/user home/.local/bin/tfile"
+make: Leaving directory '/tmp/tfile-clean-source-5wgc61_9/source'
+make: Entering directory '/tmp/tfile-clean-source-5wgc61_9/source'
+rm -f -- "/tmp/tfile-clean-source-5wgc61_9/user home/.local/bin/tfile"
+make: Leaving directory '/tmp/tfile-clean-source-5wgc61_9/source'
+make: Entering directory '/tmp/tfile-clean-source-5wgc61_9/source'
+install -d -m 755 -- "/tmp/tfile-clean-source-5wgc61_9/user home/.local/bin"
+install -m 755 -- tfile "/tmp/tfile-clean-source-5wgc61_9/user home/.local/bin/tfile"
+make: Leaving directory '/tmp/tfile-clean-source-5wgc61_9/source'
+make: Entering directory '/tmp/tfile-clean-source-5wgc61_9/source'
+install -d -m 755 -- "/tmp/tfile-clean-source-5wgc61_9/stage root/usr/local/bin"
+install -m 755 -- tfile "/tmp/tfile-clean-source-5wgc61_9/stage root/usr/local/bin/tfile"
+make: Leaving directory '/tmp/tfile-clean-source-5wgc61_9/source'
+make: Entering directory '/tmp/tfile-clean-source-5wgc61_9/source'
+install -d -m 755 -- "/tmp/tfile-clean-source-5wgc61_9/stage root/opt/tfile test/bin"
+install -m 755 -- tfile "/tmp/tfile-clean-source-5wgc61_9/stage root/opt/tfile test/bin/tfile"
+make: Leaving directory '/tmp/tfile-clean-source-5wgc61_9/source'
+make: Entering directory '/tmp/tfile-clean-source-5wgc61_9/source'
+rm -f -- "/tmp/tfile-clean-source-5wgc61_9/stage root/opt/tfile test/bin/tfile"
+make: Leaving directory '/tmp/tfile-clean-source-5wgc61_9/source'
+PASS: clean HOME/XDG and no optional tools; create/delete/cancel, media reasons, Vim/xdg-open missing guidance, navigation/copy/move, no-argument startup, no unsolicited preview focus; built-in Help; non-TTY/TERM/startup errors and termios restoration; suite environment isolation
+PASS: installed, source removed, unrelated cwd: first_run.py
+PASS: real-process settings save/restart, dual CLI path, startup warning and explicit replacement at 50x9/100x24
+PASS: installed, source removed, unrelated cwd: settings_pty.py
+PROCESS STOPPED {"identity": {"pid": 268, "state": "S", "ppid": 267, "pgid": 267, "start": 7749050, "exit": 0}, "observed": null, "reaped": true, "history": [null]}
+PROCESS STOPPED {"identity": {"pid": 300, "state": "S", "ppid": 299, "pgid": 299, "start": 7749471, "exit": 0}, "observed": null, "reaped": true, "history": [null]}
+PROCESS STOPPED {"identity": {"pid": 305, "state": "S", "ppid": 304, "pgid": 304, "start": 7749487, "exit": 0}, "observed": null, "reaped": true, "history": [null]}
+PROCESS STOPPED {"identity": {"pid": 316, "state": "S", "ppid": 315, "pgid": 315, "start": 7749617, "exit": 0}, "observed": null, "reaped": true, "history": [null]}
+PROCESS STOPPED {"identity": {"pid": 321, "state": "S", "ppid": 320, "pgid": 320, "start": 7749707, "exit": 0}, "observed": null, "reaped": true, "history": [null]}
+PROCESS STOPPED {"identity": {"pid": 326, "state": "S", "ppid": 325, "pgid": 325, "start": 7750519, "exit": 0}, "observed": null, "reaped": true, "history": [null]}
+PASS: PTY protocol ordering/bounds/clear/modal/resize, responsive selection/exit cancellation, focus cache, Auto/Off/files-only, PDF-first-page/text fallback, safe errors, unchanged text scrolling, zero/fake image, missing tools; real graphics remain unverified
+PASS: installed, source removed, unrelated cwd: media_pty.py
+PASS: lazy Auto PNG/JPEG/PDF, session reuse/restart/resize, ioctl, Off, failed/late/malformed replies, missing tools, selection/modal/child cleanup, UTF-8/mouse/keys, delayed startup and idle waits
+PASS: installed, source removed, unrelated cwd: terminal_auto_pty.py
+PASS: clean HOME/XDG and no optional tools; create/delete/cancel, media reasons, Vim/xdg-open missing guidance, navigation/copy/move, no-argument startup, no unsolicited preview focus; built-in Help; non-TTY/TERM/startup errors and termios restoration; suite environment isolation
+PASS: staged binary first run from unrelated cwd, source removed
+rm -f -- "/tmp/tfile-clean-source-5wgc61_9/user home/.local/bin/tfile"
+rm -f -- "/tmp/tfile-clean-source-5wgc61_9/stage root/usr/local/bin/tfile"
+rm -f -- "/tmp/tfile-clean-source-5wgc61_9/user home/.local/bin/tfile"
+rm -f -- "/tmp/tfile-clean-source-5wgc61_9/stage root/usr/local/bin/tfile"
+PASS: user PREFIX/spaces/0755/reinstall, default+explicit DESTDIR exact layout, source-independent UI/settings/help/media, idempotent uninstall preserves HOME/XDG/unrelated files/directories
+PASS: clean source + install/uninstall, gcc, isolated HOME/XDG, no optional tools; host OS/libraries
+
+=== /tmp/tfile-install-gcc.time ===
+sha256 65f0b9e72b87afe2c144742f12114bd26a5488f431e25ae04a651099eaf23dcc
+wall=98.46 rss_kib=47852 exit=0
+
+=== /tmp/tfile-install-verified.time ===
+sha256 1372d006eb66aec82be99348552c694c84c232942e424abacabc97fb04f5dc68
+wall=98.56 rss_kib=47876 exit=0
+
+=== /tmp/tfile-install-clang.log ===
+sha256 fcd987e18b5fdcf76d30e3769850c937577f58acb94ac19f567ff4b5f6da6b74
+Compiler unavailable: clang (not verified)
+
+=== Source identity ===
+Makefile 116213beaf31f95d473a20589406f4ae118537922dff0567664b9222f90796f9
+tests/clean_source_check.py 5808895b4f2d83ccb3e2df1ff38404a9282f741d129f273efc65771293496aab
+tests/install_check.py e0e3e04ba944ec51134e1088ff71c5be0a668d7216181e5d97155eea62d9e3f3
+tests/first_run.py 6c69849f45256807d676d5d6f619bb525da53bac1cdb6488b9428414eb04bc8c
