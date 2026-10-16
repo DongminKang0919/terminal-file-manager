@@ -1,9 +1,16 @@
 """Visible fixed marks/menus/policies and real single-mark operations on fixtures."""
-import os,tempfile
+import os,tempfile,time
 from pathlib import Path
 from display_pty import Terminal
 F5='\x1b[15~';F6='\x1b[17~';F8='\x1b[19~';F9='\x1b[20~';HOME='\x1bOH';END='\x1bOF';DOWN='\x1bOB'
 def body(t):return '\n'.join(t.screen.row(i) for i in range(t.screen.height))
+def settled(t):
+ # A send/read window is not completion of a forked mutation. Wait for the
+ # refreshed main frame before inspecting files or issuing another command.
+ deadline=time.monotonic()+2
+ while 'Marked: 0' not in body(t) or 'Cancel stops here' in body(t):
+  assert time.monotonic()<deadline,body(t)
+  t.read()
 def marks(t,n):assert f'Marked: {n}' in body(t),body(t)
 def dest(t,path):t.send(HOME+'\x1b[3~'*200+str(path)+'\n\n\n')
 for w,h in [(50,9),(100,24)]:
@@ -20,7 +27,7 @@ for w,h in [(50,9),(100,24)]:
     assert any('> a cursor' in t.screen.row(i) for i in range(h))
     assert any(' *z marked' in t.screen.row(i) for i in range(h))
     if action in ['copy','move']:
-     t.send(F5 if action=='copy' else F6);dest(t,dst)
+     t.send(F5 if action=='copy' else F6);dest(t,dst);settled(t)
      assert (dst/'z marked').read_text()=='target' and not (dst/'a cursor').exists()
      assert target.exists()==(action=='copy')
     elif action=='rename':
@@ -30,7 +37,7 @@ for w,h in [(50,9),(100,24)]:
      command=F8 if action=='delete' else 't'
      t.send(command);assert '(1 target)' in body(t)
      t.send('\n');assert target.exists();marks(t,1)
-     t.send(command+'\t\n');assert not target.exists()
+     t.send(command+'\t\n');settled(t);assert not target.exists()
      if action=='trash':
       payloads=list((data/'Trash/files').iterdir());assert len(payloads)==1 and payloads[0].read_text()=='target'
     assert cursor.read_text()=='cursor';marks(t,0)
@@ -51,7 +58,7 @@ for w,h in [(50,9),(100,24)]:
    assert 'Batch delete confirmation' in body(t) and 'Targets: 2' in body(t) and 'Permanent deletion' in body(t)
    t.send('\x1bOF');assert 'c visible' in body(t),body(t)
    t.send('\n');assert len(list(src.iterdir()))==3;marks(t,2)
-   t.send(F8+'\t\n');assert sorted(p.name for p in src.iterdir())==['b filtered'];marks(t,0)
+   t.send(F8+'\t\n');settled(t);assert sorted(p.name for p in src.iterdir())==['b filtered'];marks(t,0)
    # Clear filter; no marks means the actual cursor, with no prior hidden targets.
    t.send('f'+DOWN*2+'\n');t.send('t');assert 'Confirm Trash (1 target)' in body(t);t.send('\n');assert (src/'b filtered').exists()
   finally:t.close()

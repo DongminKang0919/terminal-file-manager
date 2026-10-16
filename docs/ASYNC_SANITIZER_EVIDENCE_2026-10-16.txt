@@ -1,0 +1,699 @@
+
+=== /tmp/tfile-sanitizers-measured/summary.log ===
+### Native sanitizer results
+LSan: enabled (fork tests cover parent; body harnesses cover normal teardown)
+- preview_async_test: FAIL (build exit 0, run exit 1)
+- preview_worker_test: FAIL (build exit 0, run exit 1)
+- mutation_job_test: FAIL (build exit 0, run exit 1)
+- mutation_worker_test: FAIL (build exit 0, run exit 1)
+- read_job_test: FAIL (build exit 0, run exit 1)
+- performance_test: FAIL (build exit 0, run exit 1)
+- mark_policy_test: FAIL (build exit 0, run exit 1)
+- vim_test: FAIL (build exit 0, run exit 1)
+- favorites_test: FAIL (build exit 0, run exit 1)
+- filter_test: FAIL (build exit 0, run exit 1)
+- batch_conflict_test: FAIL (build exit 0, run exit 1)
+- external_test: FAIL (build exit 0, run exit 1)
+- trash_test: FAIL (build exit 0, run exit 1)
+- panels_ui_test: FAIL (build exit 0, run exit 1)
+- batch_test: FAIL (build exit 0, run exit 1)
+- batch_ui_test: FAIL (build exit 0, run exit 1)
+- operations_test: FAIL (build exit 0, run exit 1)
+- sort_test: FAIL (build exit 0, run exit 1)
+- progress_test: FAIL (build exit 0, run exit 1)
+- search_test: FAIL (build exit 0, run exit 1)
+- controller_test: FAIL (build exit 0, run exit 1)
+- history_ui_test: FAIL (build exit 0, run exit 1)
+- keyboard_ui_test: FAIL (build exit 0, run exit 1)
+- popup_style_test: FAIL (build exit 0, run exit 1)
+- progress_ui_test: FAIL (build exit 0, run exit 1)
+- preview_test: FAIL (build exit 0, run exit 1)
+- text_test: FAIL (build exit 0, run exit 1)
+- text_window_test: FAIL (build exit 0, run exit 1)
+- startup_ui_test: FAIL (build exit 0, run exit 1)
+- search_progress_ui_test: FAIL (build exit 0, run exit 1)
+- ownership_test: FAIL (build exit 0, run exit 1)
+Total: 31 required, 0 passed, 31 failed; 74.654s
+
+=== /tmp/tfile-sanitizers-measured.metrics.json ===
+{
+  "exit": 1,
+  "wall_seconds": 74.771,
+  "process_tree_peak_rss_bytes": 208322560,
+  "samples": 736,
+  "sample_interval_seconds": 0.1
+}
+
+=== /tmp/tfile-sanitizers-measured/preview_async_test.run.log ===
+$ /tmp/tfile-sanitizers-measured/preview_async_test
+==1867==LeakSanitizer has encountered a fatal error.
+==1867==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==1867==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+
+exit: 1
+
+=== /tmp/tfile-sanitizers-measured/preview_worker_test.run.log ===
+$ /tmp/tfile-sanitizers-measured/preview_worker_test
+==1964==LeakSanitizer has encountered a fatal error.
+==1964==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==1964==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+
+exit: 1
+
+=== /tmp/tfile-sanitizers-measured/mutation_job_test.run.log ===
+$ /tmp/tfile-sanitizers-measured/mutation_job_test
+==1966==LeakSanitizer has encountered a fatal error.
+==1966==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==1966==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+
+exit: 1
+
+=== /tmp/tfile-sanitizers-measured/mutation_worker_test.run.log ===
+$ /tmp/tfile-sanitizers-measured/mutation_worker_test
+==2013==LeakSanitizer has encountered a fatal error.
+==2013==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==2013==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+
+exit: 1
+
+=== /tmp/tfile-sanitizers-fallback/summary.log ===
+### Native sanitizer results
+LSan: DISABLED — leak checks incomplete
+- preview_async_test: PASS (build exit 0, run exit 0)
+- preview_worker_test: PASS (build exit 0, run exit 0)
+- mutation_job_test: PASS (build exit 0, run exit 0)
+- mutation_worker_test: PASS (build exit 0, run exit 0)
+- read_job_test: PASS (build exit 0, run exit 0)
+- performance_test: PASS (build exit 0, run exit 0)
+- mark_policy_test: PASS (build exit 0, run exit 0)
+- vim_test: PASS (build exit 0, run exit 0)
+- favorites_test: PASS (build exit 0, run exit 0)
+- filter_test: PASS (build exit 0, run exit 0)
+- batch_conflict_test: PASS (build exit 0, run exit 0)
+- external_test: PASS (build exit 0, run exit 0)
+- trash_test: PASS (build exit 0, run exit 0)
+- panels_ui_test: PASS (build exit 0, run exit 0)
+- batch_test: PASS (build exit 0, run exit 0)
+- batch_ui_test: PASS (build exit 0, run exit 0)
+- operations_test: PASS (build exit 0, run exit 0)
+- sort_test: PASS (build exit 0, run exit 0)
+- progress_test: PASS (build exit 0, run exit 0)
+- search_test: PASS (build exit 0, run exit 0)
+- controller_test: PASS (build exit 0, run exit 0)
+- history_ui_test: PASS (build exit 0, run exit 0)
+- keyboard_ui_test: PASS (build exit 0, run exit 0)
+- popup_style_test: PASS (build exit 0, run exit 0)
+- progress_ui_test: PASS (build exit 0, run exit 0)
+- preview_test: PASS (build exit 0, run exit 0)
+- text_test: PASS (build exit 0, run exit 0)
+- text_window_test: PASS (build exit 0, run exit 0)
+- startup_ui_test: PASS (build exit 0, run exit 0)
+- search_progress_ui_test: PASS (build exit 0, run exit 0)
+- ownership_test: PASS (build exit 0, run exit 0)
+Total: 31 required, 31 passed, 0 failed; 88.002s
+
+=== /tmp/tfile-sanitizers-fallback.time ===
+	Command being timed: "python3 tests/run_sanitizers.py --disable-leaks --output-directory /tmp/tfile-sanitizers-fallback"
+	User time (seconds): 217.75
+	System time (seconds): 24.50
+	Percent of CPU this job got: 260%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:32.90
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 156016
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 2
+	Minor (reclaiming a frame) page faults: 5695178
+	Voluntary context switches: 20393
+	Involuntary context switches: 27682
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+
+=== /tmp/tfile-media-sanitizers-review.log ===
+PASS: media, /tmp/tfile-media-sanitizers-review/media.log
+PASS: preview, /tmp/tfile-media-sanitizers-review/preview.log
+PASS: picker, /tmp/tfile-media-sanitizers-review/picker.log
+PASS: media_pty, /tmp/tfile-media-sanitizers-review/media_pty.log
+PASS: media_redraw, /tmp/tfile-media-sanitizers-review/media_redraw.log
+Leak detection explicitly disabled.
+
+=== /tmp/tfile-terminal-sanitizers-review.log ===
+PASS: terminal, /tmp/tfile-terminal-sanitizers-review/terminal.log
+PASS: input, /tmp/tfile-terminal-sanitizers-review/input.log
+PASS: probe, /tmp/tfile-terminal-sanitizers-review/probe.log
+PASS: pty, /tmp/tfile-terminal-sanitizers-review/pty.log
+PASS: auto_pty, /tmp/tfile-terminal-sanitizers-review/auto_pty.log
+PASS: vim_pty, /tmp/tfile-terminal-sanitizers-review/vim_pty.log
+PASS: editor_shutdown_pty, /tmp/tfile-terminal-sanitizers-review/editor_shutdown_pty.log
+FAIL: mark_discovery_pty, /tmp/tfile-terminal-sanitizers-review/mark_discovery_pty.log
+
+=== /tmp/tfile-terminal-sanitizers-review/mark_discovery_pty.log ===
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/mark_discovery_pty.py", line 24, in <module>
+    assert (dst/'z marked').read_text()=='target' and not (dst/'a cursor').exists()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1029, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/tfile-single-mark-naogvg4f/dst/z marked'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/mark_discovery_pty.py", line 37, in <module>
+    finally:t.close()
+            ^^^^^^^^^
+  File "/home/dongmin/workspace/file_manager_project/tests/display_pty.py", line 173, in close
+    assert self.proc.wait(timeout=2) == 0
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1264, in wait
+    return self._wait(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2045, in _wait
+    raise TimeoutExpired(self.args, timeout)
+subprocess.TimeoutExpired: Command '['/tmp/tfile-terminal-sanitizers-review/tfile', '/tmp/tfile-single-mark-naogvg4f/src']' timed out after 2 seconds
+
+=== /tmp/tfile-mark-diagnostic.log ===
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+  File "tests/mark_discovery_pty.py", line 37, in <module>
+    finally:t.close()
+                      
+  File "tests/mark_discovery_pty.py", line 7, in marks
+    def marks(t,n):assert f'Marked: {n}' in body(t),body(t)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError:  [F1 Help] [F3 Search]  [F2 New] [F5 Copy] [F6 Move] [F8 Delete]  [F7 Options] [F9 Menu] [F10 Quit] 
+ [< Back] [Forward >]  Location: /tmp/tfile-single-mark-vj6mgxpz/src                                
+┌─* Files (2) | Name ascending ───────────────────────┐┌─  Preview ────────────────────────────────┐
+│ [Parent]  [Open]                                    ││ a cursor                                  │
+│  Name                              Kind       Size  ││ File | 6 B | Mode 0644                    │
+│> a cursor                          File        6 B  ││ Modified: 2026-10-16 10:17                │
+│ *z marked                          File        6 B  ││───────────────────────────────────────────│
+│                                                     ││                                           │
+│           ┌ Copying                                                             [ x ]┐           │
+│           │ /tmp/tfile-single-mark-vj6mgxpz/src/z marked                             │           │
+│           │ Completed items: 0                                                       │           │
+│           │ Copied bytes: 0                                                          │           │
+│           │─Cancel stops here; changes are kept──────────────────────────────────────│           │
+│           │ [ Cancel ]  Esc / Enter; F10: exit                                       │           │
+│           └──────────────────────────────────────────────────────────────────────────┘           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+└─ Targets: 1 marked ─────────────────────────────────┘└───────────────────────────────────────────┘
+ Shown: 2 | Marked: 1 | Dotfiles: on  Targets: 1 marked                                             
+                                                                                                    
+
+=== /tmp/tfile-mark-fixed.log ===
+PASS: fixed cursor/mark symbols, footer/count/target cues, menu/direct all-clear, exactly-one copy/move/delete/Trash/rename, filtered batch Cancel/list/permanent label and independent dual marks at 50x9/100x24
+
+=== /tmp/tfile-mark-normal-final.log ===
+PASS: fixed cursor/mark symbols, footer/count/target cues, menu/direct all-clear, exactly-one copy/move/delete/Trash/rename, filtered batch Cancel/list/permanent label and independent dual marks at 50x9/100x24
+
+=== /tmp/tfile-terminal-sanitizers-final.log ===
+PASS: terminal, /tmp/tfile-terminal-sanitizers-final/terminal.log
+PASS: input, /tmp/tfile-terminal-sanitizers-final/input.log
+PASS: probe, /tmp/tfile-terminal-sanitizers-final/probe.log
+PASS: pty, /tmp/tfile-terminal-sanitizers-final/pty.log
+PASS: auto_pty, /tmp/tfile-terminal-sanitizers-final/auto_pty.log
+PASS: vim_pty, /tmp/tfile-terminal-sanitizers-final/vim_pty.log
+PASS: editor_shutdown_pty, /tmp/tfile-terminal-sanitizers-final/editor_shutdown_pty.log
+PASS: mark_discovery_pty, /tmp/tfile-terminal-sanitizers-final/mark_discovery_pty.log
+PASS: reads_pty, /tmp/tfile-terminal-sanitizers-final/reads_pty.log
+LSan disabled; incomplete.
+
+=== /tmp/tfile-regression.time ===
+	Command being timed: "make -j2 check"
+	User time (seconds): 34.34
+	System time (seconds): 16.96
+	Percent of CPU this job got: 8%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 9:33.10
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 155532
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 1151809
+	Voluntary context switches: 96268
+	Involuntary context switches: 27598
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+
+=== /tmp/tfile-regression.log ===
+python3 tests/isolated_check.py make check-isolated
+make[1]: Entering directory '/home/dongmin/workspace/file_manager_project'
+./tests/performance_test
+./tests/read_job_test
+search: 2048 entries, 6145 string copies, 4 ms
+preview jump: 532 string copies, 2 ms
+PASS: large search and preview jump/cache/restart
+./tests/batch_test
+PASS: raw-byte marks/snapshot/order/filter/history, allocation failure, copy/move/delete success/first-middle error/pre-between cancellation, partial writes and FD cleanup
+./tests/ownership_test
+PASS: 100 allocation-failure positions in listing/refresh/search/preview release explicit ownership and FDs; failed refresh retains list
+./tests/sort_test
+PASS: eight sort orders, boundary values/comparator consistency, raw identity, independent app state, navigation/search and unchanged picker/search order
+./tests/progress_test
+PASS: deterministic start/chunk/item/delete cancellation, counters, residual modes/data, no-clobber, FD cleanup and subsequent operations
+python3 tests/check_architecture.py
+PASS: UI -> core -> platform dependency boundaries
+python3 tests/run_native.py
+PASS: POSIX paths, metadata, links, errors, no-replace move and monotonic clock
+PASS: core state, operations, search limits/cancellation, paged preview (without ncurses)
+python3 tests/run_operations.py
+PASS: pinned move parents, late no-clobber/EXDEV, controlled source/destination swaps, outside markers, non-root 0555/umask, links, no-clobber, partial failures, depth/FD limits and FD cleanup
+python3 tests/run_regressions.py search
+PASS: search omissions/metadata errors/OOM/cancellation/limits, retained results, hidden selection and transactional failures
+./tests/settings_core_test
+PASS: curses-free settings defaults, full value ranges and transactional validation
+./tests/settings_test
+PASS: settings parsing, restart, panel isolation, 50x9 options, atomic failure preservation and path safety
+python3 tests/settings_pty.py
+large listing: 10027 entries, sync 23 ms, isolated 124 ms (1 ms test polling)
+PASS: async/sync result equality, tail results, recursion, hidden list, limits, errors, interrupted IPC, parent OOM, transactional cancellation, 32 cancellations and FD/child cleanup
+python3 tests/isolated_check.py python3 tests/scan_latency_pty.py
+search/open esc 50x9: 25.7 ms, held read cancelled and child reaped
+search/open mouse 50x9: 0.6 ms, held read cancelled and child reaped
+search/open resize 50x9: 1.4 ms, held read cancelled and child reaped
+search/open term 50x9: 3.3 ms, held read cancelled and child reaped
+directory/open esc 50x9: 26.4 ms, held read cancelled and child reaped
+directory/open mouse 50x9: 1.2 ms, held read cancelled and child reaped
+directory/open resize 50x9: 1.1 ms, held read cancelled and child reaped
+directory/open term 50x9: 3.6 ms, held read cancelled and child reaped
+PASS: real-process settings save/restart, dual CLI path, startup warning and explicit replacement at 50x9/100x24
+./tests/terminal_test
+PASS: bounded terminal DA/cell protocol, full-format validation and transactional replies (no curses)
+./tests/terminal_input_test
+PASS: split/late/malformed terminal report isolation, Esc/resize, regular keys, Unicode and mouse preservation
+./tests/graphics_probe_test
+PASS: lazy bounded session probe, Off/failure/cancellation, geometry refresh and capture lifetime
+python3 tests/terminal_pty.py
+search/next esc 50x9: 25.6 ms, held read cancelled and child reaped
+search/next mouse 50x9: 0.6 ms, held read cancelled and child reaped
+search/next resize 50x9: 1.2 ms, held read cancelled and child reaped
+search/next term 50x9: 3.3 ms, held read cancelled and child reaped
+directory/next esc 50x9: 26.1 ms, held read cancelled and child reaped
+directory/next mouse 50x9: 0.9 ms, held read cancelled and child reaped
+directory/next resize 50x9: 1.0 ms, held read cancelled and child reaped
+directory/next term 50x9: 3.1 ms, held read cancelled and child reaped
+search/open esc 100x24: 25.7 ms, held read cancelled and child reaped
+search/open mouse 100x24: 0.5 ms, held read cancelled and child reaped
+search/open resize 100x24: 0.9 ms, held read cancelled and child reaped
+search/open term 100x24: 3.2 ms, held read cancelled and child reaped
+directory/open esc 100x24: 27.7 ms, held read cancelled and child reaped
+directory/open mouse 100x24: 2.1 ms, held read cancelled and child reaped
+directory/open resize 100x24: 1.4 ms, held read cancelled and child reaped
+directory/open term 100x24: 3.1 ms, held read cancelled and child reaped
+search/next esc 100x24: 25.9 ms, held read cancelled and child reaped
+search/next mouse 100x24: 0.9 ms, held read cancelled and child reaped
+search/next resize 100x24: 1.2 ms, held read cancelled and child reaped
+search/next term 100x24: 3.4 ms, held read cancelled and child reaped
+directory/next esc 100x24: 27.3 ms, held read cancelled and child reaped
+directory/next mouse 100x24: 2.0 ms, held read cancelled and child reaped
+directory/next resize 100x24: 1.3 ms, held read cancelled and child reaped
+directory/next term 100x24: 3.3 ms, held read cancelled and child reaped
+./tests/favorites_test
+PASS: favorites persistence/raw bytes/limits/canonical duplicates, failed save rollback, corrupt/symlink storage, preserved defaults/history and inaccessible navigation
+python3 tests/favorites_pty.py
+PASS: favorites add/rename/go/history/unregister/restart, independent startup storage (PTY)
+./tests/filter_test
+PASS: contains/glob/raw Unicode, independent panels, hidden/sort/history/refresh rules, transactional failure, visible-only batches, mark clearing and empty/no-match distinction
+python3 tests/filter_pty.py
+PASS: filter prompts/clear, Unicode/glob/no-match/marks/refresh and independent dual panel at 50x9/100x24
+./tests/batch_conflict_test
+PASS: copy/move preflight/late real no-clobber collisions, skip/skip-all/stop/cancel, skipped marks, error isolation and partial-copy refusal
+python3 tests/batch_conflict_pty.py
+PASS: batch conflict skip/skip-all/stop/Esc/resize, exact file effects and marks for copy/move (PTY)
+python3 tests/external_tools.py
+PASS: argv grammar/priority/vi, literal shell-looking filenames, editor signal restoration, no shell fallback/limits, GUI ack/failure/live-detach/reap and FD cleanup
+PASS: actual exec argv, inherited user limits, no extra FDs, original filename bytes and no shell execution
+python3 tests/external_pty.py
+PASS: cooked editor terminal, resize/input/media restore, cursor vs marked file, literal argv and asynchronous xdg-open result (PTY)
+./tests/trash_test
+PASS: Trash payload/metadata, no-clobber, failures/cancel/crash, pinned parents, leaf refusal, private mount routing (simulated), marks and FD lifetime
+python3 tests/trash_pty.py
+PASS: Trash/default cancel/frozen marks/batch/no-delete fallback, separate permanent delete, resize cancellation at 50x9/100x24 (PTY)
+python3 tests/vim_tools.py
+PASS: Vim ignores editor env, UTF-8/empty/extensionless content check, media/binary/link/special refusal, read-only argv, missing tool, exit/signal and signal restoration
+PASS: exact Vim argv (including -R/--), literal hostile filename, no shell or fallback
+python3 tests/vim_pty.py
+PASS: real installed Vim edit/write/quit, hostile cursor path vs marks, -R, signal termination, resize, ncurses/input/mouse/preview restoration (automated PTY)
+PASS: missing Vim, ENOEXEC/no shell fallback, failed exit, binary/link refusal and immediate menu restoration (PTY)
+python3 tests/editor_shutdown_pty.py
+PASS: parent TERM/HUP forwarded only to editor, grace/reap and shell termios restored
+./tests/mark_policy_test
+PASS: single-mark target priority, absent/multiple mark refusal, filtered visible-only marks, independent panels and owned cleanup
+python3 tests/mark_discovery_pty.py
+PASS: fixed cursor/mark symbols, footer/count/target cues, menu/direct all-clear, exactly-one copy/move/delete/Trash/rename, filtered batch Cancel/list/permanent label and independent dual marks at 50x9/100x24
+python3 tests/check_docs.py
+PASS: entry-point local document links and heading anchors
+./tests/preview_worker_test
+PASS: worker body normal teardown, forward/backward/distant cache pages, directory/error cleanup (in-process harness)
+python3 tests/isolated_check.py ./tests/preview_async_test
+PASS: async-only I/O, persistent cache, 40 cancellations, stale selections, page/resize cancellation, modal/mode cleanup, FD bound, transactional first dual creation
+python3 tests/isolated_check.py python3 tests/preview_latency_pty.py
+after open 50x9 navigation+quit: 5.0 ms
+after peek 50x9 navigation+quit: 6.5 ms
+after directory 50x9 navigation+quit: 6.4 ms
+after line 50x9 navigation+quit: 2.9 ms
+after metadata 50x9 navigation+quit: 0.7 ms
+after page 50x9 navigation+quit: 1.6 ms
+after open 100x24 navigation+quit: 5.2 ms
+after peek 100x24 navigation+quit: 4.0 ms
+PASS: explicit terminal setup, split/invalid/no/late replies, display/erase failures, recheck, F7 focus, Unicode, no implicit persistence and fresh-session isolation at 50x9/100x24
+PASS: measured manual input, missing tools vs unknown cells, ioctl fallback, advanced environment preservation, active converter/FD/temp cleanup and resize abort
+PASS: F7 verification followed by navigation, search, explicit mouse copy and late reply isolation
+python3 tests/terminal_auto_pty.py
+after directory 100x24 navigation+quit: 2.9 ms
+after line 100x24 navigation+quit: 6.4 ms
+after metadata 100x24 navigation+quit: 4.2 ms
+after page 100x24 navigation+quit: 4.5 ms
+python3 tests/isolated_check.py python3 tests/panels_first_latency_pty.py
+after first dual/cancel: 253.7ms worker_is_ui=False
+after first dual/success: 14.7ms worker_is_ui=False
+python3 tests/isolated_check.py python3 tests/fullscreen_pty.py
+PASS: actual terminal width/height at startup and resize; preview, full list and dual fill the terminal despite stale environment
+./tests/mutation_worker_test
+PASS: actual mutation worker body normal/cancelled teardown, owned paths, results and progress (in-process harness)
+python3 tests/isolated_check.py ./tests/mutation_job_test
+PASS: 32 held-call cooperative cancellations, completion race, FD/child cleanup, ENOSPC/EIO partial writes, EACCES, confirmed/unknown crash and broken IPC, conflict decisions, EXDEV/no-replace move, Trash and unexpected parent death
+python3 tests/isolated_check.py python3 tests/mutation_shutdown_pty.py
+resize: acknowledgement=21.2ms actual_exit=998.5ms
+exit: acknowledgement=12.6ms actual_exit=1000.5ms
+cancel-then-exit: acknowledgement=28.6ms actual_exit=993.9ms
+int: acknowledgement=0.6ms actual_exit=992.7ms
+term: acknowledgement=10.1ms actual_exit=1007.1ms
+hup: acknowledgement=9.8ms actual_exit=1004.1ms
+crash-worker: uncertain result and both inspectable paths, child reaped
+kill-parent: orphan safely stopped/reaped, retained empty partial file
+python3 tests/process_probe_test.py
+PASS: ENOENT/ESRCH child disappearance, names, and visible access failures
+python3 tests/isolated_check.py ./tests/panels_ui_test
+PASS: independent panels/modes/history/find/search/marks; 2 initial directory opens + 1 sort per panel, zero focus I/O; narrow geometry/marks; modal isolation; one refresh per panel, failures/stale write guard; batch outcomes; 100 initial/second/reopen allocation failure positions; owned memory/windows/FD cleanup
+python3 tests/isolated_check.py python3 tests/run_regressions.py controller
+PASS: refresh errors preserve UI state; create/copy/move/delete success remains distinct from refresh failure
+python3 tests/isolated_check.py python3 tests/async_boundaries_pty.py
+PASS directory-exit 50x9: 4.2ms; worker reaped, data unchanged
+PASS search-exit 50x9: 1.3ms; worker reaped, data unchanged
+PASS search-results-exit 50x9: 2.6ms; worker reaped, data unchanged
+PASS conflict-exit 50x9: 27.8ms; worker reaped, data unchanged
+PASS conflict-crash 50x9: 270.4ms; worker reaped, data unchanged
+PASS conflict-cancel 50x9: 300.5ms; worker reaped, data unchanged
+PASS conflict-mouse 50x9: 379.1ms; worker reaped, data unchanged
+PASS conflict-resize 50x9: 274.6ms; worker reaped, data unchanged
+PASS conflict-term 50x9: 23.6ms; worker reaped, data unchanged
+PASS directory-exit 100x24: 3.0ms; worker reaped, data unchanged
+PASS search-exit 100x24: 2.0ms; worker reaped, data unchanged
+PASS search-results-exit 100x24: 2.6ms; worker reaped, data unchanged
+PASS conflict-exit 100x24: 26.7ms; worker reaped, data unchanged
+PASS conflict-crash 100x24: 305.0ms; worker reaped, data unchanged
+PASS conflict-cancel 100x24: 303.9ms; worker reaped, data unchanged
+PASS conflict-mouse 100x24: 382.3ms; worker reaped, data unchanged
+PASS conflict-resize 100x24: 278.6ms; worker reaped, data unchanged
+PASS conflict-term 100x24: 24.5ms; worker reaped, data unchanged
+python3 tests/isolated_check.py python3 tests/integrated_session_pty.py
+PASS connected session 50x9: navigation/sort/filter/search/history, marks/dual/copy/move/results, PNG/PDF/text, Vim, replacement, partial Trash/delete/cancel, settings restart
+PASS connected session 100x24: navigation/sort/filter/search/history, marks/dual/copy/move/results, PNG/PDF/text, Vim, replacement, partial Trash/delete/cancel, settings restart
+PASS: lazy Auto PNG/JPEG/PDF, session reuse/restart/resize, ioctl, Off, failed/late/malformed replies, missing tools, selection/modal/child cleanup, UTF-8/mouse/keys, delayed startup and idle waits
+./tests/picker_test
+PASS: non-root permission denial/deleted path are not empty or usable; empty destination/source, blocked use, explicit path and Parent recovery
+python3 tests/media_tools.py
+Child soft limits: AS=536870912 CPU=5 FSIZE=65536 CORE=0
+PASS: signatures/empty/special names, PNG/JPEG/PDF-page-1, bounded text, missing tools/errors/encryption/timeout/output validation, 50 cancellations, stale identity, FIFO rejection, FD/child/temp cleanup, UI cache/focus/modal/off modes
+python3 tests/media_pty.py
+PASS: PTY protocol ordering/bounds/clear/modal/resize, responsive selection/exit cancellation, focus cache, Auto/Off/files-only, PDF-first-page/text fallback, safe errors, unchanged text scrolling, zero/fake image, missing tools; real graphics remain unverified
+python3 tests/media_fit_pty.py
+PASS: portrait/landscape/square/tiny/large/PDF centering, bounds/aspect/no upscale, larger cap, resize coalescing, small-original cache, modal and minimum-screen clearing (protocol oracle)
+python3 tests/media_redraw_measure.py --verify
+{
+  "binary": "./tfile",
+  "terminal": "xterm-256color",
+  "columns": 100,
+  "rows": 30,
+  "cell_pixels": "8x16",
+  "results": [
+    {
+      "scenario": "idle",
+      "converter_processes": 0,
+      "sixel_frames": 0,
+      "sixel_bytes": 0,
+      "ed2": 0,
+      "pty_bytes": 0,
+      "ack_ms": null
+    },
+    {
+      "scenario": "mark on",
+      "converter_processes": 0,
+      "sixel_frames": 0,
+      "sixel_bytes": 0,
+      "ed2": 0,
+      "pty_bytes": 206,
+      "ack_ms": 1.08
+    },
+    {
+      "scenario": "mark off",
+      "converter_processes": 0,
+      "sixel_frames": 0,
+      "sixel_bytes": 0,
+      "ed2": 0,
+      "pty_bytes": 314,
+      "ack_ms": 1.14
+    },
+    {
+      "scenario": "status only",
+      "converter_processes": 0,
+      "sixel_frames": 0,
+      "sixel_bytes": 0,
+      "ed2": 0,
+      "pty_bytes": 97,
+      "ack_ms": 1.2
+    },
+    {
+      "scenario": "image to image",
+      "converter_processes": 1,
+      "sixel_frames": 1,
+      "sixel_bytes": 2720,
+      "ed2": 2,
+      "pty_bytes": 12590,
+      "ack_ms": 126.56
+    },
+    {
+      "scenario": "image to PDF",
+      "converter_processes": 2,
+      "sixel_frames": 1,
+      "sixel_bytes": 33,
+      "ed2": 2,
+      "pty_bytes": 9897,
+      "ack_ms": 172.36
+    },
+    {
+      "scenario": "PDF to text",
+      "converter_processes": 0,
+      "sixel_frames": 0,
+      "sixel_bytes": 0,
+      "ed2": 2,
+      "pty_bytes": 9649,
+      "ack_ms": 83.23
+    },
+    {
+      "scenario": "modal open",
+      "converter_processes": 0,
+      "sixel_frames": 0,
+      "sixel_bytes": 0,
+      "ed2": 2,
+      "pty_bytes": 11682,
+      "ack_ms": 2.13
+    },
+    {
+      "scenario": "modal close",
+      "converter_processes": 0,
+      "sixel_frames": 1,
+      "sixel_bytes": 4638,
+      "ed2": 0,
+      "pty_bytes": 14104,
+      "ack_ms": 29.5
+    },
+    {
+      "scenario": "resize burst",
+      "converter_processes": 0,
+      "sixel_frames": 4,
+      "sixel_bytes": 18552,
+      "ed2": 8,
+      "pty_bytes": 62033,
+      "ack_ms": 100.95
+    }
+  ]
+}
+python3 tests/media_real_fit.py
+PASS: real ImageMagick/Poppler portrait/landscape/square/tiny/large/PDF output fits, preserves aspect and centers at 80x24/260x80; no visual terminal claim
+./tests/panels_ui_test
+PASS: independent panels/modes/history/find/search/marks; 2 initial directory opens + 1 sort per panel, zero focus I/O; narrow geometry/marks; modal isolation; one refresh per panel, failures/stale write guard; batch outcomes; 100 initial/second/reopen allocation failure positions; owned memory/windows/FD cleanup
+./tests/batch_ui_test
+PASS: marks without I/O/sort, focus, safe Cancel paging, batch outcomes/one refresh/failure, frozen draw with polling, details preserve cursor/scroll/focus/cache at 50x9/80x24/160x24
+./tests/startup_ui_test
+No such file or directory
+PASS: one initial list read, one main sort per load/refresh, unchanged picker order and raw-name ties at 50x9/100x24
+./tests/search_progress_ui_test
+PASS: frozen-clock search suppresses redundant frames but polls every callback, keeps cancellation/results/notice and UI state at 50x9/100x24
+./tests/history_ui_test
+PASS: history identity/raw bytes/scroll, changed sort, missing/hidden fallback, failed navigation transaction, Parent, forward trim/button state, dual isolation and 128-entry ownership
+./tests/keyboard_ui_test
+PASS: name/path empty and encoded overflow warnings, preserved edit cursor/raw bytes, one Options window with retained focus/scroll and visible refresh failure at 50x9/100x24
+./tests/popup_style_test
+PASS: 256/8/mono Location label/path, enabled/disabled history styles and exact click bounds; popup surfaces, title/border/footer/focus/disabled attributes, wide glyph preservation and exact background restoration at 50x9/80x24/100x24/160x32
+./tests/progress_ui_test
+PASS: frozen-clock UI draws once while checking input at least 34 times during 1 MiB copy
+./tests/preview_test
+PASS: empty file/directory, hidden-only directory, permission and directory read failures, cached directory probes, metadata retained
+PASS: 1000 sequential pages: 1 open, 1020 chunk reads, 12240 bytes; 100 unchanged redraws: 0 reads/opens; backward cache, EOF, changes, cleanup; sort preserves reader/page/selection without content or list I/O; refresh resets safely
+./tests/text_test
+PASS: display escapes, Unicode cell widths, zero-width marks, pagination and exact byte round trips
+./tests/text_window_test
+PASS: curses cell inspection keeps text within its row/region and preserves guards
+python3 tests/run_regressions.py controller
+PASS: refresh errors preserve UI state; create/copy/move/delete success remains distinct from refresh failure
+python3 tests/progress_pty.py
+PASS: pipe-gated PTY Cancel/Esc/resize, 50x9 modal, exact partial results and blocked background input
+python3 tests/smoke.py
+PASS: Unicode/key separation, search states/hidden results, refresh failures, mouse/history, modals, file operations and preview
+python3 tests/first_run.py
+PASS: clean HOME/XDG and no optional tools; create/delete/cancel, media reasons, Vim/xdg-open missing guidance, navigation/copy/move, no-argument startup, no unsolicited preview focus; non-TTY/TERM failures; suite environment isolation
+python3 tests/display_pty.py
+PASS: PTY popup guards, escaped names, full delete-name paging and byte-exact copy/rename/delete
+python3 tests/sort_pty.py
+PASS: Options keyboard/mouse/Menu, 50x9 frames, selected identity/scroll/preview, refresh success/failure/fallback, picker order and restart defaults
+python3 tests/layout_pty.py
+PASS: main panel cells at 50x9/80x24/100x24/160x32, selection, columns, empty list, short/EOF/binary/link/error previews
+python3 tests/navigation_pty.py
+PASS: loaded/hidden counts, overflow ranges, empty/fitting list, Korean names, full-width preview toggle identity/scroll, retained cancellation, group gaps and resize
+python3 tests/history_pty.py
+PASS: Back/Forward restores exact selected Unicode item and list viewport at 50x9/80x24/160x32
+PASS: keyboard/mouse/mixed history, bracket/Alt CSI mappings, plain arrows, empty forward, branch trim, deleted path retry and independent dual histories
+PASS: bracket/Alt and mixed history after terminal query activates raw escape parsing
+python3 tests/notice_pty.py
+PASS: status summary, keyboard/mouse/menu details, scroll, dismiss/ack/reopen/replacement and retained alerts at 50x9/100x24
+python3 tests/quick_find_pty.py
+PASS: loaded-list find Unicode editing/no match/wrap/commit/cancel, literal command letters, menu and empty list at 50x9/80x24/160x32
+python3 tests/rename_pty.py
+PASS: direct menu rename no-op, retained collision/edit, exact selection and original invalid/control bytes at 50x9/80x24/160x32
+python3 tests/transfer_form_pty.py
+PASS: destination-first forms, explicit execution, absolute/relative base, complete path paging, Browse retention/mouse, collision/error retry, permissions, long Unicode paths and raw control names at all sizes
+python3 tests/keyboard_pty.py
+PASS: keyboard preview pages/EOF/Home/Esc, Tab/click focus, Enter cache viewport, hidden preview, directory/link/binary/error/empty states, retained Options keyboard/mouse focus, recoverable name/path input and resize at 50x9/80x24/160x32
+python3 tests/preview_focus_pty.py
+PASS: short text/binary/empty file/directory Tab/click/wheel isolation; scroll footer/border/input; modal restore; resize/content loss; no automatic focus on resize completion; list wheel
+PASS: static statuses stay unfocusable at minimum 50x9 geometry
+python3 tests/ux_consistency_pty.py
+PASS: cursor/marked distinction; search Tab/Shift+Tab/Enter; disabled Open; permanent delete Shift+Tab; acknowledgement and modal restoration at 50x9/100x24
+python3 tests/search_ui_pty.py
+PASS: search input/result geometry, unicode edit, focus flow, buttons/gaps, restore, resize; gated Cancel/Esc/Enter keeps 64 results, x/resize closes, background blocked
+python3 tests/help_pty.py
+PASS: complete wrapped Help at 50x9/80x24/160x32, explicit display-line ranges, both scroll boundaries, footer guards, blocked background commands, exact restore and resize
+python3 tests/panels_pty.py
+PASS: dual keyboard/mouse/geometry/resizing, independent path/sort/hidden/history/find/search/marks, preview and popup return, active-only batch/rename/delete and retained destination flow at 50x9/80x24/160x32
+python3 tests/dual_transfer_pty.py
+PASS: opposite defaults, explicit mouse execution, peer marks/path, relative edits, collision, deleted-path retry/Browse, move, single/preview defaults at 50x9/80x24/160x32
+python3 tests/workflow_pty.py
+PASS workflow 50x9: normal chained operations/modes/history; FD=3, RSS=3252..3252 KiB
+PASS workflow 80x24: normal chained operations/modes/history; FD=3, RSS=3364..3364 KiB
+PASS workflow 160x32: normal chained operations/modes/history; FD=3, RSS=3660..3660 KiB
+python3 tests/recovery_pty.py
+PASS: 50x9 denied navigation overrides old success
+PASS: 50x9 prior file result retained
+PASS: 50x9 incomplete search overrides old success
+PASS: 50x9 prior file result retained
+PASS: 50x9 failed refresh overrides old success
+PASS: 50x9 missing history location overrides old success
+PASS: 50x9 prior file result retained
+PASS: 50x9 empty dual transfer stays in list
+PASS: 50x9 empty dual transfer stays in list
+PASS: 50x9 prior file result retained
+PASS: 50x9 Paths resize cancels parent transfer
+PASS: 80x24 denied navigation overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 incomplete search overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 failed refresh overrides old success
+PASS: 80x24 missing history location overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 empty dual transfer stays in list
+PASS: 80x24 empty dual transfer stays in list
+PASS: 80x24 prior file result retained
+PASS: 80x24 Paths resize cancels parent transfer
+PASS: 160x32 denied navigation overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 incomplete search overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 failed refresh overrides old success
+PASS: 160x32 missing history location overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 empty dual transfer stays in list
+PASS: 160x32 empty dual transfer stays in list
+PASS: 160x32 prior file result retained
+PASS: 160x32 Paths resize cancels parent transfer
+PASS: recovery flows and prior result preservation at all sizes
+python3 tests/batch_destination_pty.py
+PASS: batch destination errors/edit/picker/review/cancel/resize/Unicode paths at all sizes
+python3 tests/batch_pty.py
+PASS: marked/cursor separation, find/input/preview isolation, menu select/clear/rename guard, batch cancel/collision/copy/move/delete/details keyboard+mouse at 50x9/80x24/160x32
+python3 tests/batch_progress_pty.py
+PASS: single/dual pipe-gated batch copy/delete partial cancellation, move-between targets, mouse/Esc/resize, exact statuses/residue and queued background commands discarded
+make[1]: Leaving directory '/home/dongmin/workspace/file_manager_project'
+
+=== /tmp/tfile-sanitizers-build-failure/summary.log ===
+### Native sanitizer results
+LSan: enabled (fork tests cover parent; body harnesses cover normal teardown)
+- preview_async_test: FAIL (build; not run) (build exit 9, run exit not run)
+- preview_worker_test: FAIL (build; not run) (build exit 9, run exit not run)
+- mutation_job_test: FAIL (build; not run) (build exit 9, run exit not run)
+- mutation_worker_test: FAIL (build; not run) (build exit 9, run exit not run)
+- read_job_test: FAIL (build; not run) (build exit 9, run exit not run)
+- performance_test: FAIL (build; not run) (build exit 9, run exit not run)
+- mark_policy_test: FAIL (build; not run) (build exit 9, run exit not run)
+- vim_test: FAIL (build; not run) (build exit 9, run exit not run)
+- favorites_test: FAIL (build; not run) (build exit 9, run exit not run)
+- filter_test: FAIL (build; not run) (build exit 9, run exit not run)
+- batch_conflict_test: FAIL (build; not run) (build exit 9, run exit not run)
+- external_test: FAIL (build; not run) (build exit 9, run exit not run)
+- trash_test: FAIL (build; not run) (build exit 9, run exit not run)
+- panels_ui_test: FAIL (build; not run) (build exit 9, run exit not run)
+- batch_test: FAIL (build; not run) (build exit 9, run exit not run)
+- batch_ui_test: FAIL (build; not run) (build exit 9, run exit not run)
+- operations_test: FAIL (build; not run) (build exit 9, run exit not run)
+- sort_test: FAIL (build; not run) (build exit 9, run exit not run)
+- progress_test: FAIL (build; not run) (build exit 9, run exit not run)
+- search_test: FAIL (build; not run) (build exit 9, run exit not run)
+- controller_test: FAIL (build; not run) (build exit 9, run exit not run)
+- history_ui_test: FAIL (build; not run) (build exit 9, run exit not run)
+- keyboard_ui_test: FAIL (build; not run) (build exit 9, run exit not run)
+- popup_style_test: FAIL (build; not run) (build exit 9, run exit not run)
+- progress_ui_test: FAIL (build; not run) (build exit 9, run exit not run)
+- preview_test: FAIL (build; not run) (build exit 9, run exit not run)
+- text_test: FAIL (build; not run) (build exit 9, run exit not run)
+- text_window_test: FAIL (build; not run) (build exit 9, run exit not run)
+- startup_ui_test: FAIL (build; not run) (build exit 9, run exit not run)
+- search_progress_ui_test: FAIL (build; not run) (build exit 9, run exit not run)
+- ownership_test: FAIL (build; not run) (build exit 9, run exit not run)
+Total: 31 required, 0 passed, 31 failed; 0.033s

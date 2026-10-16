@@ -58,7 +58,7 @@ jobs:
           mkdir -p /tmp/tfile-ci-logs
           sudo apt-get update 2>&1 | tee /tmp/tfile-ci-logs/apt-update.log
           sudo apt-get install -y build-essential libncurses-dev ncurses-term python3 2>&1 | tee /tmp/tfile-ci-logs/apt-install.log
-      - name: ASan UBSan and LSan native
+      - name: ASan UBSan and LSan native (includes async process and worker bodies)
         run: |
           test "$(id -u)" -ne 0
           python3 tests/isolated_check.py python3 tests/run_sanitizers.py --output-directory /tmp/tfile-sanitizers-ci 2>&1 | tee /tmp/tfile-ci-logs/native.log
@@ -76,6 +76,7 @@ jobs:
           path: |
             /tmp/tfile-ci-logs/
             /tmp/tfile-sanitizers-ci/*.log
+            /tmp/tfile-sanitizers-ci/summary.json
             /tmp/tfile-media-sanitizers-ci/*.log
             /tmp/tfile-terminal-sanitizers-ci/*.log
           retention-days: 14
