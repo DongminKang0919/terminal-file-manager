@@ -10,18 +10,28 @@ static Result initialize_panel(AppState *app,const char *directory,const Startup
     return app_init_settings(app,directory,s);
 }
 
-Result ui_init(UiContext *ui,const char *directory) {
-    *ui=(UiContext){.mode=UI_LIST_PREVIEW,.wheel_step=1,.image_auto=true};
+static Result initialize_ui(UiContext *ui,const char *directory,bool asynchronous) {
+    *ui=(UiContext){.mode=UI_LIST_PREVIEW,.wheel_step=1,.image_auto=true,
+        .starting=asynchronous,.starting_path=directory?directory:".",.startup_started=core_monotonic_ms()};
     settings_load(&ui->settings);
     favorites_load(&ui->favorites);
     StartupSettings *s=&ui->settings.defaults;
     ui->wheel_step=s->wheel_step; ui->image_auto=s->image_auto;
+    if(asynchronous)ui_enable_async_reads(ui);
     Result r=initialize_panel(&ui_panel(ui)->app,directory,s);
+    if(asynchronous && (core_media_shutdown_requested()||core_editor_shutdown_requested()))
+        r=result_make(RESULT_CANCELLED,"Startup cancelled");
     if(r.code==RESULT_OK) r=ui_set_mode(ui,(UiMode)s->mode);
+    if(asynchronous && (core_media_shutdown_requested()||core_editor_shutdown_requested()))
+        r=result_make(RESULT_CANCELLED,"Startup cancelled");
     if(ui->settings.load_result.code!=RESULT_OK)
         snprintf(ui->settings_warning,sizeof ui->settings_warning,"Settings (F7): %.220s",ui->settings.load_result.detail);
+    ui->starting=false;ui->starting_path=NULL;
+    if(asynchronous)flushinp(); /* Startup keys must never become file commands. */
     return r;
 }
+Result ui_init(UiContext *ui,const char *directory) { return initialize_ui(ui,directory,false); }
+Result ui_startup(UiContext *ui,const char *directory) { return initialize_ui(ui,directory,true); }
 void ui_free(UiContext *ui) {
     graphics_probe_cancel(ui); graphics_clear(ui); notice_clear(ui); preview_reset(ui); core_read_shutdown(); core_media_shutdown();
     for(unsigned i=0;i<2;i++) app_free(&ui->panels[i].app);
@@ -57,6 +67,7 @@ Result ui_set_mode(UiContext *ui,UiMode mode) {
     unsigned other=ui->active^1u;
     if(mode==UI_LIST_LIST) {
         if(!ui->second_initialized) {
+            if(ui->starting) { ui->starting_panel=other;ui->starting_path=ui_panel(ui)->app.directory; }
             UiFilePanel candidate={0};
             candidate.app.load_progress=ui_panel(ui)->app.load_progress;
             candidate.app.load_context=ui_panel(ui)->app.load_context;

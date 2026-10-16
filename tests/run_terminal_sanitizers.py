@@ -24,7 +24,7 @@ flags=[os.environ.get('CC','cc'),'-D_XOPEN_SOURCE=700','-std=c11','-O1','-g','-W
 started=time.monotonic()
 results={}
 for name,test,sources,extra in [
-    ('tfile_ui_io','tests/ui_io_gate.c',core+ui+['src/ui/main.c'],['-lncursesw','-Wl,--wrap=core_resolve_directory,--wrap=platform_directory_open,--wrap=platform_create,--wrap=platform_create_progress,--wrap=platform_media_open,--wrap=open,--wrap=access,--wrap=pwrite,--wrap=core_read_poll']),
+    ('tfile_ui_io','tests/ui_io_gate.c',core+ui+['src/ui/main.c'],['-lncursesw','-Wl,--wrap=core_resolve_directory,--wrap=platform_directory_open,--wrap=platform_create,--wrap=platform_create_progress,--wrap=platform_media_open,--wrap=open,--wrap=access,--wrap=pwrite,--wrap=core_read_poll,--wrap=platform_directory_next,--wrap=platform_resolve']),
     ('terminal_test','tests/terminal_test.c',core,[]),
     ('terminal_input_test','tests/terminal_input_test.c',core+ui,['-lncursesw','-Wl,--wrap=core_monotonic_ms']),
     ('graphics_probe_test','tests/graphics_probe_test.c',core+ui,['-lncursesw','-Wl,--wrap=core_monotonic_ms,--wrap=core_terminal_pixels,--wrap=terminal_query,--wrap=terminal_query_cells']),
@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-terminal-san-home-') as home:
          'ASAN_OPTIONS':f'detect_leaks={int(not args.disable_leaks)}:halt_on_error=1',
          'UBSAN_OPTIONS':'halt_on_error=1:print_stacktrace=1','TFILE_BINARY':str(out/'tfile'),
          'TFILE_READ_BINARY':str(out/'tfile_read'),'TFILE_IO_BINARY':str(out/'tfile_ui_io')}
-    for name,command in [('ui_io_pty',['python3','tests/ui_io_latency_pty.py']),('ui_io_lifecycle_pty',['python3','tests/ui_io_lifecycle_pty.py']),('ui_io_normal_pty',['python3','tests/ui_io_normal_pty.py']),('terminal',[str(out/'terminal_test')]),('input',[str(out/'terminal_input_test')]),
+    for name,command in [('startup_pty',['python3','tests/startup_latency_pty.py']),('ui_io_pty',['python3','tests/ui_io_latency_pty.py']),('ui_io_lifecycle_pty',['python3','tests/ui_io_lifecycle_pty.py']),('ui_io_normal_pty',['python3','tests/ui_io_normal_pty.py']),('terminal',[str(out/'terminal_test')]),('input',[str(out/'terminal_input_test')]),
                          ('probe',[str(out/'graphics_probe_test')]),('pty',['python3','tests/terminal_pty.py']),
                          ('auto_pty',['python3','tests/terminal_auto_pty.py']),
                          ('vim_pty',['python3','tests/vim_pty.py']),
@@ -58,7 +58,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-terminal-san-home-') as home:
         print(('PASS' if result.returncode==0 else 'FAIL')+f': {name}, exit {result.returncode}, {out/name}.log',flush=True)
 print('LSan '+('disabled; incomplete' if args.disable_leaks else 'requested')+'.')
 
-report='\n'.join(['### Terminal and UI preparation sanitizer results',
+report='\n'.join(['### Startup, terminal and UI preparation sanitizer results',
     'LSan: '+('DISABLED — leak checks incomplete' if args.disable_leaks else 'enabled; fork worker bodies require separate harnesses'),
     *[f'- {name}: {"PASS" if r["exit"]==0 else "FAIL"} (exit {r["exit"]}, {r["seconds"]}s)' for name,r in results.items()],
     f'Total: {len(results)} required, {sum(r["exit"]!=0 for r in results.values())} failed; {time.monotonic()-started:.3f}s'])+'\n'

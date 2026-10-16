@@ -6,18 +6,22 @@ int main(int argc, char **argv) {
     Result terminal = terminal_session_check();
     if (terminal.code != RESULT_OK) { fprintf(stderr,"%s\n",terminal.detail); return 1; }
     UiContext context = {0}; UiContext *ui = &context;
-    Result initialized = ui_init(ui, argc == 2 ? argv[1] : NULL);
-    if (initialized.code != RESULT_OK) { fprintf(stderr, "%s\n", initialized.detail); ui_free(ui); return 1; }
-
     /* Shell size hints can be stale after terminal/split-pane resizing. */
     unsetenv("LINES"); unsetenv("COLUMNS");
     initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0); init_theme();
-    input_init(); graphics_init(ui); core_media_install_signals();
+    input_init(); core_media_install_signals();
     set_escdelay(25);
+    Result initialized = ui_startup(ui, argc == 2 ? argv[1] : NULL);
+    if (initialized.code != RESULT_OK) {
+        endwin(); ui_free(ui);
+        if(initialized.code!=RESULT_CANCELLED)fprintf(stderr,"%s\n",initialized.detail);
+        return initialized.code==RESULT_CANCELLED ? 0 : 1;
+    }
+    graphics_init(ui);
     uint64_t last_click = 0;
     size_t last_index = SIZE_MAX;
 
-    /* app_init already loaded and sorted this directory. */
+    /* Startup committed both requested panels before enabling commands. */
     int key; bool redraw=true;
     for (;;) {
         if (core_media_shutdown_requested() || core_editor_shutdown_requested()) break;

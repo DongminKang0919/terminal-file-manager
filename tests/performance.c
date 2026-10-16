@@ -29,7 +29,12 @@ int __real_wrefresh(WINDOW *);
 int __wrap_wrefresh(WINDOW *w) { frames++; return __real_wrefresh(w); }
 int __real_input_key(WINDOW *);
 int __wrap_input_key(WINDOW *w) {
-    if(mode==STARTUP) return 'q';
+    if(mode==STARTUP) {
+        /* Startup consumes keys at 0/10ms; quit only after the first list is
+           ready and main has entered its regular -1/40ms input wait. */
+        int delay=wgetdelay(w);
+        return delay==0 || delay==10 ? ERR : 'q';
+    }
     if(mode==CLOSE) return 27;
     if(mode==SEARCH) { if(wgetdelay(w)==0) { polls++; return ERR; } return 27; }
     return __real_input_key(w);

@@ -1,0 +1,242 @@
+Startup validation evidence, 2026-10-16
+Baseline: 07dab0a957ae60ae28a63869c372596c09cb4cc4
+Only trailing whitespace in copied log lines is normalized. Full raw logs remain at the listed /tmp paths.
+
+Prior commit CI (not the current local changes):
+https://github.com/DongminKang0919/terminal-file-manager/actions/runs/38854993904
+{
+  "status": "completed",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "name": "sanitizer",
+      "conclusion": "success",
+      "url": "https://github.com/DongminKang0919/terminal-file-manager/actions/runs/38854993904/job/116824354144"
+    },
+    {
+      "name": "regression",
+      "conclusion": "success",
+      "url": "https://github.com/DongminKang0919/terminal-file-manager/actions/runs/38854993904/job/116824354193"
+    }
+  ]
+}
+
+Before: gated startup
+/tmp/tfile-startup-before.log
+BEFORE startup-resolve mode=1 (50, 9) esc: no first frame, UI pid=4, blocked >= 202.3ms
+BEFORE startup-resolve mode=1 (50, 9) f10: no first frame, UI pid=6, blocked >= 202.3ms
+BEFORE startup-resolve mode=1 (50, 9) resize: no first frame, UI pid=8, blocked >= 202.3ms
+BEFORE browse mode=1 (50, 9) esc: no first frame, UI pid=10, blocked >= 202.1ms
+BEFORE browse mode=1 (50, 9) f10: no first frame, UI pid=12, blocked >= 202.1ms
+BEFORE browse mode=1 (50, 9) resize: no first frame, UI pid=14, blocked >= 202.3ms
+BEFORE entries mode=1 (50, 9) esc: no first frame, UI pid=16, blocked >= 202.3ms
+BEFORE entries mode=1 (50, 9) f10: no first frame, UI pid=18, blocked >= 202.1ms
+BEFORE entries mode=1 (50, 9) resize: no first frame, UI pid=20, blocked >= 202.1ms
+BEFORE startup-resolve mode=0 (50, 9) esc: no first frame, UI pid=22, blocked >= 202.3ms
+BEFORE startup-resolve mode=2 (50, 9) f10: no first frame, UI pid=23, blocked >= 202.2ms
+BEFORE startup-resolve mode=1 (100, 24) esc: no first frame, UI pid=24, blocked >= 202.2ms
+BEFORE startup-resolve mode=1 (100, 24) f10: no first frame, UI pid=26, blocked >= 202.4ms
+BEFORE startup-resolve mode=1 (100, 24) resize: no first frame, UI pid=28, blocked >= 202.3ms
+BEFORE browse mode=1 (100, 24) esc: no first frame, UI pid=30, blocked >= 202.4ms
+BEFORE browse mode=1 (100, 24) f10: no first frame, UI pid=32, blocked >= 202.3ms
+BEFORE browse mode=1 (100, 24) resize: no first frame, UI pid=34, blocked >= 202.6ms
+BEFORE entries mode=1 (100, 24) esc: no first frame, UI pid=36, blocked >= 202.2ms
+BEFORE entries mode=1 (100, 24) f10: no first frame, UI pid=38, blocked >= 202.4ms
+BEFORE entries mode=1 (100, 24) resize: no first frame, UI pid=40, blocked >= 202.7ms
+BEFORE startup-resolve mode=0 (100, 24) esc: no first frame, UI pid=42, blocked >= 202.7ms
+BEFORE startup-resolve mode=2 (100, 24) f10: no first frame, UI pid=43, blocked >= 202.5ms
+
+Before: ordinary startup
+/tmp/tfile-startup-normal-before.log
+NORMAL before startup (50, 9) mode=0 explicit: first-list=3.1ms
+NORMAL before startup (50, 9) mode=1 explicit: first-list=2.9ms
+NORMAL before startup (50, 9) mode=2 explicit: first-list=2.1ms
+NORMAL before startup (50, 9) mode=0 implicit: first-list=2.6ms
+NORMAL before startup (50, 9) mode=0 relative: first-list=3.3ms
+NORMAL before startup (100, 24) mode=0 explicit: first-list=3.1ms
+NORMAL before startup (100, 24) mode=1 explicit: first-list=4.3ms
+NORMAL before startup (100, 24) mode=2 explicit: first-list=5.3ms
+NORMAL before startup (100, 24) mode=0 implicit: first-list=3.8ms
+NORMAL before startup (100, 24) mode=0 relative: first-list=5.9ms
+
+Final dedicated startup regression
+/tmp/tfile-startup-target-final.log
+python3 tests/isolated_check.py ./tests/startup_ui_test
+No such file or directory
+PASS: one worker startup read, one main sort per load/refresh, unchanged picker order and raw-name ties at 50x9/100x24
+python3 tests/isolated_check.py python3 tests/startup_latency_pty.py
+PASS startup startup-resolve mode=1 (50, 9) esc implicit=False second=False: first-frame=104.1ms control-to-exit=35.9ms resize-frame=Nonems worker-gone=36.0ms worker=35
+PASS startup startup-resolve mode=1 (50, 9) f10 implicit=False second=False: first-frame=104.6ms control-to-exit=10.6ms resize-frame=Nonems worker-gone=10.7ms worker=37
+PASS startup startup-resolve mode=1 (50, 9) resize implicit=False second=False: first-frame=104.4ms control-to-exit=16.1ms resize-frame=1.4180379948811606ms worker-gone=16.2ms worker=39
+PASS startup browse mode=1 (50, 9) esc implicit=False second=False: first-frame=103.9ms control-to-exit=36.0ms resize-frame=Nonems worker-gone=36.1ms worker=42
+PASS startup browse mode=1 (50, 9) f10 implicit=False second=False: first-frame=104.4ms control-to-exit=10.6ms resize-frame=Nonems worker-gone=10.7ms worker=44
+PASS startup browse mode=1 (50, 9) resize implicit=False second=False: first-frame=104.2ms control-to-exit=15.4ms resize-frame=1.0438430035719648ms worker-gone=15.5ms worker=46
+PASS startup entries mode=1 (50, 9) esc implicit=False second=False: first-frame=104.6ms control-to-exit=36.0ms resize-frame=Nonems worker-gone=36.1ms worker=49
+PASS startup entries mode=1 (50, 9) f10 implicit=False second=False: first-frame=104.7ms control-to-exit=10.7ms resize-frame=Nonems worker-gone=10.9ms worker=51
+PASS startup entries mode=1 (50, 9) resize implicit=False second=False: first-frame=104.7ms control-to-exit=14.6ms resize-frame=1.3052529975539073ms worker-gone=14.7ms worker=53
+PASS startup startup-resolve mode=0 (50, 9) esc implicit=True second=False: first-frame=104.9ms control-to-exit=35.9ms resize-frame=Nonems worker-gone=36.0ms worker=56
+PASS startup startup-resolve mode=2 (50, 9) f10 implicit=False second=True: first-frame=104.8ms control-to-exit=10.5ms resize-frame=Nonems worker-gone=10.6ms worker=59
+PASS startup startup-resolve mode=2 (50, 9) resize implicit=False second=True: first-frame=103.8ms control-to-exit=15.7ms resize-frame=1.1430010054027662ms worker-gone=15.8ms worker=62
+PASS startup startup-resolve mode=2 (50, 9) delete implicit=False second=True: first-frame=103.5ms control-to-exit=20.4ms resize-frame=Nonems worker-gone=20.5ms worker=65
+NORMAL after startup (50, 9) mode=0 explicit: first-list=12.5ms
+NORMAL after startup (50, 9) mode=1 explicit: first-list=13.9ms
+NORMAL after startup (50, 9) mode=2 explicit: first-list=24.8ms
+NORMAL after startup (50, 9) mode=0 implicit: first-list=12.6ms
+NORMAL after startup (50, 9) mode=0 relative: first-list=13.6ms
+PASS startup error missing (50, 9)
+PASS startup error file (50, 9)
+PASS startup error denied (50, 9)
+PASS startup startup-resolve mode=1 (100, 24) esc implicit=False second=False: first-frame=104.3ms control-to-exit=36.0ms resize-frame=Nonems worker-gone=36.1ms worker=85
+PASS startup startup-resolve mode=1 (100, 24) f10 implicit=False second=False: first-frame=104.1ms control-to-exit=10.5ms resize-frame=Nonems worker-gone=10.6ms worker=87
+PASS startup startup-resolve mode=1 (100, 24) resize implicit=False second=False: first-frame=103.7ms control-to-exit=54.7ms resize-frame=0.7212900090962648ms worker-gone=54.8ms worker=89
+PASS startup browse mode=1 (100, 24) esc implicit=False second=False: first-frame=109.9ms control-to-exit=37.3ms resize-frame=Nonems worker-gone=37.4ms worker=92
+PASS startup browse mode=1 (100, 24) f10 implicit=False second=False: first-frame=103.7ms control-to-exit=10.4ms resize-frame=Nonems worker-gone=10.4ms worker=94
+PASS startup browse mode=1 (100, 24) resize implicit=False second=False: first-frame=103.2ms control-to-exit=53.5ms resize-frame=0.9404620068380609ms worker-gone=53.6ms worker=96
+PASS startup entries mode=1 (100, 24) esc implicit=False second=False: first-frame=103.1ms control-to-exit=35.5ms resize-frame=Nonems worker-gone=35.6ms worker=99
+PASS startup entries mode=1 (100, 24) f10 implicit=False second=False: first-frame=103.3ms control-to-exit=10.4ms resize-frame=Nonems worker-gone=10.4ms worker=101
+PASS startup entries mode=1 (100, 24) resize implicit=False second=False: first-frame=108.9ms control-to-exit=74.0ms resize-frame=1.6397700092056766ms worker-gone=74.1ms worker=103
+PASS startup startup-resolve mode=0 (100, 24) esc implicit=True second=False: first-frame=103.4ms control-to-exit=35.6ms resize-frame=Nonems worker-gone=35.7ms worker=106
+PASS startup startup-resolve mode=2 (100, 24) f10 implicit=False second=True: first-frame=103.9ms control-to-exit=10.6ms resize-frame=Nonems worker-gone=10.7ms worker=109
+PASS startup startup-resolve mode=2 (100, 24) resize implicit=False second=True: first-frame=103.9ms control-to-exit=17.7ms resize-frame=1.304813995375298ms worker-gone=17.8ms worker=112
+PASS startup startup-resolve mode=2 (100, 24) delete implicit=False second=True: first-frame=103.5ms control-to-exit=10.3ms resize-frame=Nonems worker-gone=10.4ms worker=115
+NORMAL after startup (100, 24) mode=0 explicit: first-list=13.7ms
+NORMAL after startup (100, 24) mode=1 explicit: first-list=14.0ms
+NORMAL after startup (100, 24) mode=2 explicit: first-list=25.4ms
+NORMAL after startup (100, 24) mode=0 implicit: first-list=14.2ms
+NORMAL after startup (100, 24) mode=0 relative: first-list=15.1ms
+PASS startup error missing (100, 24)
+PASS startup error file (100, 24)
+PASS startup error denied (100, 24)
+PASS startup entries mode=2 (100, 24) SIGINT implicit=False second=False: first-frame=103.7ms control-to-exit=10.5ms resize-frame=Nonems worker-gone=10.6ms worker=135
+PASS startup entries mode=2 (100, 24) SIGTERM implicit=False second=False: first-frame=103.6ms control-to-exit=10.4ms resize-frame=Nonems worker-gone=10.4ms worker=137
+PASS startup entries mode=2 (100, 24) SIGHUP implicit=False second=False: first-frame=103.1ms control-to-exit=10.4ms resize-frame=Nonems worker-gone=10.5ms worker=139
+PASS startup browse mode=0 (100, 24) delete implicit=False second=False: first-frame=103.3ms control-to-exit=20.2ms resize-frame=Nonems worker-gone=20.3ms worker=141
+NORMAL after startup (35, 5) mode=2 explicit: first-list=13.5ms
+PASS startup browse mode=0 (35, 5) resize implicit=False second=False: first-frame=104.0ms control-to-exit=12.3ms resize-frame=0.49147900426760316ms worker-gone=12.4ms worker=146
+PASS startup startup-resolve mode=0 (50, 9) esc implicit=True second=False: first-frame=102.8ms control-to-exit=35.6ms resize-frame=Nonems worker-gone=35.7ms worker=148
+PASS startup startup-resolve mode=0 (50, 9) esc implicit=True second=False: first-frame=103.2ms control-to-exit=35.5ms resize-frame=Nonems worker-gone=35.6ms worker=150
+PASS startup startup-resolve mode=0 (50, 9) esc implicit=True second=False: first-frame=103.0ms control-to-exit=35.8ms resize-frame=Nonems worker-gone=35.9ms worker=152
+PASS startup startup-resolve mode=0 (50, 9) esc implicit=True second=False: first-frame=104.6ms control-to-exit=35.6ms resize-frame=Nonems worker-gone=35.7ms worker=154
+PASS startup startup-resolve mode=0 (50, 9) esc implicit=True second=False: first-frame=103.1ms control-to-exit=35.8ms resize-frame=Nonems worker-gone=35.9ms worker=156
+PASS startup startup-resolve mode=0 (50, 9) esc implicit=True second=False: first-frame=102.9ms control-to-exit=36.2ms resize-frame=Nonems worker-gone=36.4ms worker=158
+PASS startup startup-resolve mode=0 (50, 9) esc implicit=True second=False: first-frame=102.8ms control-to-exit=35.8ms resize-frame=Nonems worker-gone=35.8ms worker=160
+PASS startup startup-resolve mode=0 (50, 9) esc implicit=True second=False: first-frame=102.9ms control-to-exit=35.6ms resize-frame=Nonems worker-gone=35.7ms worker=162
+PASS startup startup-resolve mode=0 (50, 9) esc implicit=True second=False: first-frame=103.0ms control-to-exit=35.7ms resize-frame=Nonems worker-gone=35.8ms worker=164
+PASS startup startup-resolve mode=0 (50, 9) esc implicit=True second=False: first-frame=103.9ms control-to-exit=35.8ms resize-frame=Nonems worker-gone=35.9ms worker=166
+PASS noninteractive refusal and argument errors
+
+Dedicated startup time
+/tmp/tfile-startup-target-final.time
+elapsed=6.05 maxrss_kib=14632 exit=0
+
+Native ASan/UBSan (LSan explicitly disabled)
+/tmp/tfile-sanitizers-startup/summary.log
+### Native sanitizer results
+LSan: DISABLED — leak checks incomplete
+- path_query_test: PASS (build exit 0, run exit 0)
+- media_worker_test: PASS (build exit 0, run exit 0)
+- preview_async_test: PASS (build exit 0, run exit 0)
+- preview_worker_test: PASS (build exit 0, run exit 0)
+- mutation_job_test: PASS (build exit 0, run exit 0)
+- mutation_worker_test: PASS (build exit 0, run exit 0)
+- read_job_test: PASS (build exit 0, run exit 0)
+- performance_test: PASS (build exit 0, run exit 0)
+- mark_policy_test: PASS (build exit 0, run exit 0)
+- vim_test: PASS (build exit 0, run exit 0)
+- favorites_test: PASS (build exit 0, run exit 0)
+- filter_test: PASS (build exit 0, run exit 0)
+- batch_conflict_test: PASS (build exit 0, run exit 0)
+- external_test: PASS (build exit 0, run exit 0)
+- trash_test: PASS (build exit 0, run exit 0)
+- panels_ui_test: PASS (build exit 0, run exit 0)
+- batch_test: PASS (build exit 0, run exit 0)
+- batch_ui_test: PASS (build exit 0, run exit 0)
+- operations_test: PASS (build exit 0, run exit 0)
+- sort_test: PASS (build exit 0, run exit 0)
+- progress_test: PASS (build exit 0, run exit 0)
+- search_test: PASS (build exit 0, run exit 0)
+- controller_test: PASS (build exit 0, run exit 0)
+- history_ui_test: PASS (build exit 0, run exit 0)
+- keyboard_ui_test: PASS (build exit 0, run exit 0)
+- popup_style_test: PASS (build exit 0, run exit 0)
+- progress_ui_test: PASS (build exit 0, run exit 0)
+- preview_test: PASS (build exit 0, run exit 0)
+- text_test: PASS (build exit 0, run exit 0)
+- text_window_test: PASS (build exit 0, run exit 0)
+- startup_ui_test: PASS (build exit 0, run exit 0)
+- search_progress_ui_test: PASS (build exit 0, run exit 0)
+- ownership_test: PASS (build exit 0, run exit 0)
+Total: 33 required, 33 passed, 0 failed; 91.162s
+
+Native sanitizer wall time
+/tmp/tfile-startup-native-san.time
+elapsed=96.70 maxrss_kib=144884 exit=0
+
+Terminal ASan/UBSan (LSan explicitly disabled)
+/tmp/tfile-startup-terminal-san-final/summary.log
+### Startup, terminal and UI preparation sanitizer results
+LSan: DISABLED — leak checks incomplete
+- startup_pty: PASS (exit 0, 6.935s)
+- ui_io_pty: PASS (exit 0, 24.45s)
+- ui_io_lifecycle_pty: PASS (exit 0, 17.788s)
+- ui_io_normal_pty: PASS (exit 0, 8.826s)
+- terminal: PASS (exit 0, 0.011s)
+- input: PASS (exit 0, 0.021s)
+- probe: PASS (exit 0, 0.019s)
+- pty: PASS (exit 0, 55.656s)
+- auto_pty: PASS (exit 0, 64.214s)
+- vim_pty: PASS (exit 0, 6.934s)
+- editor_shutdown_pty: PASS (exit 0, 1.639s)
+- mark_discovery_pty: PASS (exit 0, 14.182s)
+- reads_pty: PASS (exit 0, 14.907s)
+Total: 13 required, 0 failed; 284.310s
+
+Terminal sanitizer wall time
+/tmp/tfile-startup-terminal-san-final.time
+elapsed=301.07 maxrss_kib=72560 exit=0
+
+Default startup LSan: exit 1, incomplete
+/tmp/tfile-startup-lsan.log
+No such file or directory
+==4==LeakSanitizer has encountered a fatal error.
+==4==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==4==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+
+Full regression: exit 0
+/tmp/tfile-startup-full-final.time
+elapsed=628.86 maxrss_kib=155488 exit=0
+
+First full attempt: test oracle failure, not final result
+/tmp/tfile-startup-full.time
+Command exited with non-zero status 2
+elapsed=150.00 maxrss_kib=51484 exit=2
+
+Full regression tail (all raw output: /tmp/tfile-startup-full-final.log)
+PASS: 80x24 prior file result retained
+PASS: 80x24 empty dual transfer stays in list
+PASS: 80x24 empty dual transfer stays in list
+PASS: 80x24 prior file result retained
+PASS: 80x24 Paths resize cancels parent transfer
+PASS: 160x32 denied navigation overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 incomplete search overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 failed refresh overrides old success
+PASS: 160x32 missing history location overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 empty dual transfer stays in list
+PASS: 160x32 empty dual transfer stays in list
+PASS: 160x32 prior file result retained
+PASS: 160x32 Paths resize cancels parent transfer
+PASS: recovery flows and prior result preservation at all sizes
+python3 tests/batch_destination_pty.py
+PASS: batch destination errors/edit/picker/review/cancel/resize/Unicode paths at all sizes
+python3 tests/batch_pty.py
+PASS: marked/cursor separation, find/input/preview isolation, menu select/clear/rename guard, batch cancel/collision/copy/move/delete/details keyboard+mouse at 50x9/80x24/160x32
+python3 tests/batch_progress_pty.py
+PASS: single/dual pipe-gated batch copy/delete partial cancellation, move-between targets, mouse/Esc/resize, exact statuses/residue and queued background commands discarded
+make[1]: Leaving directory '/home/dongmin/workspace/file_manager_project'
+
+Final full startup reported cases: 59
+
+Performance harness: Saved measurements to /tmp/tfile-startup-performance.json; generation 2.108s, build 9.098s, measurement 2.225s

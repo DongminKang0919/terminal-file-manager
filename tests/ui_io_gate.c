@@ -10,11 +10,16 @@
 #include <string.h>
 #include <unistd.h>
 static bool media_call;
+static PlatformDirectory *startup_directory;
+static char startup_path[4096];
+static unsigned gate_calls;
 int __real_open(const char *,int,...);
 int __real_access(const char *,int);
 static void hold(const char *phase,const char *path) {
     const char *wanted=getenv("TFILE_IO_PHASE"),*gate=getenv("TFILE_IO_GATE"),*match=getenv("TFILE_IO_MATCH");
     if(!wanted||strcmp(wanted,phase)||!gate||!match||!strstr(path,match)||__real_access(gate,F_OK))return;
+    const char *skip=getenv("TFILE_IO_SKIP");
+    if(skip && gate_calls++<(unsigned)strtoul(skip,NULL,10))return;
     char marker[4096],release[4096];snprintf(marker,sizeof marker,"%s.entered",gate);snprintf(release,sizeof release,"%s.release",gate);
     /* Register the FIFO reader before publishing entry. O_RDWR also keeps
        EOF from releasing the gate before the controller writes its byte. */
@@ -24,8 +29,19 @@ static void hold(const char *phase,const char *path) {
 }
 Result __real_core_resolve_directory(const char *,const char *,char **);
 Result __wrap_core_resolve_directory(const char *b,const char *p,char **o) { hold("resolve",p);Result r=__real_core_resolve_directory(b,p,o);hold("resolve-after",p);return r; }
+Result __real_platform_resolve(const char *,const char *,char **);
+Result __wrap_platform_resolve(const char *b,const char *p,char **o) { hold("startup-resolve",p);return __real_platform_resolve(b,p,o); }
 Result __real_platform_directory_open(const char *,PlatformDirectory **);
-Result __wrap_platform_directory_open(const char *p,PlatformDirectory **o) { hold("browse",p);return __real_platform_directory_open(p,o); }
+Result __wrap_platform_directory_open(const char *p,PlatformDirectory **o) {
+    hold("browse",p);Result r=__real_platform_directory_open(p,o);
+    if(r.code==RESULT_OK) { startup_directory=*o;snprintf(startup_path,sizeof startup_path,"%s",p); }
+    return r;
+}
+Result __real_platform_directory_next(PlatformDirectory *,FileInfo *,bool *,Result *);
+Result __wrap_platform_directory_next(PlatformDirectory *d,FileInfo *f,bool *end,Result *m) {
+    if(d==startup_directory)hold("entries",startup_path);
+    return __real_platform_directory_next(d,f,end,m);
+}
 Result __real_platform_create(const char *,bool);
 Result __wrap_platform_create(const char *p,bool d) { hold("create-before",p);Result r=__real_platform_create(p,d);hold("create-after",p);return r; }
 Result __real_platform_media_open(const char *,PreviewMediaKind,bool,unsigned,unsigned,PlatformMedia **);

@@ -88,7 +88,7 @@ tests/progress_ui_test: tests/progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOUR
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=core_monotonic_ms,--wrap=input_wide,--wrap=wrefresh
 
 tests/startup_ui_test: tests/startup_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
-	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/startup_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_directory_open,--wrap=qsort,--wrap=app_init,--wrap=input_key,--wrap=initscr,--wrap=terminal_session_check
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/startup_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_directory_open,--wrap=qsort,--wrap=app_init,--wrap=input_key,--wrap=initscr,--wrap=terminal_session_check,--wrap=ui_startup,--wrap=core_read_directory_start
 
 tests/search_progress_ui_test: tests/search_progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/search_progress_ui_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS) -Wl,--wrap=platform_monotonic_ms,--wrap=core_monotonic_ms,--wrap=input_key,--wrap=input_wide,--wrap=wrefresh
@@ -332,7 +332,7 @@ check-isolated: check-integration
 
 # Synthetic filesystem gates; never enabled in the product binary.
 tests/tfile_ui_io: tests/ui_io_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
-	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/ui_io_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_resolve_directory,--wrap=platform_directory_open,--wrap=platform_create,--wrap=platform_create_progress,--wrap=platform_media_open,--wrap=open,--wrap=access,--wrap=pwrite,--wrap=core_read_poll
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/ui_io_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_resolve_directory,--wrap=platform_directory_open,--wrap=platform_create,--wrap=platform_create_progress,--wrap=platform_media_open,--wrap=open,--wrap=access,--wrap=pwrite,--wrap=core_read_poll,--wrap=platform_directory_next,--wrap=platform_resolve
 
 tests/path_query_test: tests/path_query_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/path_query_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS)
@@ -346,3 +346,9 @@ check-ui-io: tests/path_query_test tests/media_worker_test tests/tfile_ui_io
 	python3 tests/isolated_check.py python3 tests/ui_io_normal_pty.py
 check-isolated: check-ui-io
 .PHONY: check-ui-io
+
+check-startup: tests/tfile_ui_io tests/startup_ui_test
+	python3 tests/isolated_check.py ./tests/startup_ui_test
+	python3 tests/isolated_check.py python3 tests/startup_latency_pty.py
+check-isolated: check-startup
+.PHONY: check-startup

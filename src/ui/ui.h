@@ -67,6 +67,10 @@ typedef enum { UI_LIST_ONLY, UI_LIST_PREVIEW, UI_LIST_LIST } UiMode;
 typedef struct {
     SettingsStore settings;
     bool async_reads;
+    bool starting;
+    unsigned starting_panel;
+    const char *starting_path; /* Borrowed for the duration of startup only. */
+    uint64_t startup_started;
     WINDOW *directory_load_window;
     uint64_t directory_load_started, directory_load_drawn;
     Favorites favorites;
@@ -129,6 +133,8 @@ static inline bool ui_preview_enabled(const UiContext *ui) { return ui->mode==UI
    After success or failure, ui_free releases all owned UI, settings and panels
    before reuse. Repeated ui_free on a released context is safe. */
 Result ui_init(UiContext *ui, const char *directory);
+/* Terminal initialized; uses the existing read lane for initial path and lists. */
+Result ui_startup(UiContext *ui, const char *directory);
 Result ui_set_mode(UiContext *ui, UiMode mode);
 bool ui_activate_panel(UiContext *ui, unsigned panel);
 Result ui_refresh_panel(UiContext *ui, unsigned panel, const char *highlight, bool require_fresh);
