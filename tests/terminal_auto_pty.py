@@ -178,6 +178,8 @@ with tempfile.TemporaryDirectory(prefix='tfile-auto-missing-') as d:
     t=AutoTerminal(base)
     try:
         t.wait(lambda:'No terminal reply' in t.text())
+        # Executable discovery now completes independently of the terminal query.
+        t.wait(lambda:'Missing ImageMagick' in t.text())
         assert 'Missing ImageMagick' in t.text() and not t.screen.images;t.idle()
     finally:t.close()
 

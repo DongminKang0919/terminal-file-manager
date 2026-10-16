@@ -2,10 +2,13 @@
 #include "../platform/platform.h"
 #include <stdlib.h>
 Result core_create(const char *directory, const char *name, bool is_directory) {
+    return core_create_progress(directory,name,is_directory,NULL,NULL);
+}
+Result core_create_progress(const char *directory, const char *name, bool is_directory, OperationCallback callback, void *context) {
     if (!platform_name_valid(name)) return result_make(RESULT_INVALID_NAME, NULL);
     char *path = platform_path_join(directory, name);
     if (!path) return result_make(RESULT_NO_MEMORY, "Out of memory");
-    Result r = platform_create(path, is_directory); free(path); return r;
+    Result r = callback?platform_create_progress(path,is_directory,callback,context):platform_create(path,is_directory); free(path); return r;
 }
 Result core_delete_progress(const char *path, OperationCallback callback, void *context) {
     return platform_remove_progress(path, callback, context);

@@ -167,8 +167,19 @@ void media_prepare(UiContext *ui,int rows,bool changed) {
     snprintf(ui->media_hint,sizeof ui->media_hint,"%s",hint?hint:kind==PREVIEW_PDF?"PDF page 1":"Image preview");
     if(ui->media_fallback) snprintf(ui->media_hint,sizeof ui->media_hint,"%.127s",ui->media_fallback_detail);
     if(kind==PREVIEW_NOT_MEDIA || (hint && !text)) {
-        if(kind!=PREVIEW_NOT_MEDIA && ui->image_auto && !ui->media_done && !terminal_tools().image)
-            ui->media_result=result_make(RESULT_UNSUPPORTED,"Missing ImageMagick; install ImageMagick");
+        if(kind!=PREVIEW_NOT_MEDIA && ui->image_auto && !ui->media_done) {
+            if(!ui->media_job) {
+                ui->media_result=core_tools_open(&ui->media_job);
+                if(ui->media_result.code==RESULT_CANCELLED)return;
+                if(ui->media_result.code!=RESULT_OK) { ui->media_done=true;return; }
+            }
+            TerminalTools tools={0};bool done=false;
+            ui->media_result=core_tools_poll(ui->media_job,&done,&tools);
+            if(!done)return;
+            core_media_close(ui->media_job);ui->media_job=NULL;
+            if(ui->media_result.code==RESULT_OK && !tools.image)
+                ui->media_result=result_make(RESULT_UNSUPPORTED,"Missing ImageMagick; install ImageMagick");
+        }
         ui->media_done=true; return;
     }
     if(ui->media_done || ui->modal_depth) return;

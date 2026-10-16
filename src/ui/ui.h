@@ -32,6 +32,19 @@ bool field_edit(UiField *field, int kind, wint_t key);
 /* Returns the cursor column relative to x; caller places the cursor after other drawing. */
 int field_draw(WINDOW *win, int y, int x, int width, UiField *field, bool focused);
 void field_click(UiField *field, int column);
+/* Modal requests share the existing read lane; obsolete results are closed,
+   never applied. A retiring worker queues the newest request without an error. */
+typedef struct {
+    ReadJob *job;
+    char *base, *input, *directory;
+    FileList files;
+    Result result;
+    bool pending, ready, listing, directories_only;
+} UiPathQuery;
+void ui_path_query_close(UiPathQuery *query);
+void ui_path_query_start(UiPathQuery *query, bool asynchronous, const char *base,
+                         const char *input, bool listing, bool directories_only);
+void ui_path_query_poll(UiPathQuery *query);
 typedef FileInfo Item;
 typedef enum { UI_FOCUS_FILES, UI_FOCUS_PREVIEW } UiFocus;
 typedef enum { NOTICE_INFO, NOTICE_SUCCESS, NOTICE_CANCELLED, NOTICE_WARNING, NOTICE_ERROR } NoticeKind;
@@ -266,6 +279,7 @@ const FileInfo *ui_operation_item(UiContext *ui);
 void mark_targets_message(UiContext *ui);
 void trash_entry(UiContext *ui);
 bool confirm_trash(UiContext *ui,const char *name,bool directory);
+Result run_create_operation(UiContext *ui,const char *base,const char *name,bool directory);
 Result run_move_operation(UiContext *ui,const char *source,const char *directory,const char *name,char **destination);
 Result run_trash_operation(UiContext *ui,const char *source,char **destination);
 

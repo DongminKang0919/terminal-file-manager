@@ -5,7 +5,7 @@
 typedef struct {
     WINDOW *win;
     MutationJob *job;
-    bool copy, trash, move, drawn, cancelled, asynchronous, cancel_drawn, uncertain;
+    bool copy, trash, move, creating, drawn, cancelled, asynchronous, cancel_drawn, uncertain;
     int height, width;
     uint64_t last_draw;
     bool batch; BatchAction action; size_t index, total, succeeded, skipped;
@@ -16,7 +16,7 @@ static bool operation_progress(const OperationProgress *progress, void *context)
     uint64_t now = core_monotonic_ms();
     if (!view->cancelled && (!view->drawn || now - view->last_draw >= 100)) {
         int h, w; getmaxyx(view->win, h, w);
-        dialog_frame(view->win, view->batch ? (view->action==BATCH_TRASH ? "Moving to Trash" : view->action==BATCH_MOVE ? "Batch moving" : view->action==BATCH_COPY ? "Batch copying" : "Batch deleting") : view->trash ? "Moving to Trash" : view->move ? "Moving" : view->copy ? "Copying" : "Deleting");
+        dialog_frame(view->win, view->batch ? (view->action==BATCH_TRASH ? "Moving to Trash" : view->action==BATCH_MOVE ? "Batch moving" : view->action==BATCH_COPY ? "Batch copying" : "Batch deleting") : view->creating ? "Creating" : view->trash ? "Moving to Trash" : view->move ? "Moving" : view->copy ? "Copying" : "Deleting");
         if (view->batch) {
             char counts[120];
             snprintf(counts,sizeof counts,"Target %zu/%zu | Succeeded: %zu | Skipped: %zu",view->index+1,view->total,view->succeeded,view->skipped);
@@ -32,7 +32,7 @@ static bool operation_progress(const OperationProgress *progress, void *context)
             snprintf(text, sizeof text, "Completed items: %llu", (unsigned long long)progress->completed_items);
             draw_window_text(view->win, 2, 2, w - 4, text);
             if (view->copy) snprintf(text, sizeof text, "Copied bytes: %llu", (unsigned long long)progress->copied_bytes);
-            else snprintf(text, sizeof text, "%s",view->trash ? "No permanent-delete fallback" : view->move?"Atomic move; no cross-filesystem fallback":"Deleted items cannot be restored");
+            else snprintf(text, sizeof text, "%s",view->creating ? "Completed creation is kept after cancel" : view->trash ? "No permanent-delete fallback" : view->move?"Atomic move; no cross-filesystem fallback":"Deleted items cannot be restored");
             draw_window_text(view->win, 3, 2, w - 4, text);
             draw_window_text(view->win, 4, 2, w - 4, "Cancel stops here; changes are kept");
         }
@@ -203,5 +203,15 @@ Result run_move_operation(UiContext *ui,const char *source,const char *directory
     if(!view.win)return result_make(RESULT_CANCELLED,"Cannot open progress window; no changes");
     wtimeout(view.win,0);
     Result r=run_single(ui,BATCH_MOVE,source,directory,name,destination,&view);
+    operation_close(ui,&view);return r;
+}
+
+Result run_create_operation(UiContext *ui,const char *base,const char *name,bool directory) {
+    if(!stdscr || !ui->async_reads)return core_create(base,name,directory);
+    OperationView view={.creating=true,.height=LINES,.width=COLS};
+    view.win=dialog_open(ui,"Creating",7,76);
+    if(!view.win)return result_make(RESULT_CANCELLED,"Cannot open progress window; no changes");
+    wtimeout(view.win,0);
+    Result r=run_single(ui,directory?BATCH_CREATE_DIRECTORY:BATCH_CREATE_FILE,base,NULL,name,NULL,&view);
     operation_close(ui,&view);return r;
 }

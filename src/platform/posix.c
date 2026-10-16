@@ -360,10 +360,7 @@ void platform_directory_close(PlatformDirectory *dir) {
     if (dir) { if (dir->handle) closedir(dir->handle); free(dir->path); free(dir); }
 }
 Result platform_create(const char *path, bool directory) {
-    if (directory) return mkdir(path, 0777) < 0 ? failure() : result_make(RESULT_OK, NULL);
-    int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0666);
-    if (fd < 0) return failure();
-    return close(fd) < 0 ? failure() : result_make(RESULT_OK, NULL);
+    return platform_create_progress(path,directory,NULL,NULL);
 }
 Result platform_link_target(const char *path, char **out) {
     *out = NULL;
@@ -637,6 +634,24 @@ static Result operation_result(Operation *op) {
                  op->changed ? "Partial operation" : "No changes", reason, path);
     }
     return op->error;
+}
+Result platform_create_progress(const char *path,bool directory,OperationCallback callback,void *context) {
+    Operation op={.callback=callback,.context=context};char *name=NULL;
+    if(!op_poll(&op,path))return operation_result(&op);
+    int parent=operation_parent(&op,path,&name);
+    if(parent>=0 && op_poll(&op,path)) {
+        int fd=-1;
+        bool ok=directory?mkdirat(parent,name,0777)==0:
+            (fd=openat(parent,name,O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0666))>=0;
+        if(!ok)op_errno(&op,path);
+        else {
+            op.changed=true;op.error.completed_items=1;
+            if(fd>=0 && close(fd)<0)op_errno(&op,path);
+            /* A later cancel cannot undo or relabel a completed creation. */
+        }
+    }
+    if(parent>=0)close(parent);
+    free(name);return operation_result(&op);
 }
 Result platform_copy(const char *src, const char *dst) {
     return platform_copy_progress(src, dst, NULL, NULL);

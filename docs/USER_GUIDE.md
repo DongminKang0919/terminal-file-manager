@@ -178,7 +178,7 @@ printf 'Hello tfile\n' > "$playground/source/example.txt"
 
 폼을 열 때 활성 원본 패널·원본 디렉터리·대상 경로와 기본 목적지를 복사해 고정합니다. 반대편 마킹은 대상에 포함하지 않습니다. 폼의 목적지를 직접 수정하거나 Browse로 선택해도 반대편 탐색 위치는 바뀌지 않습니다. 상대 경로와 빈 입력은 원본 디렉터리인 Base 기준입니다. 기본 목적지가 있어도 자동 실행하지 않습니다.
 
-반대편의 삭제·접근 오류와 이전 목록 갱신 실패(STALE)는 폼에 안내합니다. 실행 시 현재 입력 목적지를 다시 검증하므로 과거 갱신 실패만으로 유효한 목적지를 차단하지 않습니다. 오류는 입력과 원본 대상을 유지하며, 직접 입력/Browse로 수정할 수 있습니다. 잘못된 경로를 다른 경로로 자동 대체하지 않습니다. Browse에서 목록을 읽지 못하면 빈 상태 대신 원인을 표시하고 Use를 차단합니다. Parent 또는 Enter path로 복구할 수 있으며, 후속 실제 파일 작업의 검증은 그대로 적용합니다. 파일 작업과 양쪽 목록 갱신 실패는 최근 결과에서 구분합니다.
+이전 목록 갱신 실패(STALE)는 폼에 안내하며, 반대편의 삭제·접근 오류는 목적지를 검증할 때 확인합니다. 실행 시 현재 입력 목적지를 다시 검증하므로 과거 갱신 실패만으로 유효한 목적지를 차단하지 않습니다. 오류는 입력과 원본 대상을 유지하며, 직접 입력/Browse로 수정할 수 있습니다. 목적지 확인 중에도 입력을 수정할 수 있으며 이전 확인 결과와 실행 요청은 폐기합니다. 확인 중 Esc는 입력을 유지한 채 조회만 취소하고, 다시 Esc를 누르면 폼을 닫습니다. F10은 종료합니다. 잘못된 경로를 다른 경로로 자동 대체하지 않습니다. Browse의 최초 목록을 읽지 못하면 원인을 표시하고 Use를 차단합니다. 새 경로 읽기가 실패하면 이미 읽은 기존 위치와 목록은 보존합니다. Parent 또는 Enter path로 복구할 수 있으며, 후속 실제 파일 작업의 검증은 그대로 적용합니다. 파일 작업과 양쪽 목록 갱신 실패는 최근 결과에서 구분합니다. 생성도 별도 작업으로 실행하며, 취소 접수 후 현재 시스템 호출의 결과를 기다립니다. 이미 생성이 끝났으면 성공을 유지하고 파일을 지우지 않습니다.
 
 - **대상 하나:** 기존 복사·이동 폼에서 목적지와 대상 이름을 지정합니다. 단일 목록/목록+미리보기에서 작업 대상 표시가 없는 경우에는 원본 선택기도 사용할 수 있습니다. 이중 목록에서는 원본을 고정하고 대상 이름 입력은 유지합니다. 현재 보이는 대상이 없는 이중 목록에서는 F5/F6가 폼을 열지 않고 안내합니다.
 - **대상 여러 개:** 목적지 디렉터리 하나를 직접 입력하거나 단일 전송과 같은 Browse 선택기로 골라 원래 이름으로 전송합니다. 상대 경로 기준은 폼의 Base입니다. 잘못된 목적지는 폼 안에 오류를 표시하고 입력·편집 위치를 유지합니다. Enter/Next는 실행하지 않고 기본 Cancel인 대상 확인창을 엽니다. 확인창의 Esc/Cancel은 입력 폼으로 돌아오며, 폼의 Esc/Cancel·리사이즈는 변경 없이 종료합니다. 실행 전 취소·입력 검증 실패는 최근 결과를 교체하지 않습니다. 실행 전 대상 목록·개수·목적지를 스크롤하여 확인할 수 있습니다. 대상 이름 입력과 단일 이름 변경은 제공하지 않습니다.
@@ -268,6 +268,7 @@ flowchart LR
 ```sh
 make check       # core, platform, UI 및 PTY 회귀 검사
 make check-core  # core와 platform 검사만 실행
+make check-ui-io # 목적지/Browse/생성/media 준비 gate 및 수명 회귀
 python3 tests/isolated_check.py make check-terminal # 터미널 파서·입력 및 F7 진단 PTY 검사
 python3 tests/isolated_check.py make check-media # 미디어 대역·프로토콜/수명주기 PTY와 비 root 목적지 선택창 검사
 python3 tests/isolated_check.py python3 tests/media_real.py # 선택 의존성이 있으면 실제 변환 검사
@@ -277,7 +278,7 @@ python3 tests/isolated_check.py env ASAN_OPTIONS=detect_leaks=1 make check-setti
 python3 tests/isolated_check.py python3 tests/run_terminal_sanitizers.py --output-directory /tmp/tfile-terminal-sanitizers-manual
 ```
 
-`run_sanitizers.py`의 native 검사는 미디어 전용 검사 완료를 뜻하지 않습니다. `run_media_sanitizers.py`는 별도로 media·preview·picker native와 media PTY를 실행합니다. `run_terminal_sanitizers.py`는 terminal_test·terminal_input_test·graphics_probe_test와 sanitizer 앱의 terminal_pty.py·terminal_auto_pty.py·vim_pty.py·editor_shutdown_pty.py·mark_discovery_pty.py를 실행하고 별도 로그를 남깁니다. 전용 스크립트는 기본적으로 누수 검출을 요청합니다. 현재 환경의 알려진 ptrace 제약에서는 LSan을 반복 실행하지 않습니다. 최신 UI 검사와 LSan 수동 실행 명령은 [UI/UX 검증 기록](UI_UX_VALIDATION.md)에 구분해 기록합니다. 실행 환경 때문에 `--disable-leaks`를 명시해 수행한 ASan/UBSan 결과는 누수 검사 통과가 아닙니다. 자세한 실행 명령·로그 위치와 후속 수정 결과는 [미디어 검증 기록](MEDIA_PREVIEW_VALIDATION.md#후속-정적-검토-수정)을 참고하세요.
+`run_sanitizers.py`의 native 검사는 미디어 전용 검사 완료를 뜻하지 않습니다. `run_media_sanitizers.py`는 별도로 media·preview·picker native와 media PTY를 실행합니다. `run_terminal_sanitizers.py`는 terminal_test·terminal_input_test·graphics_probe_test와 sanitizer 앱의 terminal_pty.py·terminal_auto_pty.py·vim_pty.py·editor_shutdown_pty.py·mark_discovery_pty.py를 실행하고 별도 로그를 남깁니다. native runner는 경로 요청과 media worker-body 검사도 실행하며 terminal runner는 UI 준비 지연·수명·일반 실행 검사를 포함합니다. [UI 동기 접근 검증 기록](UI_IO_VALIDATION_2026-10-16.md)에 요청·취소 정책과 부모/본문 LSan 범위를 구분했습니다. 전용 스크립트는 기본적으로 누수 검출을 요청합니다. ptrace 제약으로 LSan이 실패하면 누수 검증은 미완료로 남기고 실제 터미널 재실행 결과와 구분합니다. 최신 UI 검사와 LSan 수동 실행 명령은 [UI/UX 검증 기록](UI_UX_VALIDATION.md)에 구분해 기록합니다. 실행 환경 때문에 `--disable-leaks`를 명시해 수행한 ASan/UBSan 결과는 누수 검사 통과가 아닙니다. 자세한 실행 명령·로그 위치와 후속 수정 결과는 [미디어 검증 기록](MEDIA_PREVIEW_VALIDATION.md#후속-정적-검토-수정)을 참고하세요.
 
 기존 검증은 Unicode·안전한 표시, 작은 화면, 초점·방문 위치·빠른 찾기, 파일 작업 실패·취소, 다중 선택과 일괄 작업을 포함합니다. 이중 패널 검사는 상태 독립성·모드 전환·작업 대상과 양쪽 갱신·실패 주입·메모리/FD/창 정리도 확인합니다. 안정화 계측에서는 불필요한 목록 조회·정렬과 검색 화면 갱신 횟수도 확인합니다.
 

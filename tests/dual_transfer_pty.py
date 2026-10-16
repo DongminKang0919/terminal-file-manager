@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import tempfile
+import time
 from display_pty import Terminal
 
 HOME='\x1bOH'; DOWN='\x1bOB'; BACK='\x7f'
@@ -37,18 +38,23 @@ for w,h in [(50,9),(80,24),(160,32)]:
             t.send(F5);(b/'source').unlink();(b/'peer').unlink();b.rmdir()
             run();assert 'Destination:' in body() and (a/'source').exists()
             t.send('\x1b');assert not b.exists()
-            # Opening with a missing opposite directory gives an immediate warning,
-            # Browse stays at that path; explicit p selects a valid replacement.
-            t.send(F5);assert 'Destination:' in body();t.send('\t\t\n')
-            assert '/B' in body();t.send('p');replace(str(root));t.send('\n ')
+            # The peer path is a hint until Run requests asynchronous validation.
+            # The failure keeps that path; Browse can select a replacement.
+            t.send(F5);assert '/B' in body();run();assert 'Destination:' in body();t.send('\t\t\n')
+            assert '/B' in body();t.send('p');replace(str(root));t.send('\n')
+            deadline=time.monotonic()+2
+            while 'Loading directory' in body() or 'Cannot read directory' in body():
+                assert time.monotonic()<deadline,body()
+                t.read()
+            t.send(' ')
             run();assert (root/'source').exists() and not b.exists()
             # Current path revalidation can recover without navigating peer.
             b.mkdir()
             if os.geteuid()!=0:
                 b.chmod(0)
                 try:
-                    t.send(F6);assert 'Destination:' in body()
-                    button('[ Move now ]');assert 'Permission denied' in body() and (a/'source').exists()
+                    t.send(F6)
+                    button('[ Move now ]');assert 'Destination:' in body();assert 'Permission denied' in body() and (a/'source').exists()
                 finally: b.chmod(0o700)
                 button('[ Move now ]')
             else:

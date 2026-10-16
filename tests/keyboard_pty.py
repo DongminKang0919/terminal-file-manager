@@ -7,6 +7,7 @@ import signal
 import struct
 import tempfile
 import termios
+import time
 from display_pty import Terminal, Screen
 
 DOWN='\x1bOB'; UP='\x1bOA'; HOME='\x1bOH'; END='\x1bOF'; PGDN='\x1b[6~'; PGUP='\x1b[5~'
@@ -138,7 +139,13 @@ for w,h in [(50,9),(80,24),(160,32)]:
             t.send('\x1b[15~\t\t\np') # copy -> destination -> Enter path
             t.send(HOME+'\x1b[3~'*200+'\n')
             assert 'Enter a value to continue.' in t.screen.row(py+4)
-            t.send(directory+'\n ')
+            t.send(directory+'\n')
+            # Use is disabled until the asynchronous Browse read completes.
+            deadline=time.monotonic()+2
+            while not any('No subdirectories' in t.screen.row(y) for y in range(h)):
+                assert time.monotonic()<deadline,'\n'.join(t.screen.row(y) for y in range(h))
+                t.read()
+            t.send(' ')
             assert 'Copy' in '\n'.join(t.screen.row(y) for y in range(h))
             t.send('\x1b')
         finally: t.close()

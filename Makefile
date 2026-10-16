@@ -138,6 +138,7 @@ check-isolated: tests/picker_test tests/media_test tests/panels_ui_test tests/tf
 	python3 tests/batch_progress_pty.py
 
 clean:
+	rm -f tests/tfile_ui_io tests/path_query_test tests/media_worker_test
 	rm -f tests/mutation_job_test tests/mutation_worker_test tests/preview_worker_test tests/preview_async_test tests/tfile_preview tests/tfile_operation_latency tests/performance_test tests/tfile_read tests/read_job_test
 	rm -f tests/mark_policy_test tests/vim_test tests/trash_test tests/external_test tests/batch_conflict_test tests/filter_test tests/favorites_test tests/graphics_probe_test tests/terminal_test tests/terminal_input_test tests/settings_sanitize tests/settings_core_test tests/settings_test tfile tests/picker_test tests/media_test tests/panels_ui_test tests/tfile_batch tests/batch_test tests/batch_ui_test tests/startup_ui_test tests/search_progress_ui_test tests/ownership_test tests/history_ui_test tests/keyboard_ui_test tests/popup_style_test tests/tfile_search tests/sort_test tests/progress_ui_test tests/tfile_progress tests/progress_test tests/preview_test tests/core_test tests/platform_test tests/operations_test tests/search_test tests/controller_test tests/text_test tests/text_window_test
 
@@ -328,3 +329,20 @@ check-integration: tfile tests/tfile_read tests/panels_ui_test tests/controller_
 	python3 tests/isolated_check.py python3 tests/integrated_session_pty.py
 check-isolated: check-integration
 .PHONY: check-integration
+
+# Synthetic filesystem gates; never enabled in the product binary.
+tests/tfile_ui_io: tests/ui_io_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/ui_io_gate.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(LDLIBS) -Wl,--wrap=core_resolve_directory,--wrap=platform_directory_open,--wrap=platform_create,--wrap=platform_create_progress,--wrap=platform_media_open,--wrap=open,--wrap=access,--wrap=pwrite,--wrap=core_read_poll
+
+tests/path_query_test: tests/path_query_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(UI_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(UI_CPPFLAGS) $(CFLAGS) -o $@ tests/path_query_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(filter-out src/ui/main.c,$(UI_SOURCES)) $(LDLIBS)
+tests/media_worker_test: tests/media_worker_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/media_worker_test.c $(CORE_SOURCES) $(filter-out src/platform/posix_media.c,$(PLATFORM_SOURCES))
+check-ui-io: tests/path_query_test tests/media_worker_test tests/tfile_ui_io
+	./tests/path_query_test
+	./tests/media_worker_test
+	python3 tests/isolated_check.py python3 tests/ui_io_latency_pty.py
+	python3 tests/isolated_check.py python3 tests/ui_io_lifecycle_pty.py
+	python3 tests/isolated_check.py python3 tests/ui_io_normal_pty.py
+check-isolated: check-ui-io
+.PHONY: check-ui-io

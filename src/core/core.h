@@ -92,6 +92,7 @@ char *core_path_name(const char *path);
 Result core_resolve_directory(const char *base, const char *input, char **out);
 Result core_info(const char *path, FileInfo *out);
 uint64_t core_monotonic_ms(void);
+Result core_create_progress(const char *directory, const char *name, bool is_directory, OperationCallback callback, void *context);
 Result core_create(const char *directory, const char *name, bool is_directory);
 Result core_transfer(bool move, const char *source, const char *directory, const char *name, char **destination);
 Result core_delete_progress(const char *path, OperationCallback callback, void *context);
@@ -104,7 +105,7 @@ Result core_link_target(const char *path, char **out);
 
 /* Owned target snapshot and fixed results, prepared before any file changes.
    This fixes paths/order, not filesystem identities. Single APIs revalidate. */
-typedef enum { BATCH_COPY, BATCH_MOVE, BATCH_DELETE, BATCH_TRASH } BatchAction;
+typedef enum { BATCH_COPY, BATCH_MOVE, BATCH_DELETE, BATCH_TRASH, BATCH_CREATE_FILE, BATCH_CREATE_DIRECTORY } BatchAction;
 typedef enum { BATCH_UNEXECUTED, BATCH_SUCCESS, BATCH_FAILED, BATCH_CANCELLED, BATCH_SKIPPED, BATCH_UNKNOWN } BatchStatus;
 typedef struct {
     char *source, *name, *destination;
@@ -170,6 +171,7 @@ void search_result_free(SearchResult *result);
 typedef struct ReadJob ReadJob;
 Result core_read_search_start(const char *root, const char *term, SearchLimits limits, ReadJob **out);
 Result core_read_directory_start(const char *base, const char *path, bool hidden, bool directories_only, ReadJob **out);
+Result core_read_resolve_start(const char *base, const char *path, ReadJob **out);
 Result core_read_poll(ReadJob *job, bool *done);
 const SearchResult *core_read_snapshot(const ReadJob *job);
 bool core_read_pending_messages(const ReadJob *job);
@@ -200,10 +202,14 @@ Result preview_session_check(PreviewSession *session, bool *changed);
 Result preview_session_page(PreviewSession *session, size_t start, size_t limit, PreviewText *out);
 void preview_text_free(PreviewText *text);
 PreviewMediaKind preview_session_media(const PreviewSession *session);
-/* Single asynchronous converter; CANCELLED means its predecessor is retiring.
+/* Single asynchronous preparation/conversion; CANCELLED means its predecessor
+   is retiring. Open only allocates local captures and starts preparation: source
+   access/signature/tool failures arrive from poll. The worker owns the source FD.
    Poll transfers owned output bytes once on completion; close cancels/reaps.
    The caller caches one selected file/size/page result and discards it on refresh. */
 typedef struct MediaPreview MediaPreview;
+Result core_tools_open(MediaPreview **out);
+Result core_tools_poll(MediaPreview *job,bool *done,TerminalTools *tools);
 Result core_media_open(const char *path, PreviewMediaKind kind, bool text, unsigned width, unsigned height, MediaPreview **out);
 Result core_media_poll(MediaPreview *media, bool *done, char **data, size_t *len);
 void core_media_close(MediaPreview *media);

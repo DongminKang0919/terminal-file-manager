@@ -106,6 +106,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-vim-failure-pty-') as d:
   try:
    t.send('e')
    expected={'missing':'install vim','exec-failure':'External exec failed','exit':'status 9','binary':'binary/media','link':'regular file'}[mode]
+   wait(t,lambda:expected in text(t))
    assert expected in text(t),text(t)
    t.send('\x1b[20~');assert 'Menu' in text(t);t.send('\x1b')
   finally:t.close()

@@ -84,10 +84,12 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
     enum { DESTINATION, BROWSE, NEXT, CANCEL, FIELDS };
     const char *buttons[]={"[ Browse ]","[ Next ]","[ Cancel ]"};
     const int xs[]={2,15,26};
-    int focus=DESTINATION;
+    int focus=DESTINATION,pending_action=-1;
+    UiPathQuery query={0};
     char warning[512]="";
     if(context.destination_status.code!=RESULT_OK) snprintf(warning,sizeof warning,"Destination: %.450s",context.destination_status.detail);
     for(;;) {
+        ui_path_query_poll(&query);
         int h,w; getmaxyx(win,h,w);
         dialog_frame(win,title);
         draw_window_text(win,1,2,6,"Base:");
@@ -96,13 +98,25 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
         draw_window_text(win,3,2,6,"To:");
         int col=field_draw(win,3,8,w-10,&field,focus==DESTINATION);
         wattron(win,COLOR_PAIR(*warning?UI_ERROR:UI_MUTED));
-        draw_window_text(win,h-3,2,w-4,*warning?warning:"Enter: review targets  Tab: focus  Esc: cancel");
+        draw_window_text(win,h-3,2,w-4,query.pending?"Checking destination... Esc: cancel; F10: exit":*warning?warning:"Enter: review targets  Tab: focus  Esc: cancel");
         wattroff(win,COLOR_PAIR(*warning?UI_ERROR:UI_MUTED));
         for(int i=0;i<3;i++) dialog_button(win,h-2,xs[i],buttons[i],focus==i+1,true);
         curs_set(focus==DESTINATION); if(focus==DESTINATION) wmove(win,3,8+col);
         dialog_refresh(win);
-        wint_t key; int kind=input_wide(win,&key),action=-1;
-        if(kind==ERR) continue;
+        wint_t key=0;int kind=ERR,action=-1;
+        if(query.ready && pending_action>=0) {
+            /* Consume already-queued edits/cancel before committing a result.
+               A completed request never outranks newer terminal input. */
+            if(ui->async_reads) { wtimeout(win,0);kind=input_wide(win,&key); }
+            if(kind==ERR) { action=pending_action;pending_action=-1; }
+        }
+        else { wtimeout(win,(query.pending || core_read_cleanup_pending())?40:-1);kind=input_wide(win,&key); }
+        if(kind==KEY_CODE_YES && key==KEY_F(10)) { core_request_shutdown();break; }
+        if(kind==OK && key==27 && (query.pending || pending_action>=0)) {
+            ui_path_query_close(&query);pending_action=-1;
+            snprintf(warning,sizeof warning,"Destination check cancelled; inputs kept");continue;
+        }
+        if(kind==ERR && action<0)continue;
         if((kind==OK&&key==27)||(kind==KEY_CODE_YES&&key==KEY_RESIZE)) break;
         if(kind==KEY_CODE_YES&&key==KEY_MOUSE) {
             MEVENT e; if(getmouse(&e)!=OK) continue;
@@ -116,18 +130,30 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
         if(kind==OK&&key=='\t') { focus=(focus+1)%FIELDS; continue; }
         if(kind==KEY_CODE_YES&&key==KEY_BTAB) { focus=(focus+FIELDS-1)%FIELDS; continue; }
         if((kind==OK&&(key=='\n'||key=='\r'))||(kind==KEY_CODE_YES&&key==KEY_ENTER)) action=focus==DESTINATION?NEXT:focus;
-        if(action<0) { if(focus==DESTINATION) field_edit(&field,kind,key); continue; }
+        if(action<0) {
+            if(focus==DESTINATION) {
+                UiField before=field;field_edit(&field,kind,key);
+                if(before.len!=field.len || wmemcmp(before.value,field.value,field.len)) {
+                    ui_path_query_close(&query);pending_action=-1;warning[0]=0;
+                }
+            }
+            continue;
+        }
         if(action==CANCEL) break;
         char input[UI_INPUT_CAP];
         if(!ui_text_encode(field.value,field.len,input,sizeof input)) {
             snprintf(warning,sizeof warning,"Destination: input is too long"); continue;
         }
+        if(query.pending)continue;
+        if(action==NEXT && !query.ready) {
+            ui_path_query_start(&query,ui->async_reads,base,*input?input:".",false,false);pending_action=action;continue;
+        }
         int old_h=LINES,old_w=COLS; bool resized=false;
-        char *resolved=NULL;
-        Result r=core_resolve_directory(base,*input?input:".",&resolved);
+        char *resolved=query.directory;query.directory=NULL;query.ready=false;
+        Result r=query.result;
         if(action==BROWSE) {
             char picked[UI_INPUT_CAP];
-            char *start=r.code==RESULT_OK ? text_copy(resolved) : *input=='/' ? text_copy(input) : core_path_join(base,*input?input:".");
+            char *start=*input=='/' ? text_copy(input) : core_path_join(base,*input?input:".");
             if(start && pick_path(ui,true,start,picked,&resized)) {
                 field_init(&field,picked); warning[0]=0; context.destination_status=result_make(RESULT_OK,NULL);
             }
@@ -137,7 +163,7 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
             if(r.code==RESULT_OK) r=batch_destination(job,resolved);
             if(r.code!=RESULT_OK) { snprintf(warning,sizeof warning,"Destination: %.450s",r.detail); focus=DESTINATION; }
             else if(review(ui,job,&resized)) {
-                free(resolved); dialog_close(ui,win); ui_transfer_context_free(&context);
+                free(resolved);ui_path_query_close(&query); dialog_close(ui,win); ui_transfer_context_free(&context);
                 run_batch_operation(ui,job); batch_finish(ui,job); return;
             }
         }
@@ -145,6 +171,7 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
         if(resized||old_h!=LINES||old_w!=COLS) break;
         touchwin(win);
     }
+    ui_path_query_close(&query);
     dialog_close(ui,win); ui_transfer_context_free(&context);
 }
 void batch_entry(UiContext *ui,BatchAction action) {

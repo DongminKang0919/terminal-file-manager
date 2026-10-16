@@ -21,6 +21,8 @@ ui=[*core,*sorted(x for x in (root/'src/ui').glob('*.c') if x.name!='main.c')]
 flags=['-D_XOPEN_SOURCE=700','-O1','-g','-Wall','-Wextra','-Wpedantic','-std=c11',
        '-fno-omit-frame-pointer','-fsanitize=address,undefined','-fno-pie','-no-pie']
 targets={
+ 'path_query_test':([],ui),
+ 'media_worker_test':([],[x for x in core if x.name!='posix_media.c']),
  'preview_async_test':(['platform_task_send','platform_reader_open','platform_reader_peek','platform_reader_line','platform_reader_changed','platform_directory_empty'],ui),
  'preview_worker_test':(['platform_task_send','platform_task_command'],[x for x in core if x.name!='preview_job.c']),
  'mutation_job_test':(['read','write','fstatat','renameat2','platform_task_send','platform_task_receive'],core),

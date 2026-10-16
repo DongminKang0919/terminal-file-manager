@@ -8,6 +8,7 @@ import struct
 import tempfile
 import re
 import termios
+import time
 from display_pty import Terminal, Screen
 
 HOME='\x1bOH'; DOWN='\x1bOB'; END='\x1bOF'; DELETE='\x1b[3~'; BACK='\x7f'
@@ -93,7 +94,12 @@ for width,height in [(50,9),(80,24),(160,32)]:
             find('leaf-one');t.send(F5);replace('../../C');button('[ Copy now ]')
             assert (c/'leaf-one').read_text()=='first';t.send('\t');marks(1);assert '/B' in body();t.send('\t')
             # Browse to a third destination and retain Name edit/explicit run.
-            find('leaf-two');t.send(F6+'\t\t\n');t.send('p');replace(c);t.send('\n ')
+            find('leaf-two');t.send(F6+'\t\t\n');t.send('p');replace(c);t.send('\n')
+            deadline=time.monotonic()+2
+            while 'No subdirectories' not in body() or '/C' not in body():
+                assert time.monotonic()<deadline,body()
+                t.read()
+            t.send(' ')
             button('[ Move now ]');assert not (a/'03-nested'/'leaf-two').exists() and (c/'leaf-two').exists()
             t.send('!'+END+'\x1b');side('Left');t.send(BACK);find('01-한글');t.send(END)
             saved=panel('Left');t.send(BACK);find('C');t.send('\n');t.send('[[');assert panel('Left')==saved

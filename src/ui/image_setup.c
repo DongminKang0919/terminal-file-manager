@@ -32,22 +32,35 @@ static bool dimensions(const char *s,unsigned *w,unsigned *h) {
 bool image_setup(UiContext *ui,char *result,size_t capacity) {
     WINDOW *win=dialog_open(ui,"Image display setup",18,70);
     if(!win) { snprintf(result,capacity,"Resize terminal to at least 50x9"); return false; }
-    TerminalTools tools=terminal_tools();
+    TerminalTools tools={0};
+    MediaPreview *tools_job=NULL;bool tools_done=false;
     TerminalReply candidate={0};
     bool resized=false, finished=false, showing=false;
     int stage=0, previous_status=ui->image_status;
     char detail[160]="", hint[160]="Executable discovery only; coders not tested";
-    if(!tools.pdf_image||!tools.pdf_text) snprintf(hint,sizeof hint,"Missing Poppler tools; install poppler-utils");
+
     snprintf(result,capacity,"Image check cancelled; previous settings kept");
     for(;;) {
+        if(!tools_done) {
+            Result r=result_make(RESULT_OK,NULL);
+            if(!tools_job)r=core_tools_open(&tools_job);
+            if(tools_job)r=core_tools_poll(tools_job,&tools_done,&tools);
+            else if(r.code!=RESULT_CANCELLED)tools_done=true;
+            if(tools_done) {
+                core_media_close(tools_job);tools_job=NULL;
+                if(r.code!=RESULT_OK)snprintf(hint,sizeof hint,"%.159s",r.detail);
+                else if(!tools.pdf_image||!tools.pdf_text)snprintf(hint,sizeof hint,"Missing Poppler tools; install poppler-utils");
+            }
+        }
         int h=getmaxy(win),w=getmaxx(win);
         if(stage==0) {
-            snprintf(detail,sizeof detail,"Image tool: %s",tools.image==1?"magick (found, not tested)":tools.image==2?"convert (found, not tested)":"missing; install ImageMagick");
+            if(tools_done)snprintf(detail,sizeof detail,"Image tool: %s",tools.image==1?"magick (found, not tested)":tools.image==2?"convert (found, not tested)":"missing; install ImageMagick");
+            else snprintf(detail,sizeof detail,"Checking media tools... Esc: back; F10: exit");
             char title[100]; snprintf(title,sizeof title,"Image display: %s",image_status_label(ui));
             if(ui->sixel_confirmed && ui->cell_width && ui->cell_height) snprintf(title,sizeof title,"Image display: %s (%ux%u)",image_status_label(ui),ui->cell_width,ui->cell_height);
             page(win,title,detail,"Enter: query  M: manual  Esc: back");
             snprintf(detail,sizeof detail,"pdftoppm: %s | pdftotext: %s",tools.pdf_image?"found":"missing",tools.pdf_text?"found":"missing");
-            draw_window_text(win,3,2,w-4,detail);
+            if(tools_done)draw_window_text(win,3,2,w-4,detail);
             draw_window_text(win,h-3,2,w-4,hint); dialog_refresh(win);
         } else if(stage==2) {
             snprintf(detail,sizeof detail,"Measured cell: %ux%u; rectangle below",candidate.width,candidate.height);
@@ -80,9 +93,12 @@ bool image_setup(UiContext *ui,char *result,size_t capacity) {
         core_media_reap();
         if(key==ERR) { if(core_media_shutdown_requested()) break; continue; }
         if(key==KEY_RESIZE) { resized=true; snprintf(result,capacity,"Resized: image check stopped; retry in F7"); break; }
+        if(key==KEY_F(10)) { core_request_shutdown();break; }
         if(key==27||key=='n') break;
         if(stage==0 && (key=='\n'||key==KEY_ENTER||key=='m'||key=='M')) {
             bool manual=key=='m'||key=='M';
+            /* Terminal protocol checks do not cancel or fabricate the still
+               pending executable discovery result. Both finish independently. */
             media_reset(ui); graphics_clear(ui);
             ui->image_status=IMAGE_CHECKING;
             page(win,"Checking: retiring current converter","No file operations run during this check.","Esc: cancel");
@@ -144,6 +160,7 @@ bool image_setup(UiContext *ui,char *result,size_t capacity) {
             snprintf(result,capacity,"Image display enabled for this session"); finished=true; break;
         }
     }
+    core_media_close(tools_job);
     input_terminal_end();
     if(showing) graphics_clear(ui);
     if(ui->image_status==IMAGE_CHECKING) ui->image_status=previous_status;

@@ -1,6 +1,7 @@
 #include "core.h"
 #include "../platform/platform.h"
 #include <stdlib.h>
+#include <string.h>
 struct MediaPreview { PlatformMedia *job; };
 Result core_media_open(const char *path,PreviewMediaKind kind,bool text,unsigned width,unsigned height,MediaPreview **out) {
     *out=NULL;
@@ -23,3 +24,19 @@ void core_media_install_signals(void) { platform_media_install_signals(); }
 bool core_media_shutdown_requested(void) { return platform_media_shutdown_requested(); }
 
 void core_request_shutdown(void) { platform_request_shutdown(); }
+
+Result core_tools_open(MediaPreview **out) {
+    *out=NULL;MediaPreview *m=calloc(1,sizeof *m);
+    if(!m)return result_make(RESULT_NO_MEMORY,"Out of memory");
+    Result r=platform_tools_open(&m->job);
+    if(r.code!=RESULT_OK) { free(m);return r; }
+    *out=m;return r;
+}
+Result core_tools_poll(MediaPreview *job,bool *done,TerminalTools *tools) {
+    char *data=NULL;size_t len=0;Result r=core_media_poll(job,done,&data,&len);
+    if(*done && r.code==RESULT_OK) {
+        if(len!=sizeof *tools)r=result_make(RESULT_IO,"Invalid tool discovery result");
+        else memcpy(tools,data,len);
+    }
+    free(data);return r;
+}

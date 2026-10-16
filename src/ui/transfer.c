@@ -7,13 +7,10 @@ bool ui_transfer_context(UiContext *ui, UiTransferContext *out) {
     if(!out->base || !out->destination) {
         ui_transfer_context_free(out); message(ui,"Out of memory; no changes"); return false;
     }
-    if(out->dual) {
-        char *resolved=NULL;
-        out->destination_status=core_resolve_directory(out->base,out->destination,&resolved);
-        free(resolved);
-        if(out->destination_status.code==RESULT_OK && ui->panels[ui->active^1u].stale)
-            out->destination_status=result_make(RESULT_ACCESS,"Opposite list is STALE; destination will be revalidated");
-    }
+    /* The peer snapshot is a hint. Validation runs when the user requests
+       Paths/Run, and the mutation worker revalidates again before changing files. */
+    if(out->dual && ui->panels[ui->active^1u].stale)
+        out->destination_status=result_make(RESULT_ACCESS,"Opposite list is STALE; destination will be revalidated");
     return true;
 }
 void ui_transfer_context_free(UiTransferContext *context) {
@@ -29,20 +26,24 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
     FileInfo *entries = NULL;
     size_t picker_count = 0, choice = 0, offset = 0;
     bool reload = true, accepted = false, readable = false;
+    UiPathQuery query={0};
     size_t last_choice = SIZE_MAX;
     uint64_t last_click = 0;
     int focus=0; /* list, Use, Open, Cancel */
     for (;;) {
         if (reload) {
-            focus=0;
-            FileList old = {entries, picker_count}; file_list_free(&old); entries = NULL; picker_count = choice = offset = 0;
-            FileList list;
-            Result read_result = core_list(folder, true, folders_only, &list);
-            entries = list.entries; picker_count = list.len;
-            readable = read_result.code == RESULT_OK;
-            warning[0] = 0;
-            if (read_result.code != RESULT_OK) snprintf(warning, sizeof warning, "Cannot read directory: %.220s", read_result.detail);
-            reload = false; last_choice = SIZE_MAX;
+            ui_path_query_start(&query,ui->async_reads,NULL,folder,true,folders_only);
+            reload=false;
+        }
+        ui_path_query_poll(&query);
+        if(query.ready) {
+            if(query.result.code==RESULT_OK && query.directory && strlen(query.directory)<sizeof folder) {
+                FileList old={entries,picker_count};file_list_free(&old);
+                entries=query.files.entries;picker_count=query.files.len;query.files=(FileList){0};
+                snprintf(folder,sizeof folder,"%s",query.directory);
+                choice=offset=0;last_choice=SIZE_MAX;readable=true;warning[0]=0;
+            } else snprintf(warning,sizeof warning,"Cannot read directory: %.220s",query.result.code==RESULT_OK?"Path exceeds input limit":query.result.detail);
+            query.ready=false;
         }
         int h, w; getmaxyx(win, h, w); int rows = h - 6;
         if (choice < offset) offset = choice;
@@ -60,16 +61,20 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
             draw_window_text(win, i + 3, 13, w - 15, it->name);
             wattroff(win, (active ? ui_selection() : COLOR_PAIR(it->directory_target ? UI_DIR : UI_FILE)));
         }
-        if (!readable) draw_window_text(win, 3, 2, w - 4, "Cannot inspect directory contents");
+        if (query.pending) draw_window_text(win,3,2,w-4,"Loading directory... Esc: back; F10: exit");
+        else if (!readable) draw_window_text(win, 3, 2, w - 4, "Cannot inspect directory contents");
         else if (!picker_count) draw_window_text(win, 3, 2, w - 4, folders_only ? "No subdirectories. You can use this directory." : "This directory is empty.");
-        draw_window_text(win, h - 3, 2, w - 4, *warning ? warning : "Enter: open  Tab: focus  Space: use  p: path");
+        draw_window_text(win, h - 3, 2, w - 4, query.pending ? "Loading directory... Esc: back; F10: exit" : *warning ? warning : "Enter: open  Tab: focus  Space: use  p: path");
         const char *use_label = folders_only ? "[ Use directory ]" : "[ Use selected ]";
         int open_x = 2 + (int)strlen(use_label) + 2, cancel_x = open_x + 8 + 2;
-        dialog_button(win, h - 2, 2, use_label, focus==1, readable && (folders_only || picker_count));
-        dialog_button(win, h - 2, open_x, "[ Open ]", focus==2, picker_count != 0);
+        dialog_button(win, h - 2, 2, use_label, focus==1, !query.pending && readable && (folders_only || picker_count));
+        dialog_button(win, h - 2, open_x, "[ Open ]", focus==2, !query.pending && picker_count != 0);
         dialog_button(win, h - 2, cancel_x, "[ Cancel ]", focus==3, true);
         dialog_refresh(win);
+        wtimeout(win,(query.pending || core_read_cleanup_pending())?40:-1);
         int key = input_key(win);
+        if(key==ERR)continue;
+        if(key==KEY_F(10)) { core_request_shutdown();break; }
         bool use = false, open = false, up = false, path = false;
         if (key == KEY_MOUSE) {
             MEVENT e; if (getmouse(&e) != OK) continue;
@@ -88,15 +93,15 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
                 }
                 if (row == 2) { up = col >= 2 && col < 10; path = col >= 12 && col < 27; }
                 if (row == h - 2) {
-                    use=dialog_button_hit(win,&e,h-2,2,use_label,readable && (folders_only || picker_count));
-                    open=dialog_button_hit(win,&e,h-2,open_x,"[ Open ]",picker_count!=0);
+                    use=dialog_button_hit(win,&e,h-2,2,use_label,!query.pending && readable && (folders_only || picker_count));
+                    open=dialog_button_hit(win,&e,h-2,open_x,"[ Open ]",!query.pending && picker_count!=0);
                     if(dialog_button_hit(win,&e,h-2,cancel_x,"[ Cancel ]",true)) break;
                 }
             }
         }
         if (key == 27 || key == KEY_RESIZE) { if(key==KEY_RESIZE && resized) *resized=true; break; }
         if(key=='\t' || key==KEY_BTAB) {
-            unsigned disabled=(!readable || (!folders_only && !picker_count) ? 1u<<1 : 0) | (!picker_count ? 1u<<2 : 0);
+            unsigned disabled=(query.pending || !readable || (!folders_only && !picker_count) ? 1u<<1 : 0) | (!picker_count ? 1u<<2 : 0);
             focus=dialog_focus_next(focus,4,key==KEY_BTAB,disabled); continue;
         }
         if((key=='\n' || key==KEY_ENTER) && focus) {
@@ -115,37 +120,28 @@ bool pick_path(UiContext *ui, bool folders_only, const char *initial, char *resu
         use |= key == ' ';
         if (up) {
             char *parent = core_path_parent(folder);
-            if (parent) { snprintf(folder, sizeof folder, "%s", parent); free(parent); reload = true; warning[0] = 0; }
+            if (parent) { ui_path_query_start(&query,ui->async_reads,NULL,parent,true,folders_only);free(parent);warning[0]=0; }
         } else if (path) {
             char input[UI_INPUT_CAP];
             int old_h = LINES, old_w = COLS;
             bool path_resized=false;
             if (prompt_value_status(ui, "Directory path - absolute or relative", input, sizeof input, folder, &path_resized)) {
-                char *resolved = NULL;
-                Result r = core_resolve_directory(folder, input, &resolved);
-                if (r.code == RESULT_OK && strlen(resolved) < sizeof folder) {
-                    snprintf(folder, sizeof folder, "%s", resolved); reload = true; warning[0] = 0;
-                } else snprintf(warning, sizeof warning, "Cannot open directory: %.220s", r.code == RESULT_OK ? "Path exceeds input limit" : r.detail);
-                free(resolved);
+                ui_path_query_start(&query,ui->async_reads,folder,input,true,folders_only);
             }
             if (path_resized || old_h != LINES || old_w != COLS) { if(resized) *resized=true; break; }
             touchwin(win);
         } else if (use || open) {
-            if (!readable) continue;
+            if (query.pending || !readable) continue;
             if (use && folders_only) { snprintf(result, UI_INPUT_CAP, "%s", folder); accepted = true; break; }
             if (!picker_count) continue;
             char full[UI_INPUT_CAP];
             if (join(full, sizeof full, folder, entries[choice].name) < 0) { snprintf(warning, sizeof warning, "Path is too long."); continue; }
             if (open && entries[choice].directory_target) {
-                char *resolved = NULL;
-                Result r = core_resolve_directory(NULL, full, &resolved);
-                if (r.code != RESULT_OK || strlen(resolved) >= sizeof folder) {
-                    snprintf(warning, sizeof warning, "Cannot open directory: %.220s", r.code == RESULT_OK ? "Path exceeds input limit" : r.detail); free(resolved); continue;
-                }
-                snprintf(folder, sizeof folder, "%s", resolved); free(resolved); reload = true; warning[0] = 0;
+                ui_path_query_start(&query,ui->async_reads,NULL,full,true,folders_only);
             } else if (!folders_only) { snprintf(result, UI_INPUT_CAP, "%s", full); accepted = true; break; }
         }
     }
+    ui_path_query_close(&query);
     FileList old = {entries, picker_count}; file_list_free(&old); dialog_close(ui, win); return accepted;
 }
 
@@ -215,12 +211,14 @@ void transfer_entry(UiContext *ui, bool move_it) {
         field_init(&name_field,initial->name);
     }
     enum { DESTINATION, NAME, BROWSE, PATHS, SOURCE, RUN, CANCEL, FIELDS };
-    int focus = DESTINATION, offset = 0;
+    int focus = DESTINATION, offset = 0, pending_action=-1;
+    UiPathQuery query={0};
     const int focus_row[] = {3,4,5,5,5,6,6};
     const int button_x[] = {2,14,25};
     const char *buttons[] = {"[ Browse ]","[ Paths ]","[ Source ]"};
     const char *run_label = move_it ? "[ Move now ]" : "[ Copy now ]";
     for (;;) {
+        ui_path_query_poll(&query);
         int h,w; getmaxyx(win,h,w); int rows = h - 4;
         if (focus_row[focus] < offset) offset = focus_row[focus];
         if (focus_row[focus] >= offset + rows) offset = focus_row[focus] - rows + 1;
@@ -249,17 +247,29 @@ void transfer_entry(UiContext *ui, bool move_it) {
             if (row == 6) { draw_window_text(win,y,2,8,"Target:"); if(target) draw_window_path(win,y,10,w-12,target); else draw_window_text(win,y,10,w-12,"Input too long / no memory"); }
         }
         wattron(win,COLOR_PAIR(*warning ? UI_ERROR : UI_MUTED));
-        draw_window_text(win,h-3,2,w-4,*warning ? warning : "To: relative/blank uses Base; Tab: focus");
+        draw_window_text(win,h-3,2,w-4,query.pending ? "Checking destination... Esc: cancel; F10: exit" : *warning ? warning : "To: relative/blank uses Base; Tab: focus");
         wattroff(win,COLOR_PAIR(*warning ? UI_ERROR : UI_MUTED));
         int cancel_x = 2 + (int)strlen(run_label) + 2;
-        dialog_button(win,h-2,2,run_label,focus==RUN,true);
+        dialog_button(win,h-2,2,run_label,focus==RUN,!query.pending);
         dialog_button(win,h-2,cancel_x,"[ Cancel ]",focus==CANCEL,true);
         curs_set(focus==DESTINATION || focus==NAME);
         if (cursor_y) wmove(win,cursor_y,cursor_x);
         dialog_refresh(win);
         free(source_name); free(target); free(directory);
-        wint_t key; int kind=input_wide(win,&key), action=-1;
-        if (kind==ERR) continue;
+        wint_t key=0;int kind=ERR,action=-1;
+        if(query.ready && pending_action>=0) {
+            /* Consume already-queued edits/cancel before committing a result.
+               A completed request never outranks newer terminal input. */
+            if(ui->async_reads) { wtimeout(win,0);kind=input_wide(win,&key); }
+            if(kind==ERR) { action=pending_action;pending_action=-1; }
+        }
+        else { wtimeout(win,(query.pending || core_read_cleanup_pending())?40:-1);kind=input_wide(win,&key); }
+        if(kind==KEY_CODE_YES && key==KEY_F(10)) { core_request_shutdown();break; }
+        if(kind==OK && key==27 && (query.pending || pending_action>=0)) {
+            ui_path_query_close(&query);pending_action=-1;
+            snprintf(warning,sizeof warning,"Destination check cancelled; inputs kept");continue;
+        }
+        if (kind==ERR && action<0) continue;
         if ((kind==OK && key==27) || (kind==KEY_CODE_YES && key==KEY_RESIZE)) break;
         if (kind==KEY_CODE_YES && key==KEY_MOUSE) {
             MEVENT e; if (getmouse(&e)!=OK) continue;
@@ -282,20 +292,31 @@ void transfer_entry(UiContext *ui, bool move_it) {
             if (focus==DESTINATION) { focus=NAME; continue; }
             if (focus==NAME) {
                 if (!name_field.len) { snprintf(warning,sizeof warning,"Enter a target name."); continue; }
-                focus=RUN; continue;
+                if(!query.pending)focus=RUN;
+                continue;
             }
             action=focus;
         }
         if (action<0) {
-            if (focus==DESTINATION || focus==NAME) field_edit(focus==DESTINATION?&folder_field:&name_field,kind,key);
+            if (focus==DESTINATION || focus==NAME) {
+                UiField *field=focus==DESTINATION?&folder_field:&name_field;
+                UiField before=*field;field_edit(field,kind,key);
+                if(before.len!=field->len || wmemcmp(before.value,field->value,field->len)) {
+                    ui_path_query_close(&query);pending_action=-1;warning[0]=0;
+                }
+            }
             continue;
         }
         if (action==CANCEL) break;
+        if(query.pending)continue;
+        if((action==RUN || action==PATHS) && !query.ready) {
+            ui_path_query_start(&query,ui->async_reads,base,*folder?folder:".",false,false);
+            pending_action=action;continue;
+        }
         if (!valid && action!=SOURCE) { snprintf(warning,sizeof warning,"Input is too long."); continue; }
         int old_h=LINES,old_w=COLS; bool resized=false;
         if (action==BROWSE) {
-            char *start=NULL; core_resolve_directory(base,*folder?folder:".",&start);
-            if(!start) start=*folder=='/'?text_copy(folder):core_path_join(base,*folder?folder:".");
+            char *start=*folder=='/'?text_copy(folder):core_path_join(base,*folder?folder:".");
             char picked[UI_INPUT_CAP];
             if (start && pick_path(ui,true,start,picked,&resized)) { field_init(&folder_field,picked); warning[0]=0; context.destination_status=result_make(RESULT_OK,NULL); }
             if(!start) snprintf(warning,sizeof warning,"Out of memory; destination unchanged");
@@ -309,14 +330,14 @@ void transfer_entry(UiContext *ui, bool move_it) {
             }
         } else if (action==PATHS) {
             char *dir=NULL;
-            Result path_result=core_resolve_directory(base,*folder?folder:".",&dir);
+            Result path_result=query.result;dir=query.directory;query.directory=NULL;query.ready=false;
             char *full=dir?core_path_join(dir,name):NULL;
             if(full) show_transfer_paths(ui,source,base,full,&resized);
             else snprintf(warning,sizeof warning,"Destination: %.450s",path_result.code==RESULT_OK?"Out of memory":path_result.detail);
             free(dir); free(full);
         } else if (action==RUN) {
             char *resolved=NULL;
-            Result r=core_resolve_directory(base,*folder?folder:".",&resolved);
+            Result r=query.result;resolved=query.directory;query.directory=NULL;query.ready=false;
             if(r.code!=RESULT_OK) { snprintf(warning,sizeof warning,"Destination: %.450s",r.detail); focus=DESTINATION; }
             else if(transfer_path(ui,move_it,source,resolved,name,warning,sizeof warning)) { free(resolved); break; }
             free(resolved);
@@ -324,5 +345,6 @@ void transfer_entry(UiContext *ui, bool move_it) {
         if(resized || old_h!=LINES || old_w!=COLS) break;
         touchwin(win);
     }
+    ui_path_query_close(&query);
     dialog_close(ui,win); ui_transfer_context_free(&context);
 }

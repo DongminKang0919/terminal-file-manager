@@ -67,7 +67,7 @@ static void mutation_work(PlatformTaskWriter *writer,void *context) {
 }
 Result core_mutation_start(BatchJob *batch,MutationJob **out) {
     *out=NULL;
-    if(batch->action<BATCH_COPY || batch->action>BATCH_TRASH || batch->executed || !batch->len || ((batch->action==BATCH_COPY || batch->action==BATCH_MOVE) && !batch->directory))
+    if(batch->action<BATCH_COPY || batch->action>BATCH_CREATE_DIRECTORY || batch->executed || !batch->len || ((batch->action==BATCH_COPY || batch->action==BATCH_MOVE) && !batch->directory))
         return result_make(RESULT_INVALID_NAME,"Invalid frozen operation request; no changes");
     if(!platform_mutation_available())return result_make(RESULT_CANCELLED,"Previous operation is still finishing; no new work started");
     MutationJob *job=calloc(1,sizeof *job);if(!job)return result_make(RESULT_NO_MEMORY,"Out of memory; no changes");

@@ -168,10 +168,16 @@ int main(int argc,char **argv) {
         core_media_close(job);
     }
     core_media_shutdown(); assert(count("/proc/self/fd",NULL)==fds);
+    char gate[512],release[528];snprintf(gate,sizeof gate,"%s/late-gate",dir);snprintf(release,sizeof release,"%s.release",gate);
+    assert(!setenv("TFILE_MEDIA_LATE_GATE",gate,1));
     source(path,PREVIEW_PNG,"late"); assert(opened(path,PREVIEW_PNG,false,&job).code==RESULT_OK);
+    for(int i=0;access(gate,F_OK);i++) { assert(i<300);pause_tick(); }
     source(next,PREVIEW_PNG,"ok"); assert(!rename(next,path));
+    FILE *unblock=fopen(release,"w");assert(unblock);fclose(unblock);
     r=completed(job,&data,&len); assert(r.code==RESULT_IO && strstr(r.detail,"File changed")); core_media_close(job);
-    assert(!mkfifo(fifo,0600)); assert(core_media_open(fifo,PREVIEW_PNG,false,120,90,&job).code==RESULT_UNSUPPORTED && !job);
+    assert(!unsetenv("TFILE_MEDIA_LATE_GATE"));assert(!unlink(gate)&&!unlink(release));
+    assert(!mkfifo(fifo,0600));assert(opened(fifo,PREVIEW_PNG,false,&job).code==RESULT_OK);
+    assert(completed(job,&data,&len).code==RESULT_UNSUPPORTED && !data);core_media_close(job);
     assert(!unlink(fifo));
     source(path,PREVIEW_NOT_MEDIA,"ordinary text with .png extension");
     PreviewSession *s=NULL; assert(preview_session_open(path,&s).code==RESULT_OK);
@@ -180,7 +186,8 @@ int main(int argc,char **argv) {
     assert(preview_session_open(path,&s).code==RESULT_OK && preview_session_media(s)==PREVIEW_NOT_MEDIA);
     PreviewText page; assert(preview_session_page(s,0,10,&page).code==RESULT_OK && page.empty); preview_text_free(&page); preview_session_close(s);
     source(path,PREVIEW_PNG,"ok"); assert(!setenv("PATH","/nonexistent",1));
-    r=core_media_open(path,PREVIEW_PNG,false,120,90,&job); assert(r.code==RESULT_UNSUPPORTED && strstr(r.detail,"Missing ImageMagick"));
+    assert(opened(path,PREVIEW_PNG,false,&job).code==RESULT_OK);
+    r=completed(job,&data,&len);assert(r.code==RESULT_UNSUPPORTED && strstr(r.detail,"Missing ImageMagick"));core_media_close(job);
     assert(!setenv("PATH",tools,1));
     source(next,PREVIEW_PDF,"ok");
     UiContext ui={0}; assert(ui_init(&ui,dir).code==RESULT_OK);

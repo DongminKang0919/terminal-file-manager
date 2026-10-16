@@ -12,6 +12,7 @@
 | 주제 | 문서 |
 | --- | --- |
 | [비동기 통합 사용 흐름 점검 (2026-10-15)](INTEGRATION_VALIDATION_2026-10-15.md) | 연결 세션, 종료·충돌 팝업 수명, 불명확/최소 화면 상태, 회귀·sanitizer와 수동 점검 |
+| UI의 남은 동기 접근 | [2026-10-16 gate 재현·요청 수명·검증](UI_IO_VALIDATION_2026-10-16.md) |
 | 비동기 sanitizer 자동화 | [2026-10-16 연결·범위·실행 결과](ASYNC_SANITIZER_VALIDATION_2026-10-16.md) |
 | 파일 변경 실행·취소·종료 | [변경 worker 검증·측정](ASYNC_MUTATION_VALIDATION_2026-10-15.md) |
 | 미리보기·최초 이중 패널·변경 작업 지연 | [2026-10-15 재현·구현·측정](ASYNC_PREVIEW_VALIDATION_2026-10-15.md) |

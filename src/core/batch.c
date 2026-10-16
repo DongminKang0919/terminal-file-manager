@@ -59,6 +59,10 @@ Result batch_execute(BatchJob *job,BatchCallback callback,void *context) {
         OperationProgress before={.path=target->source};
         Result r;
         if(!progress(&before,&run)) r=result_make(RESULT_CANCELLED,i ? "Cancelled before next target; target not started" : "Cancelled before first target; no changes");
+        else if(job->action==BATCH_CREATE_FILE || job->action==BATCH_CREATE_DIRECTORY) {
+            target->destination=core_path_join(target->source,target->name);
+            r=target->destination?core_create_progress(target->source,target->name,job->action==BATCH_CREATE_DIRECTORY,callback?progress:NULL,&run):result_make(RESULT_NO_MEMORY,"Out of memory; no changes");
+        }
         else if(job->action==BATCH_DELETE) r=core_delete_progress(target->source,callback?progress:NULL,&run);
         else if(job->action==BATCH_TRASH) {
             char *destination=NULL;r=core_trash_progress(target->source,&destination,callback?progress:NULL,&run);target->destination=destination;

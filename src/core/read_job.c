@@ -15,7 +15,7 @@ struct ReadJob {
 typedef struct {
     const char *base, *path, *term;
     SearchLimits limits;
-    bool search, hidden, directories_only;
+    bool search, hidden, directories_only, resolve_only;
 } Request;
 typedef struct { PlatformTaskWriter *writer; size_t sent; } Writer;
 
@@ -54,7 +54,7 @@ static void read_work(PlatformTaskWriter *writer, void *context) {
         result.result = core_resolve_directory(request->base, request->path, &resolved);
         if (result.result.code == RESULT_OK) {
             if (!platform_task_send(writer, READ_DIRECTORY, resolved, strlen(resolved) + 1)) { free(resolved); goto done; }
-            result.result = core_read_directory(resolved, request->hidden, request->directories_only, &result.matches);
+            if (!request->resolve_only) result.result = core_read_directory(resolved, request->hidden, request->directories_only, &result.matches);
             free(resolved);
             for (size_t i = 0; i < result.matches.len; i++)
                 if (!send_file(writer, &result.matches.entries[i])) goto done;
@@ -82,6 +82,10 @@ Result core_read_search_start(const char *root, const char *term, SearchLimits l
 }
 Result core_read_directory_start(const char *base, const char *path, bool hidden, bool directories_only, ReadJob **out) {
     Request request = {.base = base, .path = path, .hidden = hidden, .directories_only = directories_only};
+    return start(&request, out);
+}
+Result core_read_resolve_start(const char *base, const char *path, ReadJob **out) {
+    Request request = {.base=base, .path=path, .resolve_only=true};
     return start(&request, out);
 }
 static Result receive_file(ReadJob *job, const void *data, size_t len) {

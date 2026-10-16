@@ -1,0 +1,1148 @@
+Collected evidence: trailing screen padding trimmed; original /tmp logs retained.
+UI filesystem preparation evidence, base commit 3e0ae70. /tmp fixtures only.
+ASan/UBSan fallback is not a leak check; LSan incomplete under ptrace.
+
+=== /tmp/tfile-ui-io-before.log ===
+BEFORE resolve 50x9 esc: UI pid=5, input blocked >= 202.0ms until explicit release
+BEFORE resolve 50x9 exit: UI pid=9, input blocked >= 201.9ms until explicit release
+BEFORE resolve 50x9 resize: UI pid=11, input blocked >= 204.2ms until explicit release
+BEFORE browse 50x9 esc: UI pid=15, input blocked >= 202.9ms until explicit release
+BEFORE browse 50x9 exit: UI pid=17, input blocked >= 202.6ms until explicit release
+BEFORE browse 50x9 resize: UI pid=19, input blocked >= 203.4ms until explicit release
+BEFORE create-before 50x9 esc: UI pid=21, input blocked >= 202.0ms until explicit release
+BEFORE create-before 50x9 exit: UI pid=25, input blocked >= 201.9ms until explicit release
+BEFORE create-before 50x9 resize: UI pid=29, input blocked >= 203.4ms until explicit release
+BEFORE create-after 50x9 esc: UI pid=33, input blocked >= 202.9ms until explicit release
+BEFORE create-after 50x9 exit: UI pid=37, input blocked >= 203.4ms until explicit release
+BEFORE create-after 50x9 resize: UI pid=41, input blocked >= 204.7ms until explicit release
+BEFORE media-source 50x9 esc: UI pid=45, input blocked >= 203.2ms until explicit release
+BEFORE media-source 50x9 exit: UI pid=50, input blocked >= 203.1ms until explicit release
+BEFORE media-source 50x9 resize: UI pid=54, input blocked >= 207.6ms until explicit release
+BEFORE tools 50x9 esc: UI pid=58, input blocked >= 202.7ms until explicit release
+BEFORE tools 50x9 exit: UI pid=60, input blocked >= 202.2ms until explicit release
+BEFORE tools 50x9 resize: UI pid=62, input blocked >= 200.6ms until explicit release
+BEFORE resolve 100x24 esc: UI pid=64, input blocked >= 203.3ms until explicit release
+BEFORE resolve 100x24 exit: UI pid=68, input blocked >= 203.2ms until explicit release
+BEFORE resolve 100x24 resize: UI pid=70, input blocked >= 205.5ms until explicit release
+BEFORE browse 100x24 esc: UI pid=74, input blocked >= 203.7ms until explicit release
+BEFORE browse 100x24 exit: UI pid=76, input blocked >= 203.6ms until explicit release
+BEFORE browse 100x24 resize: UI pid=78, input blocked >= 206.3ms until explicit release
+BEFORE create-before 100x24 esc: UI pid=80, input blocked >= 202.3ms until explicit release
+BEFORE create-before 100x24 exit: UI pid=84, input blocked >= 202.5ms until explicit release
+BEFORE create-before 100x24 resize: UI pid=88, input blocked >= 204.3ms until explicit release
+BEFORE create-after 100x24 esc: UI pid=92, input blocked >= 203.8ms until explicit release
+BEFORE create-after 100x24 exit: UI pid=96, input blocked >= 203.8ms until explicit release
+BEFORE create-after 100x24 resize: UI pid=100, input blocked >= 205.6ms until explicit release
+BEFORE media-source 100x24 esc: UI pid=104, input blocked >= 203.2ms until explicit release
+BEFORE media-source 100x24 exit: UI pid=109, input blocked >= 203.4ms until explicit release
+BEFORE media-source 100x24 resize: UI pid=113, input blocked >= 209.1ms until explicit release
+BEFORE tools 100x24 esc: UI pid=117, input blocked >= 202.2ms until explicit release
+BEFORE tools 100x24 exit: UI pid=119, input blocked >= 201.8ms until explicit release
+BEFORE tools 100x24 resize: UI pid=121, input blocked >= 204.0ms until explicit release
+
+=== /tmp/tfile-ui-io-normal-before.log ===
+NORMAL before transfer 50x9: observable result 10.9ms (no gate; includes PTY delivery)
+NORMAL before browse 50x9: observable result 0.9ms (no gate; includes PTY delivery)
+NORMAL before create 50x9: observable result 0.7ms (no gate; includes PTY delivery)
+NORMAL before media 50x9: observable result 124.2ms (no gate; includes PTY delivery)
+NORMAL before tools 50x9: observable result 1.9ms (no gate; includes PTY delivery)
+NORMAL before transfer 100x24: observable result 11.4ms (no gate; includes PTY delivery)
+NORMAL before browse 100x24: observable result 1.1ms (no gate; includes PTY delivery)
+NORMAL before create 100x24: observable result 1.7ms (no gate; includes PTY delivery)
+NORMAL before media 100x24: observable result 122.7ms (no gate; includes PTY delivery)
+NORMAL before tools 100x24: observable result 2.5ms (no gate; includes PTY delivery)
+
+=== /tmp/tfile-ui-io-check-complete.log ===
+./tests/path_query_test
+PASS: path query resolve/list/failure, pending/buffered replacement, occupied-slot retry, 40 cancellations and FD/child cleanup
+./tests/media_worker_test
+PASS: media source/tool preparation, converter normal return, unsupported/missing/access cleanup (in-process body; no fork cancellation guarantee)
+python3 tests/isolated_check.py python3 tests/ui_io_latency_pty.py
+PASS resolve 50x9 esc: worker=251, frame/exit=26.0ms, worker reaped=26.0ms, observed completion=26.0ms
+PASS resolve 50x9 exit: worker=254, frame/exit=1.7ms, worker reaped=0.5ms, observed completion=1.7ms
+PASS resolve 50x9 resize: worker=257, frame/exit=0.9ms, worker reaped=0.8ms, observed completion=0.9ms
+PASS browse 50x9 esc: worker=260, frame/exit=26.2ms, worker reaped=25.8ms, observed completion=26.2ms
+PASS browse 50x9 exit: worker=263, frame/exit=1.9ms, worker reaped=0.6ms, observed completion=1.9ms
+PASS browse 50x9 resize: worker=266, frame/exit=1.5ms, worker reaped=1.0ms, observed completion=1.5ms
+PASS create-before 50x9 esc: worker=269, frame/exit=35.4ms, worker reaped=45.4ms, observed completion=45.5ms
+PASS create-before 50x9 exit: worker=272, frame/exit=10.3ms, worker reaped=20.5ms, observed completion=22.0ms
+PASS create-before 50x9 resize: worker=275, frame/exit=10.3ms, worker reaped=20.8ms, observed completion=20.8ms
+PASS create-after 50x9 esc: worker=278, frame/exit=35.2ms, worker reaped=45.2ms, observed completion=56.3ms
+PASS create-after 50x9 exit: worker=283, frame/exit=9.9ms, worker reaped=20.0ms, observed completion=21.6ms
+PASS create-after 50x9 resize: worker=286, frame/exit=10.3ms, worker reaped=20.4ms, observed completion=31.7ms
+PASS media-source 50x9 esc: worker=292, frame/exit=31.0ms, worker reaped=30.9ms, observed completion=31.0ms
+PASS media-source 50x9 exit: worker=297, frame/exit=1.7ms, worker reaped=1.6ms, observed completion=1.7ms
+PASS media-source 50x9 resize: worker=301, frame/exit=0.7ms, worker reaped=41.7ms, observed completion=41.7ms
+PASS tools 50x9 esc: worker=305, frame/exit=25.8ms, worker reaped=25.6ms, observed completion=25.8ms
+PASS tools 50x9 exit: worker=308, frame/exit=2.2ms, worker reaped=0.6ms, observed completion=2.2ms
+PASS tools 50x9 resize: worker=311, frame/exit=1.0ms, worker reaped=0.7ms, observed completion=1.0ms
+PASS resolve 100x24 esc: worker=314, frame/exit=66.3ms, worker reaped=66.3ms, observed completion=66.3ms
+PASS resolve 100x24 exit: worker=317, frame/exit=2.6ms, worker reaped=1.0ms, observed completion=2.6ms
+PASS resolve 100x24 resize: worker=320, frame/exit=1.8ms, worker reaped=1.3ms, observed completion=1.8ms
+PASS browse 100x24 esc: worker=323, frame/exit=26.5ms, worker reaped=26.0ms, observed completion=26.5ms
+PASS browse 100x24 exit: worker=326, frame/exit=2.3ms, worker reaped=0.6ms, observed completion=2.3ms
+PASS browse 100x24 resize: worker=329, frame/exit=42.7ms, worker reaped=42.5ms, observed completion=42.7ms
+PASS create-before 100x24 esc: worker=332, frame/exit=35.3ms, worker reaped=45.5ms, observed completion=45.6ms
+PASS create-before 100x24 exit: worker=335, frame/exit=9.7ms, worker reaped=19.8ms, observed completion=21.8ms
+PASS create-before 100x24 resize: worker=338, frame/exit=10.8ms, worker reaped=21.0ms, observed completion=21.1ms
+PASS create-after 100x24 esc: worker=341, frame/exit=34.9ms, worker reaped=45.0ms, observed completion=56.9ms
+PASS create-after 100x24 exit: worker=346, frame/exit=10.2ms, worker reaped=20.3ms, observed completion=21.9ms
+PASS create-after 100x24 resize: worker=349, frame/exit=10.8ms, worker reaped=20.8ms, observed completion=33.1ms
+PASS media-source 100x24 esc: worker=355, frame/exit=0.7ms, worker reaped=0.7ms, observed completion=0.7ms
+PASS media-source 100x24 exit: worker=360, frame/exit=1.5ms, worker reaped=1.5ms, observed completion=1.5ms
+PASS media-source 100x24 resize: worker=364, frame/exit=1.7ms, worker reaped=2.1ms, observed completion=2.1ms
+PASS tools 100x24 esc: worker=368, frame/exit=26.4ms, worker reaped=26.3ms, observed completion=26.4ms
+PASS tools 100x24 exit: worker=371, frame/exit=2.6ms, worker reaped=0.7ms, observed completion=2.6ms
+PASS tools 100x24 resize: worker=374, frame/exit=3.4ms, worker reaped=1.3ms, observed completion=3.4ms
+python3 tests/isolated_check.py python3 tests/ui_io_lifecycle_pty.py
+PASS edit 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS queued-edit 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS collision 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS replaced 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+NORMAL recovered transfer 50x9: file observed 41.8ms (no gate)
+PASS denied 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+NORMAL recovered transfer 50x9: file observed 52.5ms (no gate)
+PASS deleted 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS media-stale 50x9: completed old capture discarded before reply; no source FD in UI
+PASS tools-query 50x9: query while discovery held, missing/install/remove/recheck without permanent cache
+PASS edit 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS queued-edit 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS collision 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS replaced 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+NORMAL recovered transfer 100x24: file observed 53.1ms (no gate)
+PASS denied 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+NORMAL recovered transfer 100x24: file observed 52.1ms (no gate)
+PASS deleted 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS media-stale 100x24: completed old capture discarded before reply; no source FD in UI
+PASS tools-query 100x24: query while discovery held, missing/install/remove/recheck without permanent cache
+python3 tests/isolated_check.py python3 tests/ui_io_normal_pty.py
+NORMAL after transfer 50x9: observable result 52.0ms (no gate; includes PTY delivery)
+NORMAL after browse 50x9: observable result 41.3ms (no gate; includes PTY delivery)
+NORMAL after create 50x9: observable result 1.2ms (no gate; includes PTY delivery)
+NORMAL after media 50x9: observable result 128.4ms (no gate; includes PTY delivery)
+NORMAL after tools 50x9: observable result 52.5ms (no gate; includes PTY delivery)
+NORMAL after transfer 100x24: observable result 41.6ms (no gate; includes PTY delivery)
+NORMAL after browse 100x24: observable result 42.4ms (no gate; includes PTY delivery)
+NORMAL after create 100x24: observable result 2.4ms (no gate; includes PTY delivery)
+NORMAL after media 100x24: observable result 128.1ms (no gate; includes PTY delivery)
+NORMAL after tools 100x24: observable result 52.5ms (no gate; includes PTY delivery)
+
+=== /tmp/tfile-ui-io-check-complete.time ===
+	Command being timed: "make check-ui-io"
+	User time (seconds): 5.08
+	System time (seconds): 0.80
+	Percent of CPU this job got: 10%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:57.23
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 47860
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 216199
+	Voluntary context switches: 8580
+	Involuntary context switches: 67
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+
+=== /tmp/tfile-sanitizers-ui-io-complete/summary.log ===
+### Native sanitizer results
+LSan: DISABLED — leak checks incomplete
+- path_query_test: PASS (build exit 0, run exit 0)
+- media_worker_test: PASS (build exit 0, run exit 0)
+- preview_async_test: PASS (build exit 0, run exit 0)
+- preview_worker_test: PASS (build exit 0, run exit 0)
+- mutation_job_test: PASS (build exit 0, run exit 0)
+- mutation_worker_test: PASS (build exit 0, run exit 0)
+- read_job_test: PASS (build exit 0, run exit 0)
+- performance_test: PASS (build exit 0, run exit 0)
+- mark_policy_test: PASS (build exit 0, run exit 0)
+- vim_test: PASS (build exit 0, run exit 0)
+- favorites_test: PASS (build exit 0, run exit 0)
+- filter_test: PASS (build exit 0, run exit 0)
+- batch_conflict_test: PASS (build exit 0, run exit 0)
+- external_test: PASS (build exit 0, run exit 0)
+- trash_test: PASS (build exit 0, run exit 0)
+- panels_ui_test: PASS (build exit 0, run exit 0)
+- batch_test: PASS (build exit 0, run exit 0)
+- batch_ui_test: PASS (build exit 0, run exit 0)
+- operations_test: PASS (build exit 0, run exit 0)
+- sort_test: PASS (build exit 0, run exit 0)
+- progress_test: PASS (build exit 0, run exit 0)
+- search_test: PASS (build exit 0, run exit 0)
+- controller_test: PASS (build exit 0, run exit 0)
+- history_ui_test: PASS (build exit 0, run exit 0)
+- keyboard_ui_test: PASS (build exit 0, run exit 0)
+- popup_style_test: PASS (build exit 0, run exit 0)
+- progress_ui_test: PASS (build exit 0, run exit 0)
+- preview_test: PASS (build exit 0, run exit 0)
+- text_test: PASS (build exit 0, run exit 0)
+- text_window_test: PASS (build exit 0, run exit 0)
+- startup_ui_test: PASS (build exit 0, run exit 0)
+- search_progress_ui_test: PASS (build exit 0, run exit 0)
+- ownership_test: PASS (build exit 0, run exit 0)
+Total: 33 required, 33 passed, 0 failed; 122.897s
+
+=== /tmp/tfile-ui-io-native-complete.time ===
+	Command being timed: "python3 tests/run_sanitizers.py --disable-leaks --output-directory /tmp/tfile-sanitizers-ui-io-complete"
+	User time (seconds): 291.98
+	System time (seconds): 36.34
+	Percent of CPU this job got: 253%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:09.44
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 144700
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 5
+	Minor (reclaiming a frame) page faults: 6285163
+	Voluntary context switches: 22362
+	Involuntary context switches: 76432
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+
+=== /tmp/tfile-sanitizers-ui-io-lsan/summary.log ===
+### Native sanitizer results
+LSan: enabled (fork tests cover parent; body harnesses cover normal teardown)
+- path_query_test: FAIL (build exit 0, run exit 1)
+- media_worker_test: FAIL (build exit 0, run exit 1)
+- preview_async_test: FAIL (build exit 0, run exit 1)
+- preview_worker_test: FAIL (build exit 0, run exit 1)
+- mutation_job_test: FAIL (build exit 0, run exit 1)
+- mutation_worker_test: FAIL (build exit 0, run exit 1)
+- read_job_test: FAIL (build exit 0, run exit 1)
+- performance_test: FAIL (build exit 0, run exit 1)
+- mark_policy_test: FAIL (build exit 0, run exit 1)
+- vim_test: FAIL (build exit 0, run exit 1)
+- favorites_test: FAIL (build exit 0, run exit 1)
+- filter_test: FAIL (build exit 0, run exit 1)
+- batch_conflict_test: FAIL (build exit 0, run exit 1)
+- external_test: FAIL (build exit 0, run exit 1)
+- trash_test: FAIL (build exit 0, run exit 1)
+- panels_ui_test: FAIL (build exit 0, run exit 1)
+- batch_test: FAIL (build exit 0, run exit 1)
+- batch_ui_test: FAIL (build exit 0, run exit 1)
+- operations_test: FAIL (build exit 0, run exit 1)
+- sort_test: FAIL (build exit 0, run exit 1)
+- progress_test: FAIL (build exit 0, run exit 1)
+- search_test: FAIL (build exit 0, run exit 1)
+- controller_test: FAIL (build exit 0, run exit 1)
+- history_ui_test: FAIL (build exit 0, run exit 1)
+- keyboard_ui_test: FAIL (build exit 0, run exit 1)
+- popup_style_test: FAIL (build exit 0, run exit 1)
+- progress_ui_test: FAIL (build exit 0, run exit 1)
+- preview_test: FAIL (build exit 0, run exit 1)
+- text_test: FAIL (build exit 0, run exit 1)
+- text_window_test: FAIL (build exit 0, run exit 1)
+- startup_ui_test: FAIL (build exit 0, run exit 1)
+- search_progress_ui_test: FAIL (build exit 0, run exit 1)
+- ownership_test: FAIL (build exit 0, run exit 1)
+Total: 33 required, 0 passed, 33 failed; 124.545s
+
+=== /tmp/tfile-sanitizers-ui-io-lsan/path_query_test.run.log ===
+$ /tmp/tfile-sanitizers-ui-io-lsan/path_query_test
+==2027==LeakSanitizer has encountered a fatal error.
+==2027==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==2027==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+
+exit: 1
+
+=== /tmp/tfile-sanitizers-ui-io-lsan/media_worker_test.run.log ===
+$ /tmp/tfile-sanitizers-ui-io-lsan/media_worker_test
+==2151==LeakSanitizer has encountered a fatal error.
+==2151==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==2151==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+
+exit: 1
+
+=== /tmp/tfile-ui-io-native-lsan.time ===
+Command exited with non-zero status 1
+	Command being timed: "python3 tests/run_sanitizers.py --output-directory /tmp/tfile-sanitizers-ui-io-lsan"
+	User time (seconds): 294.85
+	System time (seconds): 36.62
+	Percent of CPU this job got: 249%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:12.82
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 145448
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 3
+	Minor (reclaiming a frame) page faults: 6305858
+	Voluntary context switches: 22632
+	Involuntary context switches: 69842
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1
+
+=== /tmp/tfile-terminal-sanitizers-ui-io-complete/summary.log ===
+### Terminal and UI preparation sanitizer results
+LSan: DISABLED — leak checks incomplete
+- ui_io_pty: PASS (exit 0, 23.972s)
+- ui_io_lifecycle_pty: PASS (exit 0, 17.439s)
+- ui_io_normal_pty: PASS (exit 0, 8.591s)
+- terminal: PASS (exit 0, 0.003s)
+- input: PASS (exit 0, 0.007s)
+- probe: PASS (exit 0, 0.007s)
+- pty: PASS (exit 0, 55.361s)
+- auto_pty: PASS (exit 0, 62.898s)
+- vim_pty: PASS (exit 0, 6.918s)
+- editor_shutdown_pty: PASS (exit 0, 1.603s)
+- mark_discovery_pty: PASS (exit 0, 13.497s)
+- reads_pty: PASS (exit 0, 14.261s)
+Total: 12 required, 0 failed; 243.178s
+
+=== /tmp/tfile-terminal-sanitizers-ui-io-complete/ui_io_lifecycle_pty.log ===
+PASS edit 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS queued-edit 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS collision 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS replaced 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+NORMAL recovered transfer 50x9: file observed 53.8ms (no gate)
+PASS denied 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+NORMAL recovered transfer 50x9: file observed 54.1ms (no gate)
+PASS deleted 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS media-stale 50x9: completed old capture discarded before reply; no source FD in UI
+PASS tools-query 50x9: query while discovery held, missing/install/remove/recheck without permanent cache
+PASS edit 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS queued-edit 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS collision 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS replaced 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+NORMAL recovered transfer 100x24: file observed 54.6ms (no gate)
+PASS denied 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+NORMAL recovered transfer 100x24: file observed 55.0ms (no gate)
+PASS deleted 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS media-stale 100x24: completed old capture discarded before reply; no source FD in UI
+PASS tools-query 100x24: query while discovery held, missing/install/remove/recheck without permanent cache
+
+exit: 0
+
+=== /tmp/tfile-ui-io-media-san.log ===
+PASS: media, /tmp/tfile-media-sanitizers-ui-io/media.log
+PASS: preview, /tmp/tfile-media-sanitizers-ui-io/preview.log
+PASS: picker, /tmp/tfile-media-sanitizers-ui-io/picker.log
+PASS: media_pty, /tmp/tfile-media-sanitizers-ui-io/media_pty.log
+PASS: media_redraw, /tmp/tfile-media-sanitizers-ui-io/media_redraw.log
+Leak detection explicitly disabled.
+
+=== /tmp/tfile-ui-io-tools-query-before.log ===
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/ui_io_lifecycle_pty.py", line 48, in <module>
+    assert not gone(worker) and 'Checking media tools' in text(t),text(t)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError:  [F1 Help] [F3 Search]  [F9 Menu] [F10 Quit]
+ [┌ Image display setup                   [ x ]┐t
+┌─│ Image display: Off                         │─┐
+│ │ Image tool: missing; install ImageMagick   │ │
+│>│ pdftoppm: missing | pdftotext: missing     │─│
+│ │─Auto check inconclusive; M: measured vi...─│ │
+└─│ Enter: query  M: manual  Esc: back         │─┘
+ S└────────────────────────────────────────────┘
+
+
+=== /tmp/tfile-ui-io-tools-query-fixed.log ===
+PASS tools-query 50x9: query while discovery held, missing/install/remove/recheck without permanent cache
+PASS tools-query 100x24: query while discovery held, missing/install/remove/recheck without permanent cache
+
+=== /tmp/tfile-ui-io-queued-before.log ===
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/ui_io_lifecycle_pty.py", line 67, in <module>
+    release(gate);until(t,lambda:'/new' in text(t),.6)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dongmin/workspace/file_manager_project/tests/preview_latency_pty.py", line 19, in until
+    assert time.monotonic()-start<timeout, text(t)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError:  [F1 Help] [F3 Search]  [F9 Menu] [F10 Quit]
+ [<] [>]  Location: ... i-lifecycle-5gvhh14m/root
+┌─* Files (1) Name+ ─────────┐┌─  Preview ───────┐
+│ [Parent]  [Open]           ││a.txt             │
+│> a.txt               File  ││──────────────────│
+│                            ││source payload    │
+└─ Target: cursor ───────────┘└──────────────────┘
+ Shown: 1 Marked: 0  [Success] ! Details
+ Enter: Open  Space: Mark  e: Vim cursor
+
+=== /tmp/tfile-ui-io-queued-fixed.log ===
+PASS queued-edit 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS queued-edit 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+
+=== /tmp/tfile-terminal-sanitizers-ui-io-final/ui_io_pty.log (failure tail) ===
+  File "/home/dongmin/workspace/file_manager_project/tests/preview_latency_pty.py", line 19, in until
+    assert time.monotonic()-start<timeout, text(t)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError:  [F1 Help] [F3 Search]  [F9 Menu] [F10 Quit]
+ [┌ Options                               [ x ]┐t
+┌─│ Image preview: Off (click to change)       │─┐
+│ │ Save current settings as startup defaults  │ │
+│>│ Image display setup: Off                   │─│
+│ │─Image check cancelled; previous setting...─│ │
+└─│ Tab/Arrows  Enter: choose  Esc: close      │─┘
+ S└────────────────────────────────────────────┘
+
+
+exit: 1
+
+=== /tmp/tfile-ui-io-regression.log (failure tail) ===
+crash-worker: uncertain result and both inspectable paths, child reaped
+kill-parent: orphan safely stopped/reaped, retained empty partial file
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/terminal_auto_pty.py", line 181, in <module>
+    assert 'Missing ImageMagick' in t.text() and not t.screen.images;t.idle()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+make[1]: *** [Makefile:211: check-terminal] Error 1
+make[1]: Leaving directory '/home/dongmin/workspace/file_manager_project'
+make: *** [Makefile:197: check] Error 2
+
+=== /tmp/tfile-ui-io-regression-final.log (failure tail) ===
+python3 tests/run_regressions.py controller
+PASS: refresh errors preserve UI state; create/copy/move/delete success remains distinct from refresh failure
+python3 tests/progress_pty.py
+PASS: pipe-gated PTY Cancel/Esc/resize, 50x9 modal, exact partial results and blocked background input
+python3 tests/smoke.py
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/smoke.py", line 346, in <module>
+    assert b'already exists' in t.send('\n')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+make[1]: *** [Makefile:116: check-isolated] Error 1
+make[1]: Leaving directory '/home/dongmin/workspace/file_manager_project'
+make: *** [Makefile:198: check] Error 2
+
+=== /tmp/tfile-ui-io-regression-complete.log (failure tail) ===
+PASS: exact Vim argv (including -R/--), literal hostile filename, no shell or fallback
+python3 tests/vim_pty.py
+PASS: Trash/default cancel/frozen marks/batch/no-delete fallback, separate permanent delete, resize cancellation at 50x9/100x24 (PTY)
+cc  -D_XOPEN_SOURCE=700 -O2 -Wall -Wextra -Wpedantic -std=c11 -o tests/mark_policy_test tests/mark_policy_test.c src/model.c src/core/batch.c src/core/external.c src/core/favorites.c src/core/files.c src/core/media.c src/core/mutation_job.c src/core/operations.c src/core/preview.c src/core/preview_job.c src/core/read_job.c src/core/search.c src/core/selection.c src/core/settings.c src/core/sort.c src/core/terminal.c src/platform/posix.c src/platform/posix_media.c src/platform/posix_external.c src/ui/batch.c src/ui/controller.c src/ui/dialogs.c src/ui/external.c src/ui/favorites.c src/ui/field.c src/ui/filter.c src/ui/graphics_probe.c src/ui/help.c src/ui/image_setup.c src/ui/input.c src/ui/loading.c src/ui/media.c src/ui/notice.c src/ui/operation.c src/ui/panels.c src/ui/path_query.c src/ui/preview.c src/ui/quick_find.c src/ui/search.c src/ui/terminal_input.c src/ui/text.c src/ui/text_window.c src/ui/theme.c src/ui/transfer.c src/ui/ui.c -lncursesw
+PASS: real installed Vim edit/write/quit, hostile cursor path vs marks, -R, signal termination, resize, ncurses/input/mouse/preview restoration (automated PTY)
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/vim_pty.py", line 109, in <module>
+    assert expected in text(t),text(t)
+           ^^^^^^^^^^^^^^^^^^^
+AssertionError:  [F1 Help] [F3 Search]  [F2 New] [F5 Copy] [F6 Move] [F8 Delete]  [F7 Options] [F9 Menu] [F10 Quit]
+ [< Back] [Forward >]  Location: /tmp/tfile-vim-failure-pty-mqyb4jd3/files
+┌─* Files (1) | Name ascending ───────────────────────┐┌─  Preview ────────────────────────────────┐
+│ [Parent]  [Open]                                    ││ config                                    │
+│  Name                              Kind       Size  ││ File | 4 B | Mode 0644                    │
+│> config                            File        4 B  ││ Modified: 2026-10-16 13:23                │
+│                                                     ││───────────────────────────────────────────│
+│                                                     ││                                           │
+│                                                     ││ safe                                      │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+│                                                     ││                                           │
+└─ Target: cursor ────────────────────────────────────┘└───────────────────────────────────────────┘
+ Shown: 1 | Marked: 0 | Dotfiles: on  Target: cursor (no marks)
+
+make[1]: *** [Makefile:260: check-vim] Error 1
+make[1]: *** Waiting for unfinished jobs....
+make[1]: Leaving directory '/home/dongmin/workspace/file_manager_project'
+make: *** [Makefile:198: check] Error 2
+
+=== /tmp/tfile-ui-io-regression-verified.log (failure tail) ===
+PASS: bracket/Alt and mixed history after terminal query activates raw escape parsing
+python3 tests/notice_pty.py
+PASS: status summary, keyboard/mouse/menu details, scroll, dismiss/ack/reopen/replacement and retained alerts at 50x9/100x24
+python3 tests/quick_find_pty.py
+PASS: loaded-list find Unicode editing/no match/wrap/commit/cancel, literal command letters, menu and empty list at 50x9/80x24/160x32
+python3 tests/rename_pty.py
+PASS: direct menu rename no-op, retained collision/edit, exact selection and original invalid/control bytes at 50x9/80x24/160x32
+python3 tests/transfer_form_pty.py
+PASS: destination-first forms, explicit execution, absolute/relative base, complete path paging, Browse retention/mouse, collision/error retry, permissions, long Unicode paths and raw control names at all sizes
+python3 tests/keyboard_pty.py
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/keyboard_pty.py", line 142, in <module>
+    assert 'Copy' in '\n'.join(t.screen.row(y) for y in range(h))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/keyboard_pty.py", line 144, in <module>
+    finally: t.close()
+             ^^^^^^^^^
+  File "/home/dongmin/workspace/file_manager_project/tests/display_pty.py", line 173, in close
+    assert self.proc.wait(timeout=2) == 0
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1264, in wait
+    return self._wait(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2045, in _wait
+    raise TimeoutExpired(self.args, timeout)
+subprocess.TimeoutExpired: Command '['/home/dongmin/workspace/file_manager_project/tfile', '/tmp/tmpch02w2sq']' timed out after 2 seconds
+make[1]: *** [Makefile:127: check-isolated] Error 1
+make[1]: Leaving directory '/home/dongmin/workspace/file_manager_project'
+make: *** [Makefile:198: check] Error 2
+
+=== /tmp/tfile-ui-io-smoke-verified.log ===
+PASS: Unicode/key separation, search states/hidden results, refresh failures, mouse/history, modals, file operations and preview
+
+=== /tmp/tfile-ui-io-keyboard-complete.log ===
+PASS: keyboard preview pages/EOF/Home/Esc, Tab/click focus, Enter cache viewport, hidden preview, directory/link/binary/error/empty states, retained Options keyboard/mouse focus, recoverable name/path input and resize at 50x9/80x24/160x32
+
+=== /tmp/tfile-ui-io-vim-final.log ===
+PASS: real installed Vim edit/write/quit, hostile cursor path vs marks, -R, signal termination, resize, ncurses/input/mouse/preview restoration (automated PTY)
+PASS: missing Vim, ENOEXEC/no shell fallback, failed exit, binary/link refusal and immediate menu restoration (PTY)
+
+=== /tmp/tfile-ui-io-final-regression.time ===
+	Command being timed: "make -j2 check"
+	User time (seconds): 157.61
+	System time (seconds): 24.23
+	Percent of CPU this job got: 27%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 11:09.01
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 155480
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 29
+	Minor (reclaiming a frame) page faults: 6971101
+	Voluntary context switches: 132679
+	Involuntary context switches: 2615
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+
+=== /tmp/tfile-ui-io-final-regression.log ===
+python3 tests/isolated_check.py make check-isolated
+make[1]: Entering directory '/home/dongmin/workspace/file_manager_project'
+python3 tests/check_docs.py
+PASS: entry-point local document links and heading anchors
+python3 tests/isolated_check.py python3 tests/panels_first_latency_pty.py
+after first dual/cancel: 242.2ms worker_is_ui=False
+after first dual/success: 20.6ms worker_is_ui=False
+python3 tests/isolated_check.py python3 tests/fullscreen_pty.py
+PASS: actual terminal width/height at startup and resize; preview, full list and dual fill the terminal despite stale environment
+python3 tests/process_probe_test.py
+PASS: ENOENT/ESRCH child disappearance, names, and visible access failures
+python3 tests/isolated_check.py ./tests/panels_ui_test
+PASS: independent panels/modes/history/find/search/marks; 2 initial directory opens + 1 sort per panel, zero focus I/O; narrow geometry/marks; modal isolation; one refresh per panel, failures/stale write guard; batch outcomes; 100 initial/second/reopen allocation failure positions; owned memory/windows/FD cleanup
+python3 tests/isolated_check.py python3 tests/run_regressions.py controller
+PASS: refresh errors preserve UI state; create/copy/move/delete success remains distinct from refresh failure
+python3 tests/isolated_check.py python3 tests/async_boundaries_pty.py
+PASS directory-exit 50x9: 1.5ms; worker reaped, data unchanged
+PASS search-exit 50x9: 1.7ms; worker reaped, data unchanged
+PASS search-results-exit 50x9: 1.7ms; worker reaped, data unchanged
+PASS conflict-exit 50x9: 22.4ms; worker reaped, data unchanged
+PASS conflict-crash 50x9: 269.3ms; worker reaped, data unchanged
+PASS conflict-cancel 50x9: 294.6ms; worker reaped, data unchanged
+PASS conflict-mouse 50x9: 371.3ms; worker reaped, data unchanged
+PASS conflict-resize 50x9: 270.1ms; worker reaped, data unchanged
+PASS conflict-term 50x9: 22.6ms; worker reaped, data unchanged
+PASS directory-exit 100x24: 1.9ms; worker reaped, data unchanged
+PASS search-exit 100x24: 2.3ms; worker reaped, data unchanged
+PASS search-results-exit 100x24: 2.5ms; worker reaped, data unchanged
+PASS conflict-exit 100x24: 22.8ms; worker reaped, data unchanged
+PASS conflict-crash 100x24: 270.2ms; worker reaped, data unchanged
+PASS conflict-cancel 100x24: 296.0ms; worker reaped, data unchanged
+./tests/performance_test
+search: 2048 entries, 6145 string copies, 2 ms
+preview jump: 532 string copies, 0 ms
+PASS: large search and preview jump/cache/restart
+./tests/batch_test
+PASS: raw-byte marks/snapshot/order/filter/history, allocation failure, copy/move/delete success/first-middle error/pre-between cancellation, partial writes and FD cleanup
+./tests/ownership_test
+PASS: 100 allocation-failure positions in listing/refresh/search/preview release explicit ownership and FDs; failed refresh retains list
+./tests/sort_test
+PASS: eight sort orders, boundary values/comparator consistency, raw identity, independent app state, navigation/search and unchanged picker/search order
+./tests/progress_test
+PASS: deterministic start/chunk/item/delete cancellation, counters, residual modes/data, no-clobber, FD cleanup and subsequent operations
+python3 tests/check_architecture.py
+PASS: UI -> core -> platform dependency boundaries
+python3 tests/run_native.py
+PASS: POSIX paths, metadata, links, errors, no-replace move and monotonic clock
+PASS: core state, operations, search limits/cancellation, paged preview (without ncurses)
+python3 tests/run_operations.py
+PASS: pinned move parents, late no-clobber/EXDEV, controlled source/destination swaps, outside markers, non-root 0555/umask, links, no-clobber, partial failures, depth/FD limits and FD cleanup
+python3 tests/run_regressions.py search
+PASS: search omissions/metadata errors/OOM/cancellation/limits, retained results, hidden selection and transactional failures
+./tests/read_job_test
+large listing: 10027 entries, sync 12 ms, isolated 108 ms (1 ms test polling)
+PASS: async/sync result equality, tail results, recursion, hidden list, limits, errors, interrupted IPC, parent OOM, transactional cancellation, 32 cancellations and FD/child cleanup
+python3 tests/isolated_check.py python3 tests/scan_latency_pty.py
+PASS conflict-mouse 100x24: 374.2ms; worker reaped, data unchanged
+search/open esc 50x9: 25.5 ms, held read cancelled and child reaped
+search/open mouse 50x9: 0.4 ms, held read cancelled and child reaped
+search/open resize 50x9: 0.7 ms, held read cancelled and child reaped
+PASS conflict-resize 100x24: 274.1ms; worker reaped, data unchanged
+search/open term 50x9: 3.2 ms, held read cancelled and child reaped
+directory/open esc 50x9: 25.9 ms, held read cancelled and child reaped
+directory/open mouse 50x9: 0.8 ms, held read cancelled and child reaped
+PASS conflict-term 100x24: 23.5ms; worker reaped, data unchanged
+python3 tests/isolated_check.py python3 tests/integrated_session_pty.py
+directory/open resize 50x9: 0.7 ms, held read cancelled and child reaped
+directory/open term 50x9: 3.3 ms, held read cancelled and child reaped
+search/next esc 50x9: 25.5 ms, held read cancelled and child reaped
+search/next mouse 50x9: 0.5 ms, held read cancelled and child reaped
+search/next resize 50x9: 1.0 ms, held read cancelled and child reaped
+search/next term 50x9: 3.2 ms, held read cancelled and child reaped
+directory/next esc 50x9: 25.7 ms, held read cancelled and child reaped
+directory/next mouse 50x9: 0.8 ms, held read cancelled and child reaped
+directory/next resize 50x9: 1.0 ms, held read cancelled and child reaped
+directory/next term 50x9: 3.2 ms, held read cancelled and child reaped
+search/open esc 100x24: 25.5 ms, held read cancelled and child reaped
+search/open mouse 100x24: 0.4 ms, held read cancelled and child reaped
+search/open resize 100x24: 0.7 ms, held read cancelled and child reaped
+search/open term 100x24: 3.1 ms, held read cancelled and child reaped
+directory/open esc 100x24: 26.9 ms, held read cancelled and child reaped
+directory/open mouse 100x24: 1.4 ms, held read cancelled and child reaped
+directory/open resize 100x24: 0.8 ms, held read cancelled and child reaped
+directory/open term 100x24: 3.2 ms, held read cancelled and child reaped
+search/next esc 100x24: 25.9 ms, held read cancelled and child reaped
+search/next mouse 100x24: 0.7 ms, held read cancelled and child reaped
+search/next resize 100x24: 1.0 ms, held read cancelled and child reaped
+search/next term 100x24: 3.3 ms, held read cancelled and child reaped
+directory/next esc 100x24: 27.0 ms, held read cancelled and child reaped
+directory/next mouse 100x24: 2.0 ms, held read cancelled and child reaped
+directory/next resize 100x24: 0.8 ms, held read cancelled and child reaped
+directory/next term 100x24: 3.2 ms, held read cancelled and child reaped
+./tests/settings_core_test
+PASS: curses-free settings defaults, full value ranges and transactional validation
+./tests/settings_test
+PASS: settings parsing, restart, panel isolation, 50x9 options, atomic failure preservation and path safety
+python3 tests/settings_pty.py
+PASS connected session 50x9: navigation/sort/filter/search/history, marks/dual/copy/move/results, PNG/PDF/text, Vim, replacement, partial Trash/delete/cancel, settings restart
+PASS: real-process settings save/restart, dual CLI path, startup warning and explicit replacement at 50x9/100x24
+./tests/terminal_test
+PASS: bounded terminal DA/cell protocol, full-format validation and transactional replies (no curses)
+./tests/terminal_input_test
+PASS: split/late/malformed terminal report isolation, Esc/resize, regular keys, Unicode and mouse preservation
+./tests/graphics_probe_test
+PASS: lazy bounded session probe, Off/failure/cancellation, geometry refresh and capture lifetime
+python3 tests/terminal_pty.py
+PASS connected session 100x24: navigation/sort/filter/search/history, marks/dual/copy/move/results, PNG/PDF/text, Vim, replacement, partial Trash/delete/cancel, settings restart
+./tests/favorites_test
+PASS: favorites persistence/raw bytes/limits/canonical duplicates, failed save rollback, corrupt/symlink storage, preserved defaults/history and inaccessible navigation
+python3 tests/favorites_pty.py
+PASS: favorites add/rename/go/history/unregister/restart, independent startup storage (PTY)
+./tests/filter_test
+PASS: contains/glob/raw Unicode, independent panels, hidden/sort/history/refresh rules, transactional failure, visible-only batches, mark clearing and empty/no-match distinction
+python3 tests/filter_pty.py
+PASS: filter prompts/clear, Unicode/glob/no-match/marks/refresh and independent dual panel at 50x9/100x24
+./tests/batch_conflict_test
+PASS: copy/move preflight/late real no-clobber collisions, skip/skip-all/stop/cancel, skipped marks, error isolation and partial-copy refusal
+python3 tests/batch_conflict_pty.py
+PASS: batch conflict skip/skip-all/stop/Esc/resize, exact file effects and marks for copy/move (PTY)
+python3 tests/external_tools.py
+PASS: argv grammar/priority/vi, literal shell-looking filenames, editor signal restoration, no shell fallback/limits, GUI ack/failure/live-detach/reap and FD cleanup
+PASS: actual exec argv, inherited user limits, no extra FDs, original filename bytes and no shell execution
+python3 tests/external_pty.py
+PASS: cooked editor terminal, resize/input/media restore, cursor vs marked file, literal argv and asynchronous xdg-open result (PTY)
+./tests/trash_test
+PASS: Trash payload/metadata, no-clobber, failures/cancel/crash, pinned parents, leaf refusal, private mount routing (simulated), marks and FD lifetime
+python3 tests/trash_pty.py
+PASS: Trash/default cancel/frozen marks/batch/no-delete fallback, separate permanent delete, resize cancellation at 50x9/100x24 (PTY)
+python3 tests/vim_tools.py
+PASS: Vim ignores editor env, UTF-8/empty/extensionless content check, media/binary/link/special refusal, read-only argv, missing tool, exit/signal and signal restoration
+PASS: exact Vim argv (including -R/--), literal hostile filename, no shell or fallback
+python3 tests/vim_pty.py
+PASS: real installed Vim edit/write/quit, hostile cursor path vs marks, -R, signal termination, resize, ncurses/input/mouse/preview restoration (automated PTY)
+PASS: missing Vim, ENOEXEC/no shell fallback, failed exit, binary/link refusal and immediate menu restoration (PTY)
+python3 tests/editor_shutdown_pty.py
+PASS: parent TERM/HUP forwarded only to editor, grace/reap and shell termios restored
+./tests/mark_policy_test
+PASS: single-mark target priority, absent/multiple mark refusal, filtered visible-only marks, independent panels and owned cleanup
+python3 tests/mark_discovery_pty.py
+PASS: fixed cursor/mark symbols, footer/count/target cues, menu/direct all-clear, exactly-one copy/move/delete/Trash/rename, filtered batch Cancel/list/permanent label and independent dual marks at 50x9/100x24
+./tests/preview_worker_test
+PASS: worker body normal teardown, forward/backward/distant cache pages, directory/error cleanup (in-process harness)
+python3 tests/isolated_check.py ./tests/preview_async_test
+PASS: async-only I/O, persistent cache, 40 cancellations, stale selections, page/resize cancellation, modal/mode cleanup, FD bound, transactional first dual creation
+python3 tests/isolated_check.py python3 tests/preview_latency_pty.py
+after open 50x9 navigation+quit: 0.7 ms
+after peek 50x9 navigation+quit: 0.6 ms
+after directory 50x9 navigation+quit: 0.9 ms
+after line 50x9 navigation+quit: 0.4 ms
+after metadata 50x9 navigation+quit: 2.1 ms
+after page 50x9 navigation+quit: 1.4 ms
+after open 100x24 navigation+quit: 0.5 ms
+after peek 100x24 navigation+quit: 0.5 ms
+after directory 100x24 navigation+quit: 0.6 ms
+after line 100x24 navigation+quit: 0.5 ms
+after metadata 100x24 navigation+quit: 0.5 ms
+after page 100x24 navigation+quit: 1.7 ms
+./tests/mutation_worker_test
+PASS: actual mutation worker body normal/cancelled teardown, owned paths, results and progress (in-process harness)
+python3 tests/isolated_check.py ./tests/mutation_job_test
+PASS: 32 held-call cooperative cancellations, completion race, FD/child cleanup, ENOSPC/EIO partial writes, EACCES, confirmed/unknown crash and broken IPC, conflict decisions, EXDEV/no-replace move, Trash and unexpected parent death
+python3 tests/isolated_check.py python3 tests/mutation_shutdown_pty.py
+resize: acknowledgement=20.9ms actual_exit=1003.7ms
+PASS: explicit terminal setup, split/invalid/no/late replies, display/erase failures, recheck, F7 focus, Unicode, no implicit persistence and fresh-session isolation at 50x9/100x24
+PASS: measured manual input, missing tools vs unknown cells, ioctl fallback, advanced environment preservation, active converter/FD/temp cleanup and resize abort
+PASS: F7 verification followed by navigation, search, explicit mouse copy and late reply isolation
+python3 tests/terminal_auto_pty.py
+exit: acknowledgement=10.3ms actual_exit=1004.3ms
+cancel-then-exit: acknowledgement=35.3ms actual_exit=999.7ms
+int: acknowledgement=10.2ms actual_exit=1005.2ms
+term: acknowledgement=10.3ms actual_exit=994.8ms
+hup: acknowledgement=10.1ms actual_exit=1005.1ms
+crash-worker: uncertain result and both inspectable paths, child reaped
+kill-parent: orphan safely stopped/reaped, retained empty partial file
+./tests/path_query_test
+PASS: path query resolve/list/failure, pending/buffered replacement, occupied-slot retry, 40 cancellations and FD/child cleanup
+./tests/media_worker_test
+PASS: media source/tool preparation, converter normal return, unsupported/missing/access cleanup (in-process body; no fork cancellation guarantee)
+python3 tests/isolated_check.py python3 tests/ui_io_latency_pty.py
+PASS resolve 50x9 esc: worker=4699, frame/exit=66.4ms, worker reaped=66.4ms, observed completion=66.4ms
+PASS resolve 50x9 exit: worker=4708, frame/exit=1.7ms, worker reaped=0.7ms, observed completion=1.7ms
+PASS resolve 50x9 resize: worker=4713, frame/exit=0.8ms, worker reaped=0.7ms, observed completion=0.8ms
+PASS browse 50x9 esc: worker=4716, frame/exit=26.2ms, worker reaped=26.1ms, observed completion=26.2ms
+PASS browse 50x9 exit: worker=4723, frame/exit=1.7ms, worker reaped=0.4ms, observed completion=1.7ms
+PASS browse 50x9 resize: worker=4726, frame/exit=1.1ms, worker reaped=1.0ms, observed completion=1.1ms
+PASS create-before 50x9 esc: worker=4731, frame/exit=35.3ms, worker reaped=45.3ms, observed completion=45.3ms
+PASS create-before 50x9 exit: worker=4735, frame/exit=10.2ms, worker reaped=20.4ms, observed completion=22.1ms
+PASS create-before 50x9 resize: worker=4738, frame/exit=9.8ms, worker reaped=19.8ms, observed completion=19.9ms
+PASS create-after 50x9 esc: worker=4741, frame/exit=35.3ms, worker reaped=45.3ms, observed completion=56.1ms
+PASS create-after 50x9 exit: worker=4746, frame/exit=10.3ms, worker reaped=20.8ms, observed completion=21.3ms
+PASS create-after 50x9 resize: worker=4749, frame/exit=10.6ms, worker reaped=20.6ms, observed completion=32.0ms
+PASS media-source 50x9 esc: worker=4760, frame/exit=30.9ms, worker reaped=30.8ms, observed completion=30.9ms
+PASS media-source 50x9 exit: worker=4765, frame/exit=1.4ms, worker reaped=1.4ms, observed completion=1.4ms
+PASS media-source 50x9 resize: worker=4769, frame/exit=1.0ms, worker reaped=42.1ms, observed completion=42.1ms
+PASS tools 50x9 esc: worker=4776, frame/exit=26.0ms, worker reaped=25.7ms, observed completion=26.0ms
+PASS tools 50x9 exit: worker=4779, frame/exit=1.8ms, worker reaped=0.3ms, observed completion=1.8ms
+PASS tools 50x9 resize: worker=4782, frame/exit=0.9ms, worker reaped=0.4ms, observed completion=0.9ms
+PASS resolve 100x24 esc: worker=4785, frame/exit=66.3ms, worker reaped=66.3ms, observed completion=66.3ms
+PASS resolve 100x24 exit: worker=4793, frame/exit=2.3ms, worker reaped=1.2ms, observed completion=2.3ms
+PASS resolve 100x24 resize: worker=4796, frame/exit=1.7ms, worker reaped=1.3ms, observed completion=1.7ms
+PASS browse 100x24 esc: worker=4799, frame/exit=26.8ms, worker reaped=26.3ms, observed completion=26.8ms
+PASS browse 100x24 exit: worker=4805, frame/exit=2.3ms, worker reaped=0.5ms, observed completion=2.3ms
+PASS browse 100x24 resize: worker=4808, frame/exit=2.3ms, worker reaped=1.7ms, observed completion=2.3ms
+PASS create-before 100x24 esc: worker=4811, frame/exit=35.3ms, worker reaped=45.3ms, observed completion=45.3ms
+PASS create-before 100x24 exit: worker=4814, frame/exit=10.4ms, worker reaped=20.4ms, observed completion=22.1ms
+PASS create-before 100x24 resize: worker=4817, frame/exit=10.3ms, worker reaped=20.4ms, observed completion=20.5ms
+PASS create-after 100x24 esc: worker=4825, frame/exit=34.8ms, worker reaped=44.9ms, observed completion=56.9ms
+PASS create-after 100x24 exit: worker=4830, frame/exit=10.0ms, worker reaped=20.3ms, observed completion=21.4ms
+PASS create-after 100x24 resize: worker=4833, frame/exit=10.5ms, worker reaped=20.3ms, observed completion=33.5ms
+PASS media-source 100x24 esc: worker=4841, frame/exit=0.6ms, worker reaped=0.4ms, observed completion=0.6ms
+PASS media-source 100x24 exit: worker=4847, frame/exit=1.6ms, worker reaped=1.6ms, observed completion=1.6ms
+PASS media-source 100x24 resize: worker=4851, frame/exit=1.5ms, worker reaped=1.8ms, observed completion=1.8ms
+PASS tools 100x24 esc: worker=4855, frame/exit=25.7ms, worker reaped=25.7ms, observed completion=25.7ms
+PASS tools 100x24 exit: worker=4858, frame/exit=2.7ms, worker reaped=0.7ms, observed completion=2.7ms
+PASS tools 100x24 resize: worker=4861, frame/exit=2.4ms, worker reaped=1.3ms, observed completion=2.4ms
+python3 tests/isolated_check.py python3 tests/ui_io_lifecycle_pty.py
+PASS edit 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS queued-edit 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS collision 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS replaced 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+NORMAL recovered transfer 50x9: file observed 41.3ms (no gate)
+PASS denied 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+NORMAL recovered transfer 50x9: file observed 41.6ms (no gate)
+PASS deleted 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS media-stale 50x9: completed old capture discarded before reply; no source FD in UI
+PASS tools-query 50x9: query while discovery held, missing/install/remove/recheck without permanent cache
+PASS edit 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS queued-edit 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS collision 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS replaced 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+NORMAL recovered transfer 100x24: file observed 52.0ms (no gate)
+PASS denied 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+NORMAL recovered transfer 100x24: file observed 52.7ms (no gate)
+PASS deleted 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS media-stale 100x24: completed old capture discarded before reply; no source FD in UI
+PASS tools-query 100x24: query while discovery held, missing/install/remove/recheck without permanent cache
+python3 tests/isolated_check.py python3 tests/ui_io_normal_pty.py
+NORMAL after transfer 50x9: observable result 41.9ms (no gate; includes PTY delivery)
+NORMAL after browse 50x9: observable result 41.7ms (no gate; includes PTY delivery)
+NORMAL after create 50x9: observable result 1.5ms (no gate; includes PTY delivery)
+NORMAL after media 50x9: observable result 127.4ms (no gate; includes PTY delivery)
+NORMAL after tools 50x9: observable result 52.1ms (no gate; includes PTY delivery)
+NORMAL after transfer 100x24: observable result 41.8ms (no gate; includes PTY delivery)
+NORMAL after browse 100x24: observable result 42.2ms (no gate; includes PTY delivery)
+NORMAL after create 100x24: observable result 2.1ms (no gate; includes PTY delivery)
+NORMAL after media 100x24: observable result 128.3ms (no gate; includes PTY delivery)
+NORMAL after tools 100x24: observable result 52.9ms (no gate; includes PTY delivery)
+PASS: lazy Auto PNG/JPEG/PDF, session reuse/restart/resize, ioctl, Off, failed/late/malformed replies, missing tools, selection/modal/child cleanup, UTF-8/mouse/keys, delayed startup and idle waits
+./tests/picker_test
+PASS: non-root permission denial/deleted path are not empty or usable; empty destination/source, blocked use, explicit path and Parent recovery
+python3 tests/media_tools.py
+Child soft limits: AS=536870912 CPU=5 FSIZE=65536 CORE=0
+PASS: signatures/empty/special names, PNG/JPEG/PDF-page-1, bounded text, missing tools/errors/encryption/timeout/output validation, 50 cancellations, stale identity, FIFO rejection, FD/child/temp cleanup, UI cache/focus/modal/off modes
+python3 tests/media_pty.py
+PASS: PTY protocol ordering/bounds/clear/modal/resize, responsive selection/exit cancellation, focus cache, Auto/Off/files-only, PDF-first-page/text fallback, safe errors, unchanged text scrolling, zero/fake image, missing tools; real graphics remain unverified
+python3 tests/media_fit_pty.py
+PASS: portrait/landscape/square/tiny/large/PDF centering, bounds/aspect/no upscale, larger cap, resize coalescing, small-original cache, modal and minimum-screen clearing (protocol oracle)
+python3 tests/media_redraw_measure.py --verify
+{
+  "binary": "./tfile",
+  "terminal": "xterm-256color",
+  "columns": 100,
+  "rows": 30,
+  "cell_pixels": "8x16",
+  "results": [
+    {
+      "scenario": "idle",
+      "converter_processes": 0,
+      "sixel_frames": 0,
+      "sixel_bytes": 0,
+      "ed2": 0,
+      "pty_bytes": 0,
+      "ack_ms": null
+    },
+    {
+      "scenario": "mark on",
+      "converter_processes": 0,
+      "sixel_frames": 0,
+      "sixel_bytes": 0,
+      "ed2": 0,
+      "pty_bytes": 206,
+      "ack_ms": 1.11
+    },
+    {
+      "scenario": "mark off",
+      "converter_processes": 0,
+      "sixel_frames": 0,
+      "sixel_bytes": 0,
+      "ed2": 0,
+      "pty_bytes": 314,
+      "ack_ms": 1.1
+    },
+    {
+      "scenario": "status only",
+      "converter_processes": 0,
+      "sixel_frames": 0,
+      "sixel_bytes": 0,
+      "ed2": 0,
+      "pty_bytes": 97,
+      "ack_ms": 1.34
+    },
+    {
+      "scenario": "image to image",
+      "converter_processes": 1,
+      "sixel_frames": 1,
+      "sixel_bytes": 2720,
+      "ed2": 2,
+      "pty_bytes": 12590,
+      "ack_ms": 129.2
+    },
+    {
+      "scenario": "image to PDF",
+      "converter_processes": 2,
+      "sixel_frames": 1,
+      "sixel_bytes": 33,
+      "ed2": 2,
+      "pty_bytes": 9897,
+      "ack_ms": 168.53
+    },
+    {
+      "scenario": "PDF to text",
+      "converter_processes": 0,
+      "sixel_frames": 0,
+      "sixel_bytes": 0,
+      "ed2": 2,
+      "pty_bytes": 9649,
+      "ack_ms": 82.71
+    },
+    {
+      "scenario": "modal open",
+      "converter_processes": 0,
+      "sixel_frames": 0,
+      "sixel_bytes": 0,
+      "ed2": 2,
+      "pty_bytes": 11682,
+      "ack_ms": 1.74
+    },
+    {
+      "scenario": "modal close",
+      "converter_processes": 0,
+      "sixel_frames": 1,
+      "sixel_bytes": 4638,
+      "ed2": 0,
+      "pty_bytes": 14104,
+      "ack_ms": 28.42
+    },
+    {
+      "scenario": "resize burst",
+      "converter_processes": 0,
+      "sixel_frames": 4,
+      "sixel_bytes": 18552,
+      "ed2": 8,
+      "pty_bytes": 62033,
+      "ack_ms": 100.88
+    }
+  ]
+}
+python3 tests/media_real_fit.py
+PASS: real ImageMagick/Poppler portrait/landscape/square/tiny/large/PDF output fits, preserves aspect and centers at 80x24/260x80; no visual terminal claim
+./tests/panels_ui_test
+PASS: independent panels/modes/history/find/search/marks; 2 initial directory opens + 1 sort per panel, zero focus I/O; narrow geometry/marks; modal isolation; one refresh per panel, failures/stale write guard; batch outcomes; 100 initial/second/reopen allocation failure positions; owned memory/windows/FD cleanup
+./tests/batch_ui_test
+PASS: marks without I/O/sort, focus, safe Cancel paging, batch outcomes/one refresh/failure, frozen draw with polling, details preserve cursor/scroll/focus/cache at 50x9/80x24/160x24
+./tests/startup_ui_test
+No such file or directory
+PASS: one initial list read, one main sort per load/refresh, unchanged picker order and raw-name ties at 50x9/100x24
+./tests/search_progress_ui_test
+PASS: frozen-clock search suppresses redundant frames but polls every callback, keeps cancellation/results/notice and UI state at 50x9/100x24
+./tests/history_ui_test
+PASS: history identity/raw bytes/scroll, changed sort, missing/hidden fallback, failed navigation transaction, Parent, forward trim/button state, dual isolation and 128-entry ownership
+./tests/keyboard_ui_test
+PASS: name/path empty and encoded overflow warnings, preserved edit cursor/raw bytes, one Options window with retained focus/scroll and visible refresh failure at 50x9/100x24
+./tests/popup_style_test
+PASS: 256/8/mono Location label/path, enabled/disabled history styles and exact click bounds; popup surfaces, title/border/footer/focus/disabled attributes, wide glyph preservation and exact background restoration at 50x9/80x24/100x24/160x32
+./tests/progress_ui_test
+PASS: frozen-clock UI draws once while checking input at least 34 times during 1 MiB copy
+./tests/preview_test
+PASS: empty file/directory, hidden-only directory, permission and directory read failures, cached directory probes, metadata retained
+PASS: 1000 sequential pages: 1 open, 1020 chunk reads, 12240 bytes; 100 unchanged redraws: 0 reads/opens; backward cache, EOF, changes, cleanup; sort preserves reader/page/selection without content or list I/O; refresh resets safely
+./tests/text_test
+PASS: display escapes, Unicode cell widths, zero-width marks, pagination and exact byte round trips
+./tests/text_window_test
+PASS: curses cell inspection keeps text within its row/region and preserves guards
+python3 tests/run_regressions.py controller
+PASS: refresh errors preserve UI state; create/copy/move/delete success remains distinct from refresh failure
+python3 tests/progress_pty.py
+PASS: pipe-gated PTY Cancel/Esc/resize, 50x9 modal, exact partial results and blocked background input
+python3 tests/smoke.py
+PASS: Unicode/key separation, search states/hidden results, refresh failures, mouse/history, modals, file operations and preview
+python3 tests/first_run.py
+PASS: clean HOME/XDG and no optional tools; create/delete/cancel, media reasons, Vim/xdg-open missing guidance, navigation/copy/move, no-argument startup, no unsolicited preview focus; non-TTY/TERM failures; suite environment isolation
+python3 tests/display_pty.py
+PASS: PTY popup guards, escaped names, full delete-name paging and byte-exact copy/rename/delete
+python3 tests/sort_pty.py
+PASS: Options keyboard/mouse/Menu, 50x9 frames, selected identity/scroll/preview, refresh success/failure/fallback, picker order and restart defaults
+python3 tests/layout_pty.py
+PASS: main panel cells at 50x9/80x24/100x24/160x32, selection, columns, empty list, short/EOF/binary/link/error previews
+python3 tests/navigation_pty.py
+PASS: loaded/hidden counts, overflow ranges, empty/fitting list, Korean names, full-width preview toggle identity/scroll, retained cancellation, group gaps and resize
+python3 tests/history_pty.py
+PASS: Back/Forward restores exact selected Unicode item and list viewport at 50x9/80x24/160x32
+PASS: keyboard/mouse/mixed history, bracket/Alt CSI mappings, plain arrows, empty forward, branch trim, deleted path retry and independent dual histories
+PASS: bracket/Alt and mixed history after terminal query activates raw escape parsing
+python3 tests/notice_pty.py
+PASS: status summary, keyboard/mouse/menu details, scroll, dismiss/ack/reopen/replacement and retained alerts at 50x9/100x24
+python3 tests/quick_find_pty.py
+PASS: loaded-list find Unicode editing/no match/wrap/commit/cancel, literal command letters, menu and empty list at 50x9/80x24/160x32
+python3 tests/rename_pty.py
+PASS: direct menu rename no-op, retained collision/edit, exact selection and original invalid/control bytes at 50x9/80x24/160x32
+python3 tests/transfer_form_pty.py
+PASS: destination-first forms, explicit execution, absolute/relative base, complete path paging, Browse retention/mouse, collision/error retry, permissions, long Unicode paths and raw control names at all sizes
+python3 tests/keyboard_pty.py
+PASS: keyboard preview pages/EOF/Home/Esc, Tab/click focus, Enter cache viewport, hidden preview, directory/link/binary/error/empty states, retained Options keyboard/mouse focus, recoverable name/path input and resize at 50x9/80x24/160x32
+python3 tests/preview_focus_pty.py
+PASS: short text/binary/empty file/directory Tab/click/wheel isolation; scroll footer/border/input; modal restore; resize/content loss; no automatic focus on resize completion; list wheel
+PASS: static statuses stay unfocusable at minimum 50x9 geometry
+python3 tests/ux_consistency_pty.py
+PASS: cursor/marked distinction; search Tab/Shift+Tab/Enter; disabled Open; permanent delete Shift+Tab; acknowledgement and modal restoration at 50x9/100x24
+python3 tests/search_ui_pty.py
+PASS: search input/result geometry, unicode edit, focus flow, buttons/gaps, restore, resize; gated Cancel/Esc/Enter keeps 64 results, x/resize closes, background blocked
+python3 tests/help_pty.py
+PASS: complete wrapped Help at 50x9/80x24/160x32, explicit display-line ranges, both scroll boundaries, footer guards, blocked background commands, exact restore and resize
+python3 tests/panels_pty.py
+PASS: dual keyboard/mouse/geometry/resizing, independent path/sort/hidden/history/find/search/marks, preview and popup return, active-only batch/rename/delete and retained destination flow at 50x9/80x24/160x32
+python3 tests/dual_transfer_pty.py
+PASS: opposite defaults, explicit mouse execution, peer marks/path, relative edits, collision, deleted-path retry/Browse, move, single/preview defaults at 50x9/80x24/160x32
+python3 tests/workflow_pty.py
+PASS workflow 50x9: normal chained operations/modes/history; FD=3, RSS=3184..3184 KiB
+PASS workflow 80x24: normal chained operations/modes/history; FD=3, RSS=3432..3432 KiB
+PASS workflow 160x32: normal chained operations/modes/history; FD=3, RSS=3652..3652 KiB
+python3 tests/recovery_pty.py
+PASS: 50x9 denied navigation overrides old success
+PASS: 50x9 prior file result retained
+PASS: 50x9 incomplete search overrides old success
+PASS: 50x9 prior file result retained
+PASS: 50x9 failed refresh overrides old success
+PASS: 50x9 missing history location overrides old success
+PASS: 50x9 prior file result retained
+PASS: 50x9 empty dual transfer stays in list
+PASS: 50x9 empty dual transfer stays in list
+PASS: 50x9 prior file result retained
+PASS: 50x9 Paths resize cancels parent transfer
+PASS: 80x24 denied navigation overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 incomplete search overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 failed refresh overrides old success
+PASS: 80x24 missing history location overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 empty dual transfer stays in list
+PASS: 80x24 empty dual transfer stays in list
+PASS: 80x24 prior file result retained
+PASS: 80x24 Paths resize cancels parent transfer
+PASS: 160x32 denied navigation overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 incomplete search overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 failed refresh overrides old success
+PASS: 160x32 missing history location overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 empty dual transfer stays in list
+PASS: 160x32 empty dual transfer stays in list
+PASS: 160x32 prior file result retained
+PASS: 160x32 Paths resize cancels parent transfer
+PASS: recovery flows and prior result preservation at all sizes
+python3 tests/batch_destination_pty.py
+PASS: batch destination errors/edit/picker/review/cancel/resize/Unicode paths at all sizes
+python3 tests/batch_pty.py
+PASS: marked/cursor separation, find/input/preview isolation, menu select/clear/rename guard, batch cancel/collision/copy/move/delete/details keyboard+mouse at 50x9/80x24/160x32
+python3 tests/batch_progress_pty.py
+PASS: single/dual pipe-gated batch copy/delete partial cancellation, move-between targets, mouse/Esc/resize, exact statuses/residue and queued background commands discarded
+make[1]: Leaving directory '/home/dongmin/workspace/file_manager_project'
+
+=== /tmp/tfile-ui-io-tail.log ===
+RUN dual_transfer_pty
+PASS: opposite defaults, explicit mouse execution, peer marks/path, relative edits, collision, deleted-path retry/Browse, move, single/preview defaults at 50x9/80x24/160x32
+RUN workflow_pty
+PASS workflow 50x9: normal chained operations/modes/history; FD=3, RSS=3256..3256 KiB
+PASS workflow 80x24: normal chained operations/modes/history; FD=3, RSS=3372..3372 KiB
+PASS workflow 160x32: normal chained operations/modes/history; FD=3, RSS=3724..3724 KiB
+RUN recovery_pty
+PASS: 50x9 denied navigation overrides old success
+PASS: 50x9 prior file result retained
+PASS: 50x9 incomplete search overrides old success
+PASS: 50x9 prior file result retained
+PASS: 50x9 failed refresh overrides old success
+PASS: 50x9 missing history location overrides old success
+PASS: 50x9 prior file result retained
+PASS: 50x9 empty dual transfer stays in list
+PASS: 50x9 empty dual transfer stays in list
+PASS: 50x9 prior file result retained
+PASS: 50x9 Paths resize cancels parent transfer
+PASS: 80x24 denied navigation overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 incomplete search overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 failed refresh overrides old success
+PASS: 80x24 missing history location overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 empty dual transfer stays in list
+PASS: 80x24 empty dual transfer stays in list
+PASS: 80x24 prior file result retained
+PASS: 80x24 Paths resize cancels parent transfer
+PASS: 160x32 denied navigation overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 incomplete search overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 failed refresh overrides old success
+PASS: 160x32 missing history location overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 empty dual transfer stays in list
+PASS: 160x32 empty dual transfer stays in list
+PASS: 160x32 prior file result retained
+PASS: 160x32 Paths resize cancels parent transfer
+PASS: recovery flows and prior result preservation at all sizes
+RUN batch_destination_pty
+PASS: batch destination errors/edit/picker/review/cancel/resize/Unicode paths at all sizes
+RUN batch_pty
+PASS: marked/cursor separation, find/input/preview isolation, menu select/clear/rename guard, batch cancel/collision/copy/move/delete/details keyboard+mouse at 50x9/80x24/160x32
+RUN batch_progress_pty
+PASS: single/dual pipe-gated batch copy/delete partial cancellation, move-between targets, mouse/Esc/resize, exact statuses/residue and queued background commands discarded
+
+=== /tmp/tfile-ui-io-dual-complete.log ===
+PASS: opposite defaults, explicit mouse execution, peer marks/path, relative edits, collision, deleted-path retry/Browse, move, single/preview defaults at 50x9/80x24/160x32
+
+=== /tmp/tfile-ui-io-gate-final.log ===
+PASS resolve 50x9 esc: worker=106, frame/exit=66.5ms, worker reaped=66.4ms, observed completion=66.5ms
+PASS resolve 50x9 exit: worker=109, frame/exit=1.7ms, worker reaped=0.8ms, observed completion=1.7ms
+PASS resolve 50x9 resize: worker=112, frame/exit=1.1ms, worker reaped=1.0ms, observed completion=1.1ms
+PASS browse 50x9 esc: worker=115, frame/exit=26.1ms, worker reaped=25.9ms, observed completion=26.1ms
+PASS browse 50x9 exit: worker=118, frame/exit=1.9ms, worker reaped=0.5ms, observed completion=1.9ms
+PASS browse 50x9 resize: worker=121, frame/exit=1.3ms, worker reaped=0.8ms, observed completion=1.3ms
+PASS create-before 50x9 esc: worker=124, frame/exit=35.1ms, worker reaped=45.4ms, observed completion=45.4ms
+PASS create-before 50x9 exit: worker=127, frame/exit=10.0ms, worker reaped=20.5ms, observed completion=22.4ms
+PASS create-before 50x9 resize: worker=130, frame/exit=10.3ms, worker reaped=20.5ms, observed completion=20.5ms
+PASS create-after 50x9 esc: worker=133, frame/exit=35.2ms, worker reaped=45.4ms, observed completion=56.5ms
+PASS create-after 50x9 exit: worker=138, frame/exit=10.1ms, worker reaped=20.3ms, observed completion=20.9ms
+PASS create-after 50x9 resize: worker=141, frame/exit=10.6ms, worker reaped=20.6ms, observed completion=32.4ms
+PASS media-source 50x9 esc: worker=147, frame/exit=0.4ms, worker reaped=0.4ms, observed completion=0.4ms
+PASS media-source 50x9 exit: worker=152, frame/exit=1.4ms, worker reaped=1.4ms, observed completion=1.4ms
+PASS media-source 50x9 resize: worker=156, frame/exit=0.8ms, worker reaped=1.2ms, observed completion=1.2ms
+PASS tools 50x9 esc: worker=160, frame/exit=25.8ms, worker reaped=25.8ms, observed completion=25.8ms
+PASS tools 50x9 exit: worker=163, frame/exit=1.8ms, worker reaped=0.3ms, observed completion=1.8ms
+PASS tools 50x9 resize: worker=166, frame/exit=1.3ms, worker reaped=0.8ms, observed completion=1.3ms
+PASS resolve 100x24 esc: worker=169, frame/exit=66.3ms, worker reaped=66.3ms, observed completion=66.3ms
+PASS resolve 100x24 exit: worker=172, frame/exit=1.9ms, worker reaped=1.1ms, observed completion=1.9ms
+PASS resolve 100x24 resize: worker=175, frame/exit=1.7ms, worker reaped=1.3ms, observed completion=1.7ms
+PASS browse 100x24 esc: worker=178, frame/exit=26.6ms, worker reaped=26.0ms, observed completion=26.6ms
+PASS browse 100x24 exit: worker=181, frame/exit=2.8ms, worker reaped=0.8ms, observed completion=2.8ms
+PASS browse 100x24 resize: worker=184, frame/exit=42.7ms, worker reaped=41.8ms, observed completion=42.7ms
+PASS create-before 100x24 esc: worker=187, frame/exit=35.0ms, worker reaped=45.4ms, observed completion=45.5ms
+PASS create-before 100x24 exit: worker=190, frame/exit=9.8ms, worker reaped=20.0ms, observed completion=22.0ms
+PASS create-before 100x24 resize: worker=193, frame/exit=11.1ms, worker reaped=21.3ms, observed completion=21.3ms
+PASS create-after 100x24 esc: worker=196, frame/exit=34.9ms, worker reaped=45.1ms, observed completion=57.0ms
+PASS create-after 100x24 exit: worker=201, frame/exit=10.2ms, worker reaped=20.4ms, observed completion=21.7ms
+PASS create-after 100x24 resize: worker=204, frame/exit=11.0ms, worker reaped=20.8ms, observed completion=33.1ms
+PASS media-source 100x24 esc: worker=210, frame/exit=0.7ms, worker reaped=0.7ms, observed completion=0.7ms
+PASS media-source 100x24 exit: worker=215, frame/exit=1.5ms, worker reaped=1.4ms, observed completion=1.5ms
+PASS media-source 100x24 resize: worker=219, frame/exit=1.9ms, worker reaped=2.5ms, observed completion=2.5ms
+PASS tools 100x24 esc: worker=223, frame/exit=26.0ms, worker reaped=25.9ms, observed completion=26.0ms
+PASS tools 100x24 exit: worker=226, frame/exit=2.3ms, worker reaped=0.7ms, observed completion=2.3ms
+PASS tools 100x24 resize: worker=229, frame/exit=3.2ms, worker reaped=1.9ms, observed completion=3.2ms
+
+=== /tmp/tfile-ui-io-queued-before.log ===
+queued-edit failure: old destination exists=True, payload='source payload\n'
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/ui_io_lifecycle_pty.py", line 87, in <module>
+    try:until(t,lambda:'/new' in text(t),.6)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dongmin/workspace/file_manager_project/tests/preview_latency_pty.py", line 19, in until
+    assert time.monotonic()-start<timeout, text(t)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError:  [F1 Help] [F3 Search]  [F9 Menu] [F10 Quit]
+ [<] [>]  Location: ... i-lifecycle-y7p2v8av/root
+┌─* Files (1) Name+ ─────────┐┌─  Preview ───────┐
+│ [Parent]  [Open]           ││a.txt             │
+│> a.txt               File  ││──────────────────│
+│                            ││source payload    │
+└─ Target: cursor ───────────┘└──────────────────┘
+ Shown: 1 Marked: 0  [Success] ! Details
+ Enter: Open  Space: Mark  e: Vim cursor
+
+=== /tmp/tfile-ui-io-queued-final.log ===
+PASS queued-edit 50x9: inputs/focus recover, no stale or duplicate execution, source preserved
+PASS queued-edit 100x24: inputs/focus recover, no stale or duplicate execution, source preserved
+
+=== /tmp/tfile-ui-io-tools-final.log ===
+PASS tools-query 50x9: query while discovery held, missing/install/remove/recheck without permanent cache
+PASS tools-query 100x24: query while discovery held, missing/install/remove/recheck without permanent cache
+
+=== /tmp/tfile-ui-io-terminal-build-failure.log ===
+tfile_ui_io: build FAIL (exit 9)
+
+=== /tmp/tfile-terminal-sanitizers-build-failure/summary.log ===
+FAIL: build tfile_ui_io, exit 9; required runtime tests NOT RUN.
+
+=== /tmp/tfile-ui-io-static.log ===
+$ python3 tests/check_architecture.py
+PASS: UI -> core -> platform dependency boundaries
+exit: 0
+$ python3 tests/check_docs.py
+PASS: entry-point local document links and heading anchors
+exit: 0
+$ python3 -m py_compile tests/favorites_pty.py tests/process_probe.py tests/settings_pty.py tests/workflow_pty.py tests/clean_source_check.py tests/check_architecture.py tests/batch_destination_pty.py tests/quick_find_pty.py tests/progress_pty.py tests/first_run.py tests/mutation_shutdown_pty.py tests/isolated_check.py tests/sort_pty.py tests/preview_focus_pty.py tests/fullscreen_pty.py tests/history_pty.py tests/operation_latency_pty.py tests/smoke.py tests/ui_io_lifecycle_pty.py tests/check_docs.py tests/mark_discovery_pty.py tests/batch_progress_pty.py tests/run_media_sanitizers.py tests/transfer_form_pty.py tests/run_regressions.py tests/notice_pty.py tests/panels_first_latency_pty.py tests/dual_transfer_pty.py tests/terminal_auto_pty.py tests/run_native.py tests/external_tools.py tests/editor_shutdown_pty.py tests/async_boundaries_pty.py tests/display_pty.py tests/media_tools.py tests/vim_tools.py tests/run_terminal_sanitizers.py tests/keyboard_pty.py tests/run_operations.py tests/ui_io_normal_pty.py tests/panels_pty.py tests/integrated_session_pty.py tests/batch_pty.py tests/external_pty.py tests/rename_pty.py tests/run_performance.py tests/trash_pty.py tests/vim_pty.py tests/media_redraw_measure.py tests/process_probe_test.py tests/ux_consistency_pty.py tests/media_fit_pty.py tests/navigation_pty.py tests/media_real_fit.py tests/batch_conflict_pty.py tests/filter_pty.py tests/media_real.py tests/layout_pty.py tests/preview_latency_pty.py tests/ui_io_latency_pty.py tests/scan_latency_pty.py tests/run_sanitizers.py tests/recovery_pty.py tests/search_ui_pty.py tests/terminal_pty.py tests/help_pty.py tests/media_pty.py
+exit: 0
+$ git diff --check
+exit: 0

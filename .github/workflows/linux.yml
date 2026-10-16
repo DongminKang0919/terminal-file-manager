@@ -66,7 +66,7 @@ jobs:
         run: python3 tests/isolated_check.py env ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 make check-settings-sanitize 2>&1 | tee /tmp/tfile-ci-logs/settings.log
       - name: Sanitized media
         run: python3 tests/isolated_check.py python3 tests/run_media_sanitizers.py --output-directory /tmp/tfile-media-sanitizers-ci 2>&1 | tee /tmp/tfile-ci-logs/media.log
-      - name: Sanitized terminal and editor PTY
+      - name: Sanitized UI preparation, terminal and editor PTY
         run: python3 tests/isolated_check.py python3 tests/run_terminal_sanitizers.py --output-directory /tmp/tfile-terminal-sanitizers-ci 2>&1 | tee /tmp/tfile-ci-logs/terminal.log
       - name: Preserve failure logs
         if: failure()
@@ -79,4 +79,5 @@ jobs:
             /tmp/tfile-sanitizers-ci/summary.json
             /tmp/tfile-media-sanitizers-ci/*.log
             /tmp/tfile-terminal-sanitizers-ci/*.log
+            /tmp/tfile-terminal-sanitizers-ci/summary.json
           retention-days: 14

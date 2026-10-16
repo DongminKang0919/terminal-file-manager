@@ -124,11 +124,16 @@ static void operation_warning(Result r, char *warning, size_t size) {
 }
 bool create_named_entry(UiContext *ui, bool directory, const char *name, char *warning, size_t size) {
     if(!ui_operation_allowed(ui,warning,size)) return false;
-    Result r = core_create(ui_panel(ui)->app.directory, name, directory);
+    Result r = run_create_operation(ui,ui_panel(ui)->app.directory,name,directory);
     char *target = core_path_join(ui_panel(ui)->app.directory, name);
     notice_record(ui, directory ? "Create directory" : "Create file", r, NULL, target);
     free(target);
-    if (r.code != RESULT_OK) { operation_warning(r, warning, size); refresh_peer_after_operation(ui); return false; }
+    if (r.code != RESULT_OK) {
+        /* Preserve the form's actionable name messages; the retained notice
+           still owns the worker's full path/counters and exact outcome. */
+        Result display=r;display.path[0]=0;operation_warning(display,warning,size);
+        refresh_peer_after_operation(ui);return false;
+    }
     refresh_after_operation(ui, name, directory ? "Directory created" : "File created"); return true;
 }
 bool rename_named_entry(UiContext *ui, const char *source, const char *name, char *warning, size_t size) {

@@ -20,7 +20,12 @@ log=os.environ.get('TFILE_MEDIA_TEST_LOG')
 if log:
     with open(log,'a') as f: f.write(json.dumps({'tool':name,'args':args,'mode':mode.decode(errors='replace'),'pid':os.getpid(),'temporary':os.environ.get('MAGICK_TEMPORARY_PATH')})+'\n')
 if mode==b'slow': time.sleep(30)
-if mode==b'late': time.sleep(.15)
+if mode==b'late':
+    gate=os.environ.get('TFILE_MEDIA_LATE_GATE')
+    if gate:
+        Path(gate).write_text(str(os.getpid()))
+        while not Path(gate+'.release').exists():time.sleep(.01)
+    else:time.sleep(.15)
 if mode==b'fail': sys.stderr.write('damaged image\x1b[2J hostile diagnostic');sys.exit(1)
 if mode==b'encrypted': sys.stderr.write('Command Line Error: Incorrect password');sys.exit(1)
 if mode==b'huge': sys.stdout.buffer.write(b'x'*(3*1024*1024));sys.exit(0)

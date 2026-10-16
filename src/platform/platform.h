@@ -27,6 +27,7 @@ Result platform_directory_next(PlatformDirectory *dir, FileInfo *out, bool *end,
 void platform_directory_close(PlatformDirectory *dir);
 /* Stops at the first entry other than dot entries; includes hidden names. */
 Result platform_directory_empty(const char *path, bool *empty);
+Result platform_create_progress(const char *path, bool directory, OperationCallback callback, void *context);
 Result platform_create(const char *path, bool directory);
 /* Poll before traversal/mutation and between read/write chunks. Cleanup never
    invokes callbacks; false preserves prior changes and returns CANCELLED. */
@@ -81,6 +82,9 @@ void platform_external_close(PlatformExternal *job);
 bool platform_external_cleanup_pending(void);
 bool platform_terminal_size(unsigned *rows,unsigned *columns);
 typedef struct PlatformMedia PlatformMedia;
+/* Source handles stay in the preparation process. Open returns before source
+   validation/discovery; poll delivers their errors as well as converter results. */
+Result platform_tools_open(PlatformMedia **out);
 Result platform_media_open(const char *path, PreviewMediaKind kind, bool text, unsigned width, unsigned height, PlatformMedia **out);
 Result platform_media_poll(PlatformMedia *media, bool *done, char **data, size_t *len);
 void platform_media_close(PlatformMedia *media);

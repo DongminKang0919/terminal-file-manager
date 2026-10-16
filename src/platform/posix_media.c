@@ -11,6 +11,7 @@
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -27,12 +28,12 @@
 /* A single converter at a time, including children being cancelled. */
 struct PlatformMedia {
     pid_t pid;
-    int source, output, diagnostic;
+    int source, output, diagnostic, report;
     struct stat identity;
     char *path, *tool;
     char directory[64], raster[96], prefix[96];
     PreviewMediaKind kind;
-    bool text, pdf_stage, done;
+    bool text, pdf_stage, done, supervisor, grouped, tools_only;
     unsigned width, height;
     uint64_t started;
     Result result;
@@ -61,6 +62,7 @@ static bool same_file(const struct stat *a,const struct stat *b) {
 }
 static void dispose(PlatformMedia *m) {
     if(m->source>=0) close(m->source);
+    if(m->report>=0) close(m->report);
     if(m->output>=0) close(m->output);
     if(m->diagnostic>=0) close(m->diagnostic);
     if(m->directory[0]) {
@@ -94,10 +96,13 @@ void platform_media_close(PlatformMedia *m) {
 bool platform_media_cleanup_pending(void) { platform_media_reap(); return retiring!=NULL; }
 void platform_media_pause(void) {
     if(!retiring) return;
-    /* Editor handoff / exit only: converter SIGKILL is already sent.
-       Keep handlers installed during handoff; do not wait on navigation. */
-    while(waitpid(retiring->pid,NULL,0)<0 && errno==EINTR) {}
-    dispose(retiring); retiring=NULL;
+    /* Preparation can be in an uninterruptible filesystem syscall. It owns
+       no terminal FDs: editor handoff/exit must not wait indefinitely for it.
+       Keep its captures until reaped; a new preview cannot overlap retirement. */
+    for(unsigned i=0;i<20 && retiring;i++) {
+        platform_media_reap();
+        if(retiring) { struct timespec pause={0,1000000};nanosleep(&pause,NULL); }
+    }
 }
 void platform_media_shutdown(void) {
     if(handlers_installed) {
@@ -164,7 +169,7 @@ static Result launch(PlatformMedia *m) {
     pid_t parent=getpid();
     pid_t pid=fork(); if(pid<0) return media_error("Cannot start preview converter");
     if(pid==0) {
-        if(setpgid(0,0)<0 || prctl(PR_SET_PDEATHSIG,SIGKILL)<0 || getppid()!=parent) _exit(126);
+        if((!m->grouped && setpgid(0,0)<0) || prctl(PR_SET_PDEATHSIG,SIGKILL)<0 || getppid()!=parent) _exit(126);
         /* ASan reserves terabytes of virtual shadow space before fork. Limiting
            that inherited address space prevents its exec interceptor from
            running. The normal binary always enforces the converter limit. */
@@ -179,7 +184,7 @@ static Result launch(PlatformMedia *m) {
         alarm((remaining+999)/1000);
         int nullfd=open("/dev/null",O_RDONLY);
         if(nullfd<0 || dup2(nullfd,0)<0 || dup2(m->output,1)<0 || dup2(m->diagnostic,2)<0) _exit(126);
-        close(nullfd);
+        if(nullfd>2)close(nullfd);
         if(fcntl(m->source,F_SETFD,0)<0) _exit(126);
         /* Only the source descriptor survives exec besides standard capture FDs. */
         if(m->source>3) close_range(3,(unsigned)m->source-1,0);
@@ -191,49 +196,106 @@ static Result launch(PlatformMedia *m) {
         setenv("MAGICK_TEMPORARY_PATH",m->directory,1);
         execv(m->tool,args); _exit(127);
     }
-    setpgid(pid,pid); m->pid=pid;
+    if(!m->grouped)setpgid(pid,pid);
+    m->pid=pid;
     return result_make(RESULT_OK,NULL);
 }
-Result platform_media_open(const char *path,PreviewMediaKind kind,bool text,unsigned width,unsigned height,PlatformMedia **out) {
-    *out=NULL; platform_media_reap();
-    if(retiring || active) return result_make(RESULT_CANCELLED,"Previous preview is stopping");
-    if(kind<PREVIEW_PNG || kind>PREVIEW_PDF || (text && kind!=PREVIEW_PDF) ||
-        (!text && (!width||!height||width>PREVIEW_PIXEL_WIDTH||height>PREVIEW_PIXEL_HEIGHT||width>PREVIEW_PIXEL_COUNT/height)))
-        return result_make(RESULT_UNSUPPORTED,"Unsupported preview request");
-    PlatformMedia *m=calloc(1,sizeof *m);
-    if(!m) return result_make(RESULT_NO_MEMORY,"Out of memory");
-    m->source=m->output=m->diagnostic=-1;
-    m->path=text_copy(path); m->kind=kind; m->text=text; m->width=width; m->height=height;
+static Result prepare_source(PlatformMedia *m) {
     Result r=result_make(RESULT_OK,NULL);
-    m->source=open(path,O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC);
+    m->source=open(m->path,O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_CLOEXEC);
     if(m->source>=0 && m->source<3) {
         int fd=fcntl(m->source,F_DUPFD_CLOEXEC,3); close(m->source); m->source=fd;
     }
-    if(m->source<0) { r=media_error("Cannot read preview source"); goto fail; }
-    if(fstat(m->source,&m->identity)<0) { r=media_error("Cannot read preview metadata"); goto fail; }
-    if(!S_ISREG(m->identity.st_mode)) { r=result_make(RESULT_UNSUPPORTED,"Preview source is not a regular file"); goto fail; }
-    if(m->identity.st_size>64u*1024u*1024u) { r=result_make(RESULT_UNSUPPORTED,"Preview source exceeds 64 MiB limit"); goto fail; }
+    if(m->source<0) { r=media_error("Cannot read preview source"); return r; }
+    if(fstat(m->source,&m->identity)<0) { r=media_error("Cannot read preview metadata"); return r; }
+    if(!S_ISREG(m->identity.st_mode)) { r=result_make(RESULT_UNSUPPORTED,"Preview source is not a regular file"); return r; }
+    if(m->identity.st_size>64u*1024u*1024u) { r=result_make(RESULT_UNSUPPORTED,"Preview source exceeds 64 MiB limit"); return r; }
     unsigned char magic[8]; ssize_t n=pread(m->source,magic,sizeof magic,0);
-    bool match=(kind==PREVIEW_PNG && n==8 && !memcmp(magic,"\211PNG\r\n\032\n",8)) ||
-        (kind==PREVIEW_JPEG && n>=3 && magic[0]==255 && magic[1]==216 && magic[2]==255) ||
-        (kind==PREVIEW_PDF && n>=5 && !memcmp(magic,"%PDF-",5));
-    if(!match) { r=result_make(RESULT_UNSUPPORTED,"File signature changed or is unsupported"); goto fail; }
-    m->tool=find_tool(text?"pdftotext":kind==PREVIEW_PDF?"pdftoppm":"magick");
-    if(!m->tool && !text && kind!=PREVIEW_PDF) m->tool=find_tool("convert");
-    if(!m->tool) { r=result_make(RESULT_UNSUPPORTED,text?"Missing pdftotext (Poppler)":kind==PREVIEW_PDF?"Missing pdftoppm (Poppler)":"Missing ImageMagick (magick or convert)"); goto fail; }
-    if(!m->path) { r=result_make(RESULT_NO_MEMORY,"Out of memory"); goto fail; }
+    bool match=(m->kind==PREVIEW_PNG && n==8 && !memcmp(magic,"\211PNG\r\n\032\n",8)) ||
+        (m->kind==PREVIEW_JPEG && n>=3 && magic[0]==255 && magic[1]==216 && magic[2]==255) ||
+        (m->kind==PREVIEW_PDF && n>=5 && !memcmp(magic,"%PDF-",5));
+    if(!match) { r=result_make(RESULT_UNSUPPORTED,"File signature changed or is unsupported"); return r; }
+    m->tool=find_tool(m->text?"pdftotext":m->kind==PREVIEW_PDF?"pdftoppm":"magick");
+    if(!m->tool && !m->text && m->kind!=PREVIEW_PDF) m->tool=find_tool("convert");
+    if(!m->tool) { r=result_make(RESULT_UNSUPPORTED,m->text?"Missing pdftotext (Poppler)":m->kind==PREVIEW_PDF?"Missing pdftoppm (Poppler)":"Missing ImageMagick (magick or convert)"); return r; }
+    return launch(m);
+}
+/* Runs to a normal return for worker-body leak tests. All source handles and
+   tool paths belong here; only captures/results are owned by the UI handle. */
+static Result media_work(PlatformMedia *m) {
+    if(m->tools_only) {
+        TerminalTools tools=platform_terminal_tools();
+        return pwrite(m->output,&tools,sizeof tools,0)==sizeof tools?result_make(RESULT_OK,NULL):media_error("Cannot capture tools");
+    }
+    Result r=prepare_source(m);
+    if(r.code==RESULT_OK) {
+        bool done=false;char *data=NULL;size_t len=0;
+        while(!done) {
+            r=platform_media_poll(m,&done,&data,&len);free(data);data=NULL;
+            if(!done) { struct timespec pause={0,10000000};nanosleep(&pause,NULL); }
+        }
+    }
+    if(m->pid>0) {
+        kill(m->pid,SIGKILL);
+        while(waitpid(m->pid,NULL,0)<0 && errno==EINTR) {}
+        m->pid=0;
+    }
+    if(m->source>=0)close(m->source);
+    m->source=-1;free(m->tool);m->tool=NULL;
+    return r;
+}
+static Result media_allocate(const char *path,PreviewMediaKind kind,bool text,unsigned width,unsigned height,bool tools,PlatformMedia **out) {
+    *out=NULL;platform_media_reap();
+    if(retiring || active)return result_make(RESULT_CANCELLED,"Previous preview is stopping");
+    if(!tools && (kind<PREVIEW_PNG || kind>PREVIEW_PDF || (text && kind!=PREVIEW_PDF) ||
+       (!text && (!width||!height||width>PREVIEW_PIXEL_WIDTH||height>PREVIEW_PIXEL_HEIGHT||width>PREVIEW_PIXEL_COUNT/height))))
+        return result_make(RESULT_UNSUPPORTED,"Unsupported preview request");
+    PlatformMedia *m=calloc(1,sizeof *m);
+    if(!m)return result_make(RESULT_NO_MEMORY,"Out of memory");
+    m->source=m->output=m->diagnostic=m->report=-1;
+    m->path=text_copy(path);m->kind=kind;m->text=text;m->width=width;m->height=height;m->tools_only=tools;
+    Result r=result_make(RESULT_OK,NULL);
+    if(!m->path) { r=result_make(RESULT_NO_MEMORY,"Out of memory");goto fail; }
     snprintf(m->directory,sizeof m->directory,"/tmp/tfile-media-XXXXXX");
-    if(!mkdtemp(m->directory)) { m->directory[0]=0; r=media_error("Cannot create preview temporary directory"); goto fail; }
+    if(!mkdtemp(m->directory)) { m->directory[0]=0;r=media_error("Cannot create preview temporary directory");goto fail; }
     snprintf(m->prefix,sizeof m->prefix,"%s/page",m->directory);
     snprintf(m->raster,sizeof m->raster,"%s/page.png",m->directory);
-    m->output=artifact(m,"output"); m->diagnostic=artifact(m,"diagnostic");
-    if(m->output<0 || m->diagnostic<0) { r=media_error("Cannot create preview capture"); goto fail; }
-    m->started=platform_monotonic_ms();
-    r=launch(m); if(r.code!=RESULT_OK) goto fail;
-    active=m; *out=m; return r;
+    m->output=artifact(m,"output");m->diagnostic=artifact(m,"diagnostic");m->report=artifact(m,"result");
+    if(m->output<0 || m->diagnostic<0 || m->report<0) { r=media_error("Cannot create preview capture");goto fail; }
+    m->started=platform_monotonic_ms();*out=m;return r;
 fail:
-    dispose(m); return r;
+    dispose(m);return r;
 }
+static Result media_start(const char *path,PreviewMediaKind kind,bool text,unsigned width,unsigned height,bool tools,PlatformMedia **out) {
+    Result r=media_allocate(path,kind,text,width,height,tools,out);
+    if(r.code!=RESULT_OK)return r;
+    PlatformMedia *m=*out;pid_t parent=getpid(),pid=fork();
+    if(pid<0) { r=media_error("Cannot start media preparation");dispose(m);*out=NULL;return r; }
+    if(pid==0) {
+        if(setpgid(0,0)<0 || prctl(PR_SET_PDEATHSIG,SIGKILL)<0 || getppid()!=parent)_exit(126);
+        (void)prctl(PR_SET_NAME,"tfile-media");
+        /* Preparation owns no terminal or unrelated inherited file handles. */
+        int keep[]={m->output,m->diagnostic,m->report};
+        int highest=keep[0];for(unsigned i=1;i<3;i++)if(keep[i]>highest)highest=keep[i];
+        for(int fd=0;fd<=highest;fd++)if(fd!=keep[0] && fd!=keep[1] && fd!=keep[2])close(fd);
+        if(close_range((unsigned)highest+1,~0u,0)<0) {
+            long limit=sysconf(_SC_OPEN_MAX);for(int fd=highest+1;fd<limit;fd++)close(fd);
+        }
+        /* Diagnostics from sanitizer-instrumented preparation stay observable. */
+        if(dup2(m->diagnostic,STDERR_FILENO)<0)_exit(126);
+        m->grouped=true;
+        Result result=media_work(m);
+        bool sent=pwrite(m->report,&result,sizeof result,0)==sizeof result;
+        /* Parent disposes the private directory after reaping this process. */
+        close(m->output);close(m->diagnostic);close(m->report);free(m->path);free(m);
+        _exit(sent?0:1);
+    }
+    setpgid(pid,pid);m->pid=pid;m->supervisor=true;active=m;return r;
+}
+Result platform_media_open(const char *path,PreviewMediaKind kind,bool text,unsigned width,unsigned height,PlatformMedia **out) {
+    return media_start(path,kind,text,width,height,false,out);
+}
+Result platform_tools_open(PlatformMedia **out) { return media_start("",PREVIEW_NOT_MEDIA,false,0,0,true,out); }
 static Result unchanged(PlatformMedia *m) {
     struct stat current, opened;
     if(lstat(m->path,&current)<0 || fstat(m->source,&opened)<0) return media_error("Cannot verify preview source");
@@ -257,6 +319,16 @@ Result platform_media_poll(PlatformMedia *m,bool *done,char **data,size_t *len) 
         m->result=media_error("Cannot collect converter"); if(errno==ECHILD) m->pid=0; goto finish;
     }
     m->pid=0;
+    if(m->supervisor) {
+        kill(-p,SIGKILL); /* Also stop any leftover converter descendants. */
+        if(!WIFEXITED(status) || WEXITSTATUS(status)!=0 || pread(m->report,&m->result,sizeof m->result,0)!=sizeof m->result) {
+            char diagnostic[192]={0};ssize_t n=pread(m->diagnostic,diagnostic,sizeof diagnostic-1,0);
+            if(n<0)diagnostic[0]=0;
+            m->result=result_make(RESULT_IO,*diagnostic?diagnostic:"Media preparation ended without a result");goto finish;
+        }
+        if(m->result.code!=RESULT_OK)goto finish;
+        goto capture;
+    }
     if(!WIFEXITED(status) || WEXITSTATUS(status)!=0) {
         char error[256]={0}; ssize_t n=pread(m->diagnostic,error,sizeof error-1,0);
         if(n<0) error[0]=0;
@@ -287,6 +359,7 @@ Result platform_media_poll(PlatformMedia *m,bool *done,char **data,size_t *len) 
         if(m->result.code==RESULT_OK) return m->result;
         goto finish;
     }
+capture:;
     struct stat st;
     if(fstat(m->output,&st)<0) { m->result=media_error("Cannot read converted preview"); goto finish; }
     size_t cap=m->text?PREVIEW_PDF_TEXT_BYTES:PREVIEW_SIXEL_BYTES;

@@ -16,7 +16,7 @@ bool __wrap_platform_task_send(PlatformTaskWriter *writer,unsigned type,const vo
 static void run(BatchAction action,const char *source,const char *directory,bool stopped) {
     BatchJob batch={.action=action,.len=1,.directory=directory?text_copy(directory):NULL};
     batch.targets=calloc(1,sizeof *batch.targets);assert(batch.targets);
-    batch.targets[0].source=text_copy(source);batch.targets[0].name=core_path_name(source);assert(batch.targets[0].source&&batch.targets[0].name);
+    batch.targets[0].source=text_copy(source);batch.targets[0].name=action>=BATCH_CREATE_FILE?text_copy("file"):core_path_name(source);assert(batch.targets[0].source&&batch.targets[0].name);
     cancel=stopped;targets=finished=0;mutation_work(NULL,&batch);
     assert(!batch.targets && !batch.directory && targets==1 && finished==1);
 }
@@ -28,6 +28,13 @@ int main(void) {
         run(BATCH_COPY,source,b,false);assert(!unlink(dest));
         run(BATCH_COPY,source,b,true);assert(access(dest,F_OK)<0);
         run(BATCH_MOVE,source,b,false);assert(!unlink(dest));
+    }
+    /* Creation uses the same cooperative executor. Cancellation before the
+       syscall leaves nothing; a completed operation is not relabelled later. */
+    for(unsigned i=0;i<20;i++) {
+        run(BATCH_CREATE_FILE,a,NULL,false);assert(!unlink(source));
+        run(BATCH_CREATE_FILE,a,NULL,true);assert(access(source,F_OK)<0);
+        run(BATCH_CREATE_DIRECTORY,a,NULL,false);assert(!rmdir(source));
     }
     assert(platform_remove(root).code==RESULT_OK);free(a);free(b);free(source);free(dest);
     puts("PASS: actual mutation worker body normal/cancelled teardown, owned paths, results and progress (in-process harness)");
