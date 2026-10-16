@@ -3,6 +3,7 @@ No user/system installation, package installation or shell configuration changes
 """
 import hashlib
 import os
+import re
 from pathlib import Path
 import shutil
 import stat
@@ -20,6 +21,7 @@ def check_install(source, base, env):
     stage = base / 'stage root'
     staged = stage / 'usr/local/bin/tfile'
     installed = prefix / 'bin/tfile'
+    version = re.search(r'#define TFILE_VERSION "([^"]+)"', (source/'src/version.h').read_text())[1]
     expected = hashlib.sha256((source / 'tfile').read_bytes()).hexdigest()
     makefile = base / 'uninstall.mk'
     shutil.copyfile(source / 'Makefile', makefile)
@@ -63,18 +65,20 @@ def check_install(source, base, env):
         shutil.copyfile(path, harness / path.name)
     shutil.rmtree(source)
     assert not source.exists()
-    run_env = {**env, 'TFILE_BINARY': str(installed)}
+    run_env = {**env, 'TFILE_BINARY': str(installed), 'TFILE_EXPECTED_VERSION': version}
     assert str(installed.parent) not in env['PATH'].split(os.pathsep)
     path_env = {**env, 'PATH': str(installed.parent) + os.pathsep + env['PATH']}
     assert shutil.which('tfile', path=path_env['PATH']) == str(installed)
     result = subprocess.run(['tfile', 'one', 'two'], cwd=outside, env=path_env,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=3)
     assert result.returncode == 1 and b'Usage:' in result.stderr
-    for test in ['first_run.py', 'settings_pty.py', 'media_pty.py', 'terminal_auto_pty.py']:
+    for test in ['cli_test.py', 'first_run.py', 'settings_pty.py', 'media_pty.py', 'terminal_auto_pty.py']:
         subprocess.run([sys.executable, str(harness / test)], cwd=outside, env=run_env, check=True)
         print('PASS: installed, source removed, unrelated cwd: ' + test, flush=True)
     subprocess.run([sys.executable, str(harness / 'first_run.py')], cwd=outside,
                    env={**env, 'TFILE_BINARY': str(staged)}, check=True)
+    subprocess.run([sys.executable,str(harness/'cli_test.py')],cwd=outside,
+                   env={**env,'TFILE_BINARY':str(staged),'TFILE_EXPECTED_VERSION':version},check=True)
     print('PASS: staged binary first run from unrelated cwd, source removed', flush=True)
     # Run the staged binary too; no assumption that DESTDIR is a runtime root.
     result = subprocess.run([str(staged), 'one', 'two'], cwd=outside, env=env,

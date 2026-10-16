@@ -34,6 +34,21 @@ with tempfile.TemporaryDirectory(prefix='tfile-clean-source-') as directory:
     env.update(HOME=str(base / 'user home'), XDG_CONFIG_HOME=str(base / 'config'),
                XDG_DATA_HOME=str(base / 'data'), XDG_CACHE_HOME=str(base / 'cache'))
     subprocess.run(['make', f'CC={compiler}'], cwd=source, env=env, check=True)
+    subprocess.run([sys.executable, 'tests/cli_test.py'], cwd=source, env=env, check=True)
+    # Isolate the version dependency: only version.h is newer than tfile.
+    import re, time
+    header=source/'src/version.h';original=header.read_text()
+    stamp=time.time()-20
+    for path in (source/'src').rglob('*'):
+        if path.is_file():os.utime(path,(stamp,stamp))
+    os.utime(source/'tfile',(stamp+10,stamp+10))
+    header.write_text(re.sub(r'(#define TFILE_VERSION )"[^"]+"',r'\1"0.0.0-rebuild-test"',original))
+    assert subprocess.run(['make','-q','tfile'],cwd=source,env=env).returncode==1
+    subprocess.run(['make',f'CC={compiler}','tfile'],cwd=source,env=env,check=True)
+    assert subprocess.check_output([str(source/'tfile'),'--version'],env={'PATH':''})==b'tfile 0.0.0-rebuild-test\n'
+    header.write_text(original)
+    subprocess.run(['make',f'CC={compiler}','tfile'],cwd=source,env=env,check=True)
+    print('PASS: Git-free version output, version-only dependency rebuild and restoration',flush=True)
     subprocess.run([sys.executable, 'tests/first_run.py'], cwd=source, env=env, check=True)
     check_install(source, base, env)
 print(f'PASS: clean source + install/uninstall, {compiler}, isolated HOME/XDG, no optional tools; host OS/libraries')

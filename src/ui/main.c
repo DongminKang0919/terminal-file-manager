@@ -1,8 +1,43 @@
 #include "ui.h"
+#include "../version.h"
+
+static int argument_error(const char *reason) {
+    fprintf(stderr,"tfile: %s\nUsage: tfile [--] [directory] | --help | -h | --version\nTry 'tfile --help' for help.\n",reason);
+    return 1;
+}
+/* -1 continues interactive startup; 0/1 exits without touching terminal/settings. */
+static int arguments(int argc,char **argv,const char **directory) {
+    *directory=NULL;
+    if(argc==1)return -1;
+    if(!strcmp(argv[1],"--")) {
+        if(argc>3)return argument_error("expected at most one directory after --");
+        if(argc==3)*directory=argv[2];
+        return -1;
+    }
+    if(argc!=2)return argument_error("use one directory or a single standalone option");
+    if(!strcmp(argv[1],"--help") || !strcmp(argv[1],"-h")) {
+        fputs("tfile - interactive terminal file manager\n\n"
+              "Usage: tfile [--] [directory]\n"
+              "       tfile --help | -h | --version\n\n"
+              "  --help, -h  Show this help and exit\n"
+              "  --version   Show program version and exit\n"
+              "  --          Treat the following argument as a directory\n\n"
+              "Without a directory, start in the current working directory.\n"
+              "Interactive use requires a TTY, valid TERM/terminfo and at least 50x9 cells.\n"
+              "After launch: F1 Help, F9 Menu. Help/version options must be used alone.\n"
+              "Documentation: https://github.com/DongminKang0919/terminal-file-manager#readme\n",stdout);
+        return 0;
+    }
+    if(!strcmp(argv[1],"--version")) { printf("tfile %s\n",TFILE_VERSION);return 0; }
+    if(argv[1][0]=='-')return argument_error("unknown option; use -- before a directory starting with '-'");
+    *directory=argv[1];return -1;
+}
 
 int main(int argc, char **argv) {
+    const char *directory=NULL;
+    int parsed=arguments(argc,argv,&directory);
+    if(parsed>=0)return parsed;
     setlocale(LC_ALL, "");
-    if (argc > 2) { fprintf(stderr, "Usage: %s [directory]\n", argv[0]); return 1; }
     Result terminal = terminal_session_check();
     if (terminal.code != RESULT_OK) { fprintf(stderr,"%s\n",terminal.detail); return 1; }
     UiContext context = {0}; UiContext *ui = &context;
@@ -11,7 +46,7 @@ int main(int argc, char **argv) {
     initscr(); cbreak(); noecho(); keypad(stdscr, TRUE); curs_set(0); init_theme();
     input_init(); core_media_install_signals();
     set_escdelay(25);
-    Result initialized = ui_startup(ui, argc == 2 ? argv[1] : NULL);
+    Result initialized = ui_startup(ui, directory);
     if (initialized.code != RESULT_OK) {
         endwin(); ui_free(ui);
         if(initialized.code!=RESULT_CANCELLED)fprintf(stderr,"%s\n",initialized.detail);

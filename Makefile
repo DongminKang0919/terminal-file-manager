@@ -6,7 +6,7 @@ PLATFORM ?= posix
 CORE_SOURCES = src/model.c $(wildcard src/core/*.c)
 PLATFORM_SOURCES = src/platform/$(PLATFORM).c src/platform/$(PLATFORM)_media.c src/platform/$(PLATFORM)_external.c
 UI_SOURCES = $(wildcard src/ui/*.c)
-HEADERS = src/model.h $(wildcard src/core/*.h src/platform/*.h src/ui/*.h)
+HEADERS = src/model.h src/version.h $(wildcard src/core/*.h src/platform/*.h src/ui/*.h)
 PREFIX ?= /usr/local
 DESTDIR ?=
 INSTALL ?= install
@@ -25,7 +25,12 @@ uninstall:
 check-install:
 	python3 tests/clean_source_check.py $(CC)
 
-.PHONY: all install uninstall check-install
+check-cli: tfile
+	python3 tests/cli_test.py
+
+check-isolated: check-cli
+
+.PHONY: all install uninstall check-install check-cli
 
 tests/performance_test: tests/performance_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) $(HEADERS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ tests/performance_test.c $(CORE_SOURCES) $(PLATFORM_SOURCES) -Wl,--wrap=text_copy

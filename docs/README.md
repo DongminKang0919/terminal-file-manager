@@ -4,6 +4,8 @@
 
 ## 사용자 안내
 
+- [설치·제거·명령행](INSTALL.md): 사용자용 설치 설명서.
+
 - [USER_GUIDE](USER_GUIDE.md): 전체 조작, 설정 저장, Vim·외부 열기, 즐겨찾기·필터, 미디어 진단.
 - [REFERENCE](REFERENCE.md): 작업·검색·미리보기 정책, 자원 제한과 구현 구조.
 
@@ -12,6 +14,7 @@
 | 주제 | 문서 |
 | --- | --- |
 | [비동기 통합 사용 흐름 점검 (2026-10-15)](INTEGRATION_VALIDATION_2026-10-15.md) | 연결 세션, 종료·충돌 팝업 수명, 불명확/최소 화면 상태, 회귀·sanitizer와 수동 점검 |
+| CLI·README | [2026-10-16 옵션·버전·문서 검증](CLI_README_VALIDATION_2026-10-16.md) |
 | 설치·제거·첫 실행 | [2026-10-16 PREFIX/DESTDIR·독립 실행 검증](INSTALL_VALIDATION_2026-10-16.md) |
 | 미디어 종료·회수 관측 | [2026-10-16 gate 재현·좀비 구분·회귀 검증](MEDIA_LIFETIME_VALIDATION_2026-10-16.md) |
 | 작업 대상·하단 안내·전송 폼 | [2026-10-16 구현·검증](UX_TARGETS_VALIDATION_2026-10-16.md), [전후 PTY 화면](UX_TARGETS_COMPARISON_2026-10-16.md) |

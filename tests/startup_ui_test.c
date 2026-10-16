@@ -11,10 +11,10 @@
 #undef main
 static size_t directories, sorts, initialized_directories, initialized_sorts, inputs, reads;
 static UiContext *starting;
-static bool cancel_start;
+static bool cancel_start, cli_only;
 Result __real_ui_startup(UiContext *,const char *);
 Result __wrap_ui_startup(UiContext *ui,const char *path) {
-    starting=ui;Result r=__real_ui_startup(ui,path);starting=NULL;
+    assert(!cli_only);starting=ui;Result r=__real_ui_startup(ui,path);starting=NULL;
     if(r.code==RESULT_OK) {
         assert(ui->async_reads && ui->panels[0].app.files.len==3);
         assert(!strcmp(ui->panels[0].app.files.entries[0].name,"A"));
@@ -38,13 +38,13 @@ Result __wrap_app_init(AppState *app,const char *path) {
     assert(app->files.len==3 && !strcmp(app->files.entries[0].name,"A"));
     initialized_directories=directories; initialized_sorts=sorts; return r;
 }
-WINDOW *__wrap_initscr(void) { return stdscr; }
+WINDOW *__wrap_initscr(void) { assert(!cli_only);return stdscr; }
 static size_t fd_count(void) {
     DIR *d=opendir("/proc/self/fd");assert(d);size_t count=0;
     while(readdir(d))count++;
     closedir(d);return count;
 }
-Result __wrap_terminal_session_check(void) { return result_make(RESULT_OK,NULL); }
+Result __wrap_terminal_session_check(void) { assert(!cli_only);return result_make(RESULT_OK,NULL); }
 int __wrap_input_key(WINDOW *win) {
     (void)win; if(starting && starting->starting)return cancel_start ? 27 : ERR;
     inputs++;
@@ -52,6 +52,14 @@ int __wrap_input_key(WINDOW *win) {
     return 'q';
 }
 int main(void) {
+    /* Information/error paths must not even ask whether stdin/stdout are TTYs. */
+    cli_only=true;
+    char *help[]={"tfile","--help",NULL},*short_help[]={"tfile","-h",NULL};
+    char *version[]={"tfile","--version",NULL},*unknown[]={"tfile","--bad",NULL};
+    char *mixed[]={"tfile","--help","path",NULL};
+    assert(tfile_main(2,help)==0 && tfile_main(2,short_help)==0);
+    assert(tfile_main(2,version)==0 && tfile_main(2,unknown)==1 && tfile_main(3,mixed)==1);
+    cli_only=false;
     assert(setlocale(LC_ALL,"C.UTF-8"));
     char root[]="/tmp/tfile-startup-XXXXXX"; assert(mkdtemp(root));
     const char *names[]={"a","A","한글\xff\n"};

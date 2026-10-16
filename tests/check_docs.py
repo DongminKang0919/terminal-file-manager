@@ -6,7 +6,7 @@ from urllib.parse import unquote
 
 root = Path(__file__).resolve().parents[1]
 files = [root / 'README.md', *(root / 'docs' / name for name in
-         ['USER_GUIDE.md', 'REFERENCE.md', 'RELEASE_READINESS_2026-10-10.md'])]
+         ['README.md', 'INSTALL.md', 'CLI_README_VALIDATION_2026-10-16.md', 'USER_GUIDE.md', 'REFERENCE.md', 'RELEASE_READINESS_2026-10-10.md'])]
 
 def anchors(path):
     result = set()
@@ -27,6 +27,10 @@ def anchors(path):
     return result
 
 failures = []
+for name in ['README.md', 'docs/INSTALL.md']:
+    content=(root/name).read_text()
+    for option in ['--help', '-h', '--version', '-- -folder']:
+        if not re.search(r'(?<![\w-])'+re.escape(option)+r'(?![\w-])',content):failures.append(f'{name}: missing documented CLI form {option}')
 for path in files:
     for destination in re.findall(r'!?\[[^\]]*\]\(([^)]+)\)', path.read_text()):
         if re.match(r'^[a-z]+://', destination):

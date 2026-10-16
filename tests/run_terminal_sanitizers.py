@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory(prefix='tfile-terminal-san-home-') as home:
          'ASAN_OPTIONS':f'detect_leaks={int(not args.disable_leaks)}:halt_on_error=1',
          'UBSAN_OPTIONS':'halt_on_error=1:print_stacktrace=1','TFILE_BINARY':str(out/'tfile'),
          'TFILE_READ_BINARY':str(out/'tfile_read'),'TFILE_IO_BINARY':str(out/'tfile_ui_io')}
-    for name,command in [('ux_queued_browse_pty',['python3','tests/ux_queued_browse_pty.py']),('ux_targets_pty',['python3','tests/ux_targets_pty.py']),('startup_pty',['python3','tests/startup_latency_pty.py']),('ui_io_pty',['python3','tests/ui_io_latency_pty.py']),('ui_io_lifecycle_pty',['python3','tests/ui_io_lifecycle_pty.py']),('ui_io_normal_pty',['python3','tests/ui_io_normal_pty.py']),('terminal',[str(out/'terminal_test')]),('input',[str(out/'terminal_input_test')]),
+    for name,command in [('cli',['python3','tests/cli_test.py']),('ux_queued_browse_pty',['python3','tests/ux_queued_browse_pty.py']),('ux_targets_pty',['python3','tests/ux_targets_pty.py']),('startup_pty',['python3','tests/startup_latency_pty.py']),('ui_io_pty',['python3','tests/ui_io_latency_pty.py']),('ui_io_lifecycle_pty',['python3','tests/ui_io_lifecycle_pty.py']),('ui_io_normal_pty',['python3','tests/ui_io_normal_pty.py']),('terminal',[str(out/'terminal_test')]),('input',[str(out/'terminal_input_test')]),
                          ('probe',[str(out/'graphics_probe_test')]),('pty',['python3','tests/terminal_pty.py']),
                          ('auto_pty',['python3','tests/terminal_auto_pty.py']),
                          ('vim_pty',['python3','tests/vim_pty.py']),
