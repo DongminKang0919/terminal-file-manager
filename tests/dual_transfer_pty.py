@@ -21,7 +21,7 @@ for w,h in [(50,9),(80,24),(160,32)]:
                 if label in row: t.click(row.index(label)+2,y); return
             raise AssertionError(body())
         def replace(value): t.send(HOME+'\x1b[3~'*600+value)
-        def run(): button('[ Copy now ]')
+        def run(): button('[ Copy 1 item ]')
         try:
             t.send(HOME+'\n'); menu(18) # Left A, Right A
             t.send('\t'+BACK+HOME+DOWN+'\n'+' '+ '\t') # Right B marked peer; Left A
@@ -54,11 +54,11 @@ for w,h in [(50,9),(80,24),(160,32)]:
                 b.chmod(0)
                 try:
                     t.send(F6)
-                    button('[ Move now ]');assert 'Destination:' in body();assert 'Permission denied' in body() and (a/'source').exists()
+                    button('[ Move 1 item ]');assert 'Destination:' in body();assert 'Permission denied' in body() and (a/'source').exists()
                 finally: b.chmod(0o700)
-                button('[ Move now ]')
+                button('[ Move 1 item ]')
             else:
-                t.send(F6);button('[ Move now ]')
+                t.send(F6);button('[ Move 1 item ]')
             assert not (a/'source').exists() and (b/'source').read_text()=='original'
             t.send('\t');assert '/B' in body();t.send('\t')
             # Explicit Files only and Files + Preview retain old blank default.

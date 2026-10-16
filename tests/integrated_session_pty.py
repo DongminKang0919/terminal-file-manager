@@ -82,12 +82,12 @@ for width,height in ([(100,24)] if '--normal' in sys.argv else [(50,9),(100,24)]
             # Freeze marks before first dual creation; peer path determines target.
             for name in ['alpha','beta']:find(name);t.send(' ')
             marks(2);menu(18);t.send('\t\x7f'+HOME+'\n');assert '/dest' in text(t),text(t)
-            t.send('\t'+F5+'\n');button('[ Execute ]')
+            t.send('\t'+F5+'\n');button('[ Copy 2 items ]')
             until(t,lambda:(dest/'beta.txt').exists());marks(0)
             result=details();assert 'Target1/2:Success' in result and 'Target2/2:Success' in result,result
             t.send('\t');assert 'alpha.txt' in text(t);t.send('\t')
             for name in ['delta','gamma']:find(name);t.send(' ')
-            t.send(F6+'\n');button('[ Execute ]')
+            t.send(F6+'\n');button('[ Move 2 items ]')
             until(t,lambda:(dest/'gamma.txt').exists());assert not (source/'gamma.txt').exists() and not (source/'delta.txt').exists()
             t.send('\t');find('gamma');assert 'gamma.txt' in text(t),text(t);t.send('\t');menu(16)
             # PNG/PDF/text switching and page cancel; PDF uses real text fallback when installed.

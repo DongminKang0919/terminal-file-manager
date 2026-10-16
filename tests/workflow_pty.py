@@ -74,7 +74,7 @@ for width,height in [(50,9),(80,24),(160,32)]:
             expected=[s.replace('*',' ',1) if '*' in s[1:3] else s for s in left[:-1]]
             # Successful copy clears marks and updates the independent target caption.
             # Retain an exact comparison of all list rows and every border cell.
-            caption='└─ Target: cursor '
+            caption='└─ Target: cursor item '
             expected.append(caption+'─'*(len(left[-1])-len(caption)-1)+'┘')
             assert panel('Left')==expected, body()
             t.send('\t');side('Right');marks(1);t.send('\t')
@@ -91,7 +91,7 @@ for width,height in [(50,9),(80,24),(160,32)]:
             for expected in ['Partialcompletion','Target1/3:Success','Target2/3:Failed','Target3/3:Unexecuted']:assert expected in result,result
             t.send('\t');marks(1);t.send('\t');menu(15)
             # Cursor-only copy; edit relative to nested source, leave B untouched.
-            find('leaf-one');t.send(F5);replace('../../C');button('[ Copy now ]')
+            find('leaf-one');t.send(F5);replace('../../C');button('[ Copy 1 item ]')
             assert (c/'leaf-one').read_text()=='first';t.send('\t');marks(1);assert '/B' in body();t.send('\t')
             # Browse to a third destination and retain Name edit/explicit run.
             find('leaf-two');t.send(F6+'\t\t\n');t.send('p');replace(c);t.send('\n')
@@ -100,7 +100,7 @@ for width,height in [(50,9),(80,24),(160,32)]:
                 assert time.monotonic()<deadline,body()
                 t.read()
             t.send(' ')
-            button('[ Move now ]');assert not (a/'03-nested'/'leaf-two').exists() and (c/'leaf-two').exists()
+            button('[ Move 1 item ]');assert not (a/'03-nested'/'leaf-two').exists() and (c/'leaf-two').exists()
             t.send('!'+END+'\x1b');side('Left');t.send(BACK);find('01-한글');t.send(END)
             saved=panel('Left');t.send(BACK);find('C');t.send('\n');t.send('[[');assert panel('Left')==saved
             t.send(']]');assert '/C' in body();t.send('[[');assert panel('Left')==saved
@@ -118,7 +118,7 @@ for width,height in [(50,9),(80,24),(160,32)]:
             for name in ['file-link','broken-link','binary']:
                 find(name);t.send('\n'+DOWN*4+'\x1b');assert 'Preview' in body()
             menu(18);find('01-한글');t.send(' ');t.send(F5);resize(52,10);w,h=52,10
-            assert 'Copy now' not in body();marks(1);resize(width,height);w,h=width,height;marks(1)
+            assert 'Copy 1 item' not in body();marks(1);resize(width,height);w,h=width,height;marks(1)
             # Warm up then observe repeated forms/help/details: stable FDs and
             # bounded RSS are observations, not proof of whole-program leak absence.
             for _ in range(5):t.send(F5+'\x1b'+'\x1bOP\x1b'+'!\x1b')

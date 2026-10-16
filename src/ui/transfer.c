@@ -193,7 +193,8 @@ void transfer_entry(UiContext *ui, bool move_it) {
     }
     UiTransferContext context;
     if(!ui_transfer_context(ui,&context)) return;
-    WINDOW *win = dialog_open(ui, move_it ? "Move" : "Copy", 13, 88);
+    char title[64];snprintf(title,sizeof title,"%s 1 item",move_it?"Move":"Copy");
+    WINDOW *win = dialog_open(ui,title,13,88);
     if (!win) { ui_transfer_context_free(&context); return; }
     if (strlen(ui_panel(ui)->app.directory) >= UI_INPUT_CAP ||
         strlen(context.destination) >= UI_INPUT_CAP ||
@@ -213,49 +214,52 @@ void transfer_entry(UiContext *ui, bool move_it) {
     enum { DESTINATION, NAME, BROWSE, PATHS, SOURCE, RUN, CANCEL, FIELDS };
     int focus = DESTINATION, offset = 0, pending_action=-1;
     UiPathQuery query={0};
-    const int focus_row[] = {3,4,5,5,5,6,6};
+    bool checked=false;
     const int button_x[] = {2,14,25};
     const char *buttons[] = {"[ Browse ]","[ Paths ]","[ Source ]"};
-    const char *run_label = move_it ? "[ Move now ]" : "[ Copy now ]";
+    const char *run_label = move_it ? "[ Move 1 item ]" : "[ Copy 1 item ]";
     for (;;) {
         ui_path_query_poll(&query);
         int h,w; getmaxyx(win,h,w); int rows = h - 4;
-        if (focus_row[focus] < offset) offset = focus_row[focus];
-        if (focus_row[focus] >= offset + rows) offset = focus_row[focus] - rows + 1;
+        bool compact=rows==3;int buttons_row=compact?3:4;
+        int focused_row=focus>=BROWSE&&focus<=SOURCE?buttons_row:focus==NAME?2:1;
+        if (focused_row < offset) offset = focused_row;
+        if (focused_row >= offset + rows) offset = focused_row - rows + 1;
         /* Include the destination and name together in the minimum-height form. */
-        if (focus == DESTINATION && rows == 3) offset = 2;
+        if (rows == 3 && (focus==DESTINATION || focus==NAME || focus==RUN || focus==CANCEL))offset=0;
         char folder[UI_INPUT_CAP], name[UI_INPUT_CAP];
         bool valid = ui_text_encode(folder_field.value,folder_field.len,folder,sizeof folder) &&
                      ui_text_encode(name_field.value,name_field.len,name,sizeof name);
         char *directory = valid ? (*folder == '/' ? text_copy(folder) : *folder ? core_path_join(base,folder) : text_copy(base)) : NULL;
         char *target = directory ? core_path_join(directory,name) : NULL;
-        char *source_name = core_path_name(source);
-        dialog_frame(win,move_it ? "Move" : "Copy");
+        dialog_frame(win,title);
+        const char *state=query.pending?"Checking destination... Esc: cancel":*warning?warning:checked?"To checked; execution rechecks":"Unchecked; action checks To first";
         int cursor_y = 0, cursor_x = 0;
-        for (int row = offset; row < 7 && row < offset + rows; row++) {
+        for (int row = offset; row < (compact?6:7) && row < offset + rows; row++) {
             int y = row - offset + 1;
-            if (row == 0) { draw_window_text(win,y,2,8,"Source:"); draw_window_text(win,y,10,w-12,source_name ? source_name : ""); }
-            if (row == 1) draw_window_path(win,y,2,w-4,source);
-            if (row == 2) { draw_window_text(win,y,2,6,"Base:"); draw_window_path(win,y,8,w-10,base); }
-            if (row == 3 || row == 4) {
-                bool active = focus == (row == 3 ? DESTINATION : NAME);
-                draw_window_text(win,y,2,6,row == 3 ? "To:" : "Name:");
-                int col = field_draw(win,y,8,w-10,row == 3 ? &folder_field : &name_field,active);
-                if (active) { cursor_y = y; cursor_x = 8 + col; }
+            if (row == 0) { draw_window_text(win,y,2,8,"From:"); draw_window_path(win,y,10,w-12,*source?source:"Choose Source first"); }
+            if (row == (compact?4:5)) { draw_window_text(win,y,2,8,"Base:"); draw_window_path(win,y,10,w-12,base); }
+            if (row == 1 || row == 2) {
+                bool active = focus == (row == 1 ? DESTINATION : NAME);
+                draw_window_text(win,y,2,8,row == 1 ? (active?">To:":" To:") : (active?">Name:":" Name:"));
+                int col = field_draw(win,y,10,w-12,row == 1 ? &folder_field : &name_field,active);
+                if (active) { cursor_y = y; cursor_x = 10 + col; }
             }
-            if (row == 5) for (int i = 0; i < 3; i++) dialog_button(win,y,button_x[i],buttons[i],focus==BROWSE+i,i!=2 || !fixed_source);
-            if (row == 6) { draw_window_text(win,y,2,8,"Target:"); if(target) draw_window_path(win,y,10,w-12,target); else draw_window_text(win,y,10,w-12,"Input too long / no memory"); }
+            if(!compact && row==3) { wattron(win,COLOR_PAIR(*warning?UI_ERROR:UI_MUTED));draw_window_text(win,y,2,w-4,state);wattroff(win,COLOR_PAIR(*warning?UI_ERROR:UI_MUTED)); }
+            if (row == buttons_row) for (int i = 0; i < 3; i++) dialog_button(win,y,button_x[i],buttons[i],focus==BROWSE+i,!query.pending && (i!=2 || !fixed_source));
+            if (row == (compact?5:6)) { draw_window_text(win,y,2,8,"Target:"); if(target) draw_window_path(win,y,10,w-12,target); else draw_window_text(win,y,10,w-12,"Input too long / no memory"); }
         }
         wattron(win,COLOR_PAIR(*warning ? UI_ERROR : UI_MUTED));
-        draw_window_text(win,h-3,2,w-4,query.pending ? "Checking destination... Esc: cancel; F10: exit" : *warning ? warning : "To: relative/blank uses Base; Tab: focus");
+        draw_window_text(win,h-3,2,w-4,query.pending ? "Checking destination... Esc: cancel; F10: exit" : *warning ? warning : checked ? "To checked; execution rechecks. Tab: next" : focus==DESTINATION ? "Enter: Name | Tab: next | To uses Base" : focus==NAME ? (move_it?"Enter: Move button | Tab: next":"Enter: Copy button | Tab: next") : "To relative/blank: Base (Paths); Esc: cancel");
         wattroff(win,COLOR_PAIR(*warning ? UI_ERROR : UI_MUTED));
         int cancel_x = 2 + (int)strlen(run_label) + 2;
         dialog_button(win,h-2,2,run_label,focus==RUN,!query.pending);
         dialog_button(win,h-2,cancel_x,"[ Cancel ]",focus==CANCEL,true);
+        if(*warning)draw_window_text(win,h-2,cancel_x+12,w-cancel_x-14,"Edit / retry");
         curs_set(focus==DESTINATION || focus==NAME);
         if (cursor_y) wmove(win,cursor_y,cursor_x);
         dialog_refresh(win);
-        free(source_name); free(target); free(directory);
+        free(target); free(directory);
         wint_t key=0;int kind=ERR,action=-1;
         if(query.ready && pending_action>=0) {
             /* Consume already-queued edits/cancel before committing a result.
@@ -267,7 +271,7 @@ void transfer_entry(UiContext *ui, bool move_it) {
         if(kind==KEY_CODE_YES && key==KEY_F(10)) { core_request_shutdown();break; }
         if(kind==OK && key==27 && (query.pending || pending_action>=0)) {
             ui_path_query_close(&query);pending_action=-1;
-            snprintf(warning,sizeof warning,"Destination check cancelled; inputs kept");continue;
+            checked=false;snprintf(warning,sizeof warning,"Destination check cancelled; inputs kept");continue;
         }
         if (kind==ERR && action<0) continue;
         if ((kind==OK && key==27) || (kind==KEY_CODE_YES && key==KEY_RESIZE)) break;
@@ -276,18 +280,18 @@ void transfer_entry(UiContext *ui, bool move_it) {
             if (dialog_closed(win,&e)) break;
             if (!mouse_click(&e)) continue;
             int wy,wx; getbegyx(win,wy,wx); int y=e.y-wy,x=e.x-wx,row=y-1+offset;
-            if (y>=1 && y<=rows && x>=8 && x<w-2 && (row==3 || row==4)) {
-                focus=row==3?DESTINATION:NAME; field_click(row==3?&folder_field:&name_field,x-8); continue;
+            if (y>=1 && y<=rows && x>=10 && x<w-2 && (row==1 || row==2)) {
+                focus=row==1?DESTINATION:NAME; field_click(row==1?&folder_field:&name_field,x-10); continue;
             }
-            if (y>=1 && y<=rows && row==5) for(int i=0;i<3;i++)
-                if(dialog_button_hit(win,&e,y,button_x[i],buttons[i],i!=2 || !fixed_source)) action=focus=BROWSE+i;
+            if (y>=1 && y<=rows && row==buttons_row) for(int i=0;i<3;i++)
+                if(dialog_button_hit(win,&e,y,button_x[i],buttons[i],!query.pending && (i!=2 || !fixed_source))) action=focus=BROWSE+i;
             if (y==h-2) {
-                if(dialog_button_hit(win,&e,h-2,2,run_label,true)) action=focus=RUN;
+                if(dialog_button_hit(win,&e,h-2,2,run_label,!query.pending)) action=focus=RUN;
                 if(dialog_button_hit(win,&e,h-2,cancel_x,"[ Cancel ]",true)) action=focus=CANCEL;
             }
         }
-        if ((kind==OK && key=='\t') || (kind==KEY_CODE_YES && key==KEY_DOWN)) { focus=dialog_focus_next(focus,FIELDS,false,fixed_source?1u<<SOURCE:0); continue; }
-        if (kind==KEY_CODE_YES && (key==KEY_BTAB || key==KEY_UP)) { focus=dialog_focus_next(focus,FIELDS,true,fixed_source?1u<<SOURCE:0); continue; }
+        if ((kind==OK && key=='\t') || (kind==KEY_CODE_YES && key==KEY_DOWN)) { focus=dialog_focus_next(focus,FIELDS,false,(fixed_source?1u<<SOURCE:0)|(query.pending?((1u<<BROWSE)|(1u<<PATHS)|(1u<<SOURCE)|(1u<<RUN)):0)); continue; }
+        if (kind==KEY_CODE_YES && (key==KEY_BTAB || key==KEY_UP)) { focus=dialog_focus_next(focus,FIELDS,true,(fixed_source?1u<<SOURCE:0)|(query.pending?((1u<<BROWSE)|(1u<<PATHS)|(1u<<SOURCE)|(1u<<RUN)):0)); continue; }
         if ((kind==OK && (key=='\n' || key=='\r')) || (kind==KEY_CODE_YES && key==KEY_ENTER)) {
             if (focus==DESTINATION) { focus=NAME; continue; }
             if (focus==NAME) {
@@ -302,23 +306,30 @@ void transfer_entry(UiContext *ui, bool move_it) {
                 UiField *field=focus==DESTINATION?&folder_field:&name_field;
                 UiField before=*field;field_edit(field,kind,key);
                 if(before.len!=field->len || wmemcmp(before.value,field->value,field->len)) {
-                    ui_path_query_close(&query);pending_action=-1;warning[0]=0;
+                    ui_path_query_close(&query);pending_action=-1;warning[0]=0;checked=false;
                 }
             }
             continue;
         }
         if (action==CANCEL) break;
         if(query.pending)continue;
+        if(query.ready)checked=query.result.code==RESULT_OK;
         if((action==RUN || action==PATHS) && !query.ready) {
             ui_path_query_start(&query,ui->async_reads,base,*folder?folder:".",false,false);
             pending_action=action;continue;
+        }
+        pending_action=-1;
+        if(action==BROWSE || action==SOURCE) {
+            /* A newer picker intent supersedes the completed Run as well as
+               its result. Picker cancellation must not resurrect that Run. */
+            ui_path_query_close(&query);checked=false;
         }
         if (!valid && action!=SOURCE) { snprintf(warning,sizeof warning,"Input is too long."); continue; }
         int old_h=LINES,old_w=COLS; bool resized=false;
         if (action==BROWSE) {
             char *start=*folder=='/'?text_copy(folder):core_path_join(base,*folder?folder:".");
             char picked[UI_INPUT_CAP];
-            if (start && pick_path(ui,true,start,picked,&resized)) { field_init(&folder_field,picked); warning[0]=0; context.destination_status=result_make(RESULT_OK,NULL); }
+            if (start && pick_path(ui,true,start,picked,&resized)) { field_init(&folder_field,picked); warning[0]=0;checked=false; context.destination_status=result_make(RESULT_OK,NULL); }
             if(!start) snprintf(warning,sizeof warning,"Out of memory; destination unchanged");
             free(start);
         } else if (action==SOURCE && !fixed_source) {
@@ -326,7 +337,7 @@ void transfer_entry(UiContext *ui, bool move_it) {
             if (pick_path(ui,false,base,picked,&resized)) {
                 char *old_name=core_path_name(source), *new_name=core_path_name(picked);
                 if (new_name && (!name_field.len || (valid && old_name && !strcmp(name,old_name)))) field_init(&name_field,new_name);
-                snprintf(source,sizeof source,"%s",picked); free(old_name); free(new_name);
+                snprintf(source,sizeof source,"%s",picked); checked=false;free(old_name); free(new_name);
             }
         } else if (action==PATHS) {
             char *dir=NULL;

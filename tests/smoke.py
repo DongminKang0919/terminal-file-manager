@@ -380,10 +380,10 @@ with tempfile.TemporaryDirectory(prefix='tfile-transfer-') as directory:
     try:
         # Entire copy workflow uses mouse selection, retaining the original name.
         t.send('\x1b[15~')
-        t.click(33, 11)  # Choose source
+        t.click(33, 10)  # Choose source
         t.click(20, 5)  # a-source after target folder
         t.click(12, 21)  # Use selected
-        t.click(10, 11)  # Browse destination
+        t.click(10, 10)  # Browse destination
         t.click(20, 4)
         t.click(20, 4)  # Enter target folder
         t.click(12, 21)  # Use this folder
@@ -392,10 +392,10 @@ with tempfile.TemporaryDirectory(prefix='tfile-transfer-') as directory:
         assert (root / 'a-source.txt').exists()
         # Change source to another item, then move it with the original name.
         t.send('\x1b[17~')
-        t.click(33, 11)
+        t.click(33, 10)
         t.click(20, 6)  # b-other
         t.click(12, 21)
-        t.click(10, 11)
+        t.click(10, 10)
         t.click(20, 4)
         t.click(20, 4)
         t.click(12, 21)
@@ -406,18 +406,18 @@ with tempfile.TemporaryDirectory(prefix='tfile-transfer-') as directory:
         t.send('\x1bOF')  # a-source
         t.send('\x1b[15~')
         assert b'already exists' in t.click(10, 16)
-        t.click(15, 10)  # Rename
+        t.click(20, 8)  # Name field in the revised transfer layout
         t.send('\x1bOH' + '\x1b[3~' * 100 + 'renamed-copy.txt\n')
         t.click(10, 16)
         assert (root / 'renamed-copy.txt').read_text() == 'original content'
         assert (root / 'a-source.txt').read_text() == 'original content'
         # Cancelling nested picker returns to form; closing form does nothing.
         t.send('\x1b[15~')
-        t.click(10, 11)
+        t.click(10, 10)
         t.send('\x1b')
         t.send('\x1b')
         t.send('\x1b[15~')
-        t.click(10, 11)
+        t.click(10, 10)
         fcntl.ioctl(t.master, termios.TIOCSWINSZ, struct.pack('HHHH', 12, 60, 0, 0))
         t.proc.send_signal(signal.SIGWINCH)
         t.read()

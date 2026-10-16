@@ -1,0 +1,183 @@
+UX targets evidence, 2026-10-16
+Baseline repository commit: bcc9d54
+Trailing log padding only is stripped. Current change remote CI / physical terminal visual verification: NOT RUN.
+
+Baseline queued Browse: real obsolete destination copy, expected regression failure
+/tmp/tfile-ux-queued-browse-before.log
+Traceback (most recent call last):
+  File "/home/dongmin/workspace/file_manager_project/tests/ux_queued_browse_pty.py", line 31, in <module>
+    assert not (dest/'a.txt').exists(),f'obsolete Run copied to old destination: {(dest/"a.txt").read_text()!r}'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: obsolete Run copied to old destination: 'source payload\n'
+
+Fixed queued Browse
+/tmp/tfile-ux-queued-browse-after.log
+PASS queued Browse 50x9: prior Run discarded, explicit action uses new path, source preserved
+PASS queued Browse 100x24: prior Run discarded, explicit action uses new path, source preserved
+
+Six mode/geometry target cases
+/tmp/tfile-ux-targets-fixed.log
+PASS UX targets 50x9 mode=0: marks/cursor, counts, review/Cancel default, explicit mouse action, Shift+Tab, exact copy/move and resize
+PASS UX targets 50x9 mode=1: marks/cursor, counts, review/Cancel default, explicit mouse action, Shift+Tab, exact copy/move and resize
+PASS UX targets 50x9 mode=2: marks/cursor, counts, review/Cancel default, explicit mouse action, Shift+Tab, exact copy/move and resize
+PASS UX targets 100x24 mode=0: marks/cursor, counts, review/Cancel default, explicit mouse action, Shift+Tab, exact copy/move and resize
+PASS UX targets 100x24 mode=1: marks/cursor, counts, review/Cancel default, explicit mouse action, Shift+Tab, exact copy/move and resize
+PASS UX targets 100x24 mode=2: marks/cursor, counts, review/Cancel default, explicit mouse action, Shift+Tab, exact copy/move and resize
+
+Final full regression exit 0
+/tmp/tfile-ux-full-confirmed.time
+elapsed=611.12 maxrss_kib=155440 exit=0
+
+Native ASan/UBSan explicit leak-disabled
+/tmp/tfile-sanitizers-ux-final/summary.log
+### Native sanitizer results
+LSan: DISABLED — leak checks incomplete
+- path_query_test: PASS (build exit 0, run exit 0)
+- media_worker_test: PASS (build exit 0, run exit 0)
+- preview_async_test: PASS (build exit 0, run exit 0)
+- preview_worker_test: PASS (build exit 0, run exit 0)
+- mutation_job_test: PASS (build exit 0, run exit 0)
+- mutation_worker_test: PASS (build exit 0, run exit 0)
+- read_job_test: PASS (build exit 0, run exit 0)
+- performance_test: PASS (build exit 0, run exit 0)
+- mark_policy_test: PASS (build exit 0, run exit 0)
+- vim_test: PASS (build exit 0, run exit 0)
+- favorites_test: PASS (build exit 0, run exit 0)
+- filter_test: PASS (build exit 0, run exit 0)
+- batch_conflict_test: PASS (build exit 0, run exit 0)
+- external_test: PASS (build exit 0, run exit 0)
+- trash_test: PASS (build exit 0, run exit 0)
+- panels_ui_test: PASS (build exit 0, run exit 0)
+- batch_test: PASS (build exit 0, run exit 0)
+- batch_ui_test: PASS (build exit 0, run exit 0)
+- operations_test: PASS (build exit 0, run exit 0)
+- sort_test: PASS (build exit 0, run exit 0)
+- progress_test: PASS (build exit 0, run exit 0)
+- search_test: PASS (build exit 0, run exit 0)
+- controller_test: PASS (build exit 0, run exit 0)
+- history_ui_test: PASS (build exit 0, run exit 0)
+- keyboard_ui_test: PASS (build exit 0, run exit 0)
+- popup_style_test: PASS (build exit 0, run exit 0)
+- progress_ui_test: PASS (build exit 0, run exit 0)
+- preview_test: PASS (build exit 0, run exit 0)
+- text_test: PASS (build exit 0, run exit 0)
+- text_window_test: PASS (build exit 0, run exit 0)
+- startup_ui_test: PASS (build exit 0, run exit 0)
+- search_progress_ui_test: PASS (build exit 0, run exit 0)
+- ownership_test: PASS (build exit 0, run exit 0)
+Total: 33 required, 33 passed, 0 failed; 81.318s
+
+Native time
+/tmp/tfile-ux-native-san-final.time
+elapsed=87.07 maxrss_kib=144824 exit=0
+
+Terminal ASan/UBSan explicit leak-disabled
+/tmp/tfile-terminal-sanitizers-ux-final/summary.log
+### Startup, terminal and UI preparation sanitizer results
+LSan: DISABLED — leak checks incomplete
+- ux_queued_browse_pty: PASS (exit 0, 2.618s)
+- ux_targets_pty: PASS (exit 0, 17.436s)
+- startup_pty: PASS (exit 0, 6.236s)
+- ui_io_pty: PASS (exit 0, 23.864s)
+- ui_io_lifecycle_pty: PASS (exit 0, 17.387s)
+- ui_io_normal_pty: PASS (exit 0, 8.545s)
+- terminal: PASS (exit 0, 0.003s)
+- input: PASS (exit 0, 0.007s)
+- probe: PASS (exit 0, 0.008s)
+- pty: PASS (exit 0, 55.258s)
+- auto_pty: PASS (exit 0, 62.97s)
+- vim_pty: PASS (exit 0, 6.89s)
+- editor_shutdown_pty: PASS (exit 0, 1.595s)
+- mark_discovery_pty: PASS (exit 0, 13.501s)
+- reads_pty: PASS (exit 0, 14.166s)
+Total: 15 required, 0 failed; 288.386s
+
+Terminal time
+/tmp/tfile-ux-terminal-san-final.time
+elapsed=307.50 maxrss_kib=74092 exit=0
+
+Default LSan incomplete, exit 1
+/tmp/tfile-ux-lsan-final.log
+==4==LeakSanitizer has encountered a fatal error.
+==4==HINT: For debugging, try setting environment variable LSAN_OPTIONS=verbosity=1:log_threads=1
+==4==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+
+Targeted tail checks
+/tmp/tfile-ux-tail-targeted.log
+RUN keyboard_pty.py
+PASS: keyboard preview pages/EOF/Home/Esc, Tab/click focus, Enter cache viewport, hidden preview, directory/link/binary/error/empty states, retained Options keyboard/mouse focus, recoverable name/path input and resize at 50x9/80x24/160x32
+keyboard_pty.py: exit 0
+RUN workflow_pty.py
+PASS workflow 50x9: normal chained operations/modes/history; FD=3, RSS=3196..3196 KiB
+PASS workflow 80x24: normal chained operations/modes/history; FD=3, RSS=3432..3432 KiB
+PASS workflow 160x32: normal chained operations/modes/history; FD=3, RSS=3668..3668 KiB
+workflow_pty.py: exit 0
+RUN layout_pty.py
+PASS: main panel cells at 50x9/80x24/100x24/160x32, selection, columns, empty list, short/EOF/binary/link/error previews
+layout_pty.py: exit 0
+
+Unreproduced media PID assertion diagnostic comparison
+/tmp/tfile-ux-media-probe.log
+BINARY /tmp/tfile-ux-before
+PASS: PTY protocol ordering/bounds/clear/modal/resize, responsive selection/exit cancellation, focus cache, Auto/Off/files-only, PDF-first-page/text fallback, safe errors, unchanged text scrolling, zero/fake image, missing tools; real graphics remain unverified
+exit 0
+BINARY /tmp/tfile-ux-fixed
+PASS: PTY protocol ordering/bounds/clear/modal/resize, responsive selection/exit cancellation, focus cache, Auto/Off/files-only, PDF-first-page/text fallback, safe errors, unchanged text scrolling, zero/fake image, missing tools; real graphics remain unverified
+exit 0
+
+Prior Name-coordinate failure time
+/tmp/tfile-ux-full-final.time
+Command exited with non-zero status 2
+elapsed=318.56 maxrss_kib=155552 exit=2
+
+Prior media PID assertion failure time
+/tmp/tfile-ux-full-verified.time
+Command exited with non-zero status 2
+elapsed=174.00 maxrss_kib=31712 exit=2
+
+Comparison captures
+/tmp/tfile-ux-captures-final.log
+PASS 76 PTY records; no file operations executed; /tmp/tfile-ux-before-records
+PASS 76 PTY records; no file operations executed; /tmp/tfile-ux-after-records
+
+Final full regression tail
+PASS: 80x24 incomplete search overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 failed refresh overrides old success
+PASS: 80x24 missing history location overrides old success
+PASS: 80x24 prior file result retained
+PASS: 80x24 empty dual transfer stays in list
+PASS: 80x24 empty dual transfer stays in list
+PASS: 80x24 prior file result retained
+PASS: 80x24 Paths resize cancels parent transfer
+PASS: 160x32 denied navigation overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 incomplete search overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 failed refresh overrides old success
+PASS: 160x32 missing history location overrides old success
+PASS: 160x32 prior file result retained
+PASS: 160x32 empty dual transfer stays in list
+PASS: 160x32 empty dual transfer stays in list
+PASS: 160x32 prior file result retained
+PASS: 160x32 Paths resize cancels parent transfer
+PASS: recovery flows and prior result preservation at all sizes
+python3 tests/batch_destination_pty.py
+PASS: batch destination errors/edit/picker/review/cancel/resize/Unicode paths at all sizes
+python3 tests/batch_pty.py
+PASS: marked/cursor separation, find/input/preview isolation, menu select/clear/rename guard, batch cancel/collision/copy/move/delete/details keyboard+mouse at 50x9/80x24/160x32
+python3 tests/batch_progress_pty.py
+PASS: single/dual pipe-gated batch copy/delete partial cancellation, move-between targets, mouse/Esc/resize, exact statuses/residue and queued background commands discarded
+make[1]: Leaving directory '/home/dongmin/workspace/file_manager_project'
+
+Captured binary SHA256: a4cb986d552cd42d74b985c4e0cb24e9f21be59620dbc5b4d65c8e1ea8add068 /tmp/tfile-ux-before
+
+Captured binary SHA256: d77058317bec4b220c8f334632793f9655027bcada96354bf2374074c45dd7aa /tmp/tfile-ux-before-gated
+
+Captured binary SHA256: e93ae4f2d1a13d8c146daa76268a4b012f5091b6f37feb51243d83e0bdd944a6 /tmp/tfile-ux-fixed
+
+Captured binary SHA256: 3d581574a73b5e6e3222d1827645da8ccb1a92361291938cb1ba2df3381ddb56 /tmp/tfile-ux-fixed-gated
+
+Raw before: 76 frames; SHA256 beb2f09b2b7532618e7562d0a8126430c76533772de783a9591c6f3ca0f54dcc
+
+Raw after: 76 frames; SHA256 8dd2f955603064a10a7bb05da0b6882a692d9b042a2c2a6ea1c2c128f4c35127

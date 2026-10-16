@@ -352,3 +352,10 @@ check-startup: tests/tfile_ui_io tests/startup_ui_test
 	python3 tests/isolated_check.py python3 tests/startup_latency_pty.py
 check-isolated: check-startup
 .PHONY: check-startup
+
+check-ux-targets: tfile tests/tfile_ui_io tests/popup_style_test
+	python3 tests/isolated_check.py ./tests/popup_style_test
+	python3 tests/isolated_check.py python3 tests/ux_targets_pty.py
+	python3 tests/isolated_check.py python3 tests/ux_queued_browse_pty.py
+check-isolated: check-ux-targets
+.PHONY: check-ux-targets

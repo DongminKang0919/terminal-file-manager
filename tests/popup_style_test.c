@@ -10,6 +10,11 @@ static Cell cell(WINDOW *w, int y, int x) {
     return result;
 }
 static void same_text(Cell a, Cell b) { assert(!wcscmp(a.text,b.text)); }
+static bool row_has(int y,const char *text) {
+    char row[512];assert(COLS<(int)sizeof row);
+    for(int x=0;x<COLS;x++) { wchar_t c=cell(stdscr,y,x).text[0];row[x]=c<128?(char)c:'?'; }
+    row[COLS]=0;return strstr(row,text)!=NULL;
+}
 /* Geometry locates semantic elements; literal output independently verifies it. */
 static void location_text(int x,const char *text,int pair,bool dim) {
     for(int i=0;text[i];i++) {
@@ -141,6 +146,21 @@ int main(void) {
             assert(cell(stdscr,layout.list_y,1).text[0]==L' ');
             assert(cell(stdscr,layout.list_y,2).text[0]==L'*');
             if(has_colors()) assert(cell(stdscr,layout.list_y,2).pair==UI_MARK);
+            assert(cell(stdscr,layout.list_y,3).attr&A_BOLD);
+            if(has_colors())assert(cell(stdscr,layout.list_y,3).pair==UI_MARK);
+            assert(row_has(h-3,"Target: 1 marked item"));
+            /* Result notifications never replace the target boundary or keys.
+               Render real Result states; execution policy is tested elsewhere. */
+            const ResultCode codes[]={RESULT_OK,RESULT_IO,RESULT_CANCELLED,RESULT_UNCERTAIN};
+            const char *labels[]={"Success","Partial","Cancelled","Uncertain"};
+            for(size_t i=0;i<4;i++) {
+                Result result=result_make(codes[i],"Retained result");result.partial=i==1||i==2;
+                notice_record(&ui,"Copy",result,NULL,NULL);draw_cached(&ui);
+                assert(row_has(h-2,labels[i]));
+                assert(row_has(h-3,"Target: 1 marked item"));
+                assert(row_has(h-1,"Space: Mark") && row_has(h-1,"F5: Copy"));
+            }
+            notice_clear(&ui);
             app_marks_clear(&ui_panel(&ui)->app);
             ui_panel(&ui)->selected=0; items[0].hidden=false; draw_cached(&ui);
             Cell *original=calloc((size_t)(h*w),sizeof *original); assert(original);
@@ -158,6 +178,7 @@ int main(void) {
             dialog_button(win,ph-2,2,"[ One ]",false,true);
             dialog_button(win,ph-2,11,"[ Two ]",true,true);
             dialog_button(win,ph-2,20,"[ Off ]",false,false);
+            assert(cell(win,ph-2,10).text[0]==L'>');
             int wy,wx; getbegyx(win,wy,wx);
             for(int x=0;x<pw;x++) {
                 MEVENT click={.x=wx+x,.y=wy+ph-2,.bstate=BUTTON1_PRESSED};

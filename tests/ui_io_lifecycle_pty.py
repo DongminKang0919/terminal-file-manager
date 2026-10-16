@@ -92,7 +92,7 @@ for width,height in [(50,9),(100,24)]:
       else:until(t,lambda:gone(worker),.6)
       assert not list(dest.iterdir()) and not list(new.iterdir())
       t.send('\n\n\n');until(t,lambda:(new/'a.txt').exists())
-      until(t,lambda:'[ Copy now ]' not in text(t))
+      until(t,lambda:'[ Copy 1 item ]' not in text(t))
       assert (new/'a.txt').read_text()=='source payload\n' and not list(dest.iterdir())
      else:
       if case=='collision':(dest/'a.txt').write_text('keep collision\n')

@@ -269,8 +269,8 @@ with tempfile.TemporaryDirectory(prefix='tfile-terminal-workflow-') as directory
         assert not (destination/'leaf.txt').exists()
         for y in range(t.screen.height):
             row=t.screen.row(y)
-            if '[ Copy now ]' in row:
-                t.send(f'\x1b[<0;{row.index("[ Copy now ]")+3};{y+1}M');break
+            if '[ Copy 1 item ]' in row:
+                t.send(f'\x1b[<0;{row.index("[ Copy 1 item ]")+3};{y+1}M');break
         else:raise AssertionError(t.text())
         assert (destination/'leaf.txt').read_text()=='after F7'
         assert (folder/'leaf.txt').read_text()=='after F7'

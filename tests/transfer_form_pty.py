@@ -31,7 +31,7 @@ for w,h in [(50,9),(80,24),(160,32)]:
             body=''.join(seen[i] for i in range(1,total+1))
             assert shown(os.fsencode(source)) in body and shown(os.fsencode(dest/('copy-'+source.name))) in body
             t.send('\x1b\t\t'); assert list(dest.iterdir())==[]
-            button('[ Copy now ]')
+            button('[ Copy 1 item ]')
             assert (dest/('copy-'+source.name)).read_text()=='keep original'
             assert source.exists()
             source_select(); t.send('\x1b[15~dest\t\x1bOHbrowse-\t\n')
@@ -58,13 +58,13 @@ for w,h in [(50,9),(80,24),(160,32)]:
                     assert 'Permission denied' in '\n'.join(t.screen.row(y) for y in range(h))
                     assert source.exists()
                 finally: dest.chmod(0o700)
-                button('[ Copy now ]'); assert (dest/source.name).exists()
+                button('[ Copy 1 item ]'); assert (dest/source.name).exists()
             # Long directory text and the source's control bytes are never shell-expanded.
             long=dest
             for n in range(4): long=long/('part'+str(n)+'한'*20); long.mkdir()
             source_select(); t.send('\x1b[17~'+str(long)+'\n\n')
             assert source.exists()
-            button('[ Move now ]')
+            button('[ Move 1 item ]')
             assert not source.exists() and (long/source.name).read_text()=='keep original'
         finally:t.close()
 print('PASS: destination-first forms, explicit execution, absolute/relative base, complete path paging, Browse retention/mouse, collision/error retry, permissions, long Unicode paths and raw control names at all sizes')

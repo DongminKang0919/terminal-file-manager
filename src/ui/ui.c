@@ -151,6 +151,7 @@ static void draw_file_panel(UiContext *ui,UiFilePanel *p,unsigned index,int x,in
         mvaddch(y, x+2, marked ? '*' : ' ');
         attrset(style);
         if (!active) attrset(COLOR_PAIR(item_color(it, false)));
+        if(marked && !active)attrset(COLOR_PAIR(UI_MARK)|A_BOLD);
         draw_text(y, x+3, name_width, it->name);
         attrset(active ? style : COLOR_PAIR(UI_MUTED));
         if(kind_x) draw_text(y, x+kind_x, 5, ui_kind(it));
@@ -180,15 +181,18 @@ static void draw_file_panel(UiContext *ui,UiFilePanel *p,unsigned index,int x,in
     }
     if (ui->active==index) {
         char target[128];
-        if (p->app.marks_len) snprintf(target,sizeof target," Targets: %zu marked ",p->app.marks_len);
-        else snprintf(target,sizeof target," Target: %s ",p->app.files.len ? "cursor" : "none");
+        if (p->app.marks_len) snprintf(target,sizeof target," Target: %zu marked item%s ",p->app.marks_len,p->app.marks_len==1?"":"s");
+        else snprintf(target,sizeof target," Target: %s ",p->app.files.len ? "cursor item" : "none");
         if (p->app.files.len && (p->top || p->app.files.len > (size_t)rows)) {
             size_t end=p->top+(size_t)rows;
             if(end>p->app.files.len) end=p->app.files.len;
             size_t used=strlen(target);
             snprintf(target+used,sizeof target-used,"%zu-%zu/%zu ",p->top+1,end,p->app.files.len);
             if ((int)strlen(target)>mid-4) {
-                snprintf(target,sizeof target," %s %zu-%zu/%zu ",p->app.marks_len?"*marks":">cursor",p->top+1,end,p->app.files.len);
+                if(p->app.marks_len)snprintf(target,sizeof target," Target: %zu marked %zu-%zu/%zu",p->app.marks_len,p->top+1,end,p->app.files.len);
+                else snprintf(target,sizeof target," Target: cursor %zu-%zu/%zu",p->top+1,end,p->app.files.len);
+                if((int)strlen(target)>mid-4)
+                    snprintf(target,sizeof target," %s %zu-%zu/%zu",p->app.marks_len?"*marks":">cursor",p->top+1,end,p->app.files.len);
             }
         }
         attrset(COLOR_PAIR(p->app.marks_len ? UI_MARK : UI_MUTED) | A_BOLD);
@@ -286,7 +290,7 @@ static void draw_screen(UiContext *ui, bool prepare) {
         alert_kind=refresh_issue ? NOTICE_WARNING : n->kind;
     } else if(ui->status[0]) snprintf(alert,sizeof alert,"%s",ui->status);
     else if(w>=80 && ui_panel(ui)->app.files.len) {
-        snprintf(alert,sizeof alert,"%s",ui_panel(ui)->app.marks_len?"Targets: marks; cursor ignored":"Target: cursor (no marks)");target_hint=true;
+        snprintf(alert,sizeof alert,"Focus: %s",ui->focus==UI_FOCUS_PREVIEW?"Preview":"Files");
     }
     if(ui->settings_warning[0]) { snprintf(alert,sizeof alert,"%s",ui->settings_warning); alert_kind=NOTICE_WARNING; }
     char summary[128], panel[16]="";
@@ -328,13 +332,15 @@ static void draw_screen(UiContext *ui, bool prepare) {
         (!ui_preview_enabled(ui) || (!ui->preview_page.binary && ui->media_kind==PREVIEW_NOT_MEDIA));
     if (!ui->modal_depth) {
         bool reading = ui->focus == UI_FOCUS_PREVIEW;
-        const char *keys[] = {reading ? "Esc" : has_item ? "Enter" : "F2", reading ? "Up/Down" : "Space", reading ? "PgUp/PgDn" : "Tab", reading ? "Home" : "e", reading ? "Tab" : "F1", "F9", "a", "u"};
-        const char *labels[] = {reading ? ": Files" : has_item ? ": Open" : ": New", reading ? ": Row" : ": Mark", reading ? ": Page" : ui->mode==UI_LIST_LIST ? ": Other" : ": Preview", reading ? ": Top" : ": Vim cursor", reading ? ": Files" : ": Help", ": Menu", ": All", ": Clear"};
+        const char *keys[] = {reading ? "Esc" : has_item ? "Enter" : "F2", reading ? "Up/Down" : "Space", reading ? "PgUp/PgDn" : "F5", reading ? "Home" : "Tab", reading ? "Tab" : "F9", "e", "F1", "u"};
+        const char *labels[] = {reading ? ": Files" : has_item ? ": Open" : ": New", reading ? ": Row" : ": Mark", reading ? ": Page" : ": Copy", reading ? ": Top" : ui->mode==UI_LIST_LIST ? ": Other" : ": Preview", reading ? ": Files" : ": Menu", ": Vim cursor", ": Help", ": Clear marks"};
         int x = 1;
         for (size_t i = 0; i < (reading ? 5u : 8u); i++) {
             if(!reading && i==1 && !has_item) continue;
-            if(!reading && i==2 && ui->mode!=UI_LIST_LIST && !preview_can_focus(ui)) continue;
-            if(!reading && i==3 && !vim_hint) continue;
+            if(!reading && i==2 && ((!has_item && !active->app.marks_len) || active->stale)) continue;
+            if(!reading && i==3 && ui->mode!=UI_LIST_LIST && !preview_can_focus(ui)) continue;
+            if(!reading && i==5 && !vim_hint) continue;
+            if(!reading && i==7 && !active->app.marks_len)continue;
             int next=draw_hint(h-1,x,w,keys[i],labels[i]);
             if(next==x) break;
             x=next;

@@ -22,6 +22,7 @@ void dialog_frame(WINDOW *win, const char *title) {
 void dialog_button(WINDOW *win, int y, int x, const char *label, bool focused, bool enabled) {
     attr_t style = !enabled ? A_DIM : focused ? ui_selection() : A_NORMAL;
     wattron(win, style); draw_window_text(win, y, x, getmaxx(win) - x - 2, label);
+    if(focused && x>1)mvwaddch(win,y,x-1,'>');
     wattroff(win, style);
 }
 

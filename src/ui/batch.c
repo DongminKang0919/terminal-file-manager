@@ -29,9 +29,10 @@ static bool review(UiContext *ui,const BatchJob *job,bool *resized) {
         size_t max=line>page?line-page:0; if(top>max) { top=max; continue; }
         snprintf(summary,sizeof summary,"Lines %zu-%zu/%zu  PgUp/PgDn",top+1,top+page<line?top+page:line,line);
         draw_window_text(w,h-3,2,width-4,summary);
-        const char *label=job->action==BATCH_TRASH ? "[ Trash ]" : job->action==BATCH_DELETE ? "[ Delete ]" : "[ Execute ]";
+        char execute[64];snprintf(execute,sizeof execute,"[ %s %zu items ]",job->action==BATCH_MOVE?"Move":"Copy",job->len);
+        const char *label=job->action==BATCH_TRASH ? "[ Trash ]" : job->action==BATCH_DELETE ? "[ Delete ]" : execute;
         dialog_button(w,h-2,2,"[ Cancel ]",!run,true); dialog_button(w,h-2,14,label,run,true);
-        draw_window_text(w,h-2,28,width-30,"Tab: focus"); dialog_refresh(w);
+        dialog_refresh(w);
         int key=input_key(w);
         if(key==KEY_MOUSE) {
             MEVENT e;if(getmouse(&e)!=OK) continue;
@@ -71,7 +72,7 @@ void batch_finish(UiContext *ui,BatchJob *job) {
 /* Own the frozen job throughout editing; only execution transfers it to notice. */
 static void batch_transfer_form(UiContext *ui,BatchJob *job) {
     char title[80];
-    snprintf(title,sizeof title,"Batch destination - %s %zu targets",job->action==BATCH_MOVE?"Move":"Copy",job->len);
+    snprintf(title,sizeof title,"%s %zu items | Batch destination",job->action==BATCH_MOVE?"Move":"Copy",job->len);
     UiTransferContext context;
     if(!ui_transfer_context(ui,&context)) return;
     char *base=context.base;
@@ -82,25 +83,27 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
     WINDOW *win=dialog_open(ui,title,9,88);
     if(!win) { ui_transfer_context_free(&context); return; }
     enum { DESTINATION, BROWSE, NEXT, CANCEL, FIELDS };
-    const char *buttons[]={"[ Browse ]","[ Next ]","[ Cancel ]"};
-    const int xs[]={2,15,26};
+    char review_label[64];snprintf(review_label,sizeof review_label,getmaxx(win)<60?"[ Review %zu ]":"[ Review %zu items ]",job->len);
+    const char *buttons[]={"[ Browse ]",review_label,"[ Cancel ]"};
+    const int xs[]={2,15,17+(int)strlen(review_label)};
     int focus=DESTINATION,pending_action=-1;
     UiPathQuery query={0};
+    bool checked=false;
     char warning[512]="";
     if(context.destination_status.code!=RESULT_OK) snprintf(warning,sizeof warning,"Destination: %.450s",context.destination_status.detail);
     for(;;) {
         ui_path_query_poll(&query);
         int h,w; getmaxyx(win,h,w);
         dialog_frame(win,title);
-        draw_window_text(win,1,2,6,"Base:");
-        draw_window_path(win,1,8,w-10,base);
-        draw_window_text(win,2,2,w-4,"Relative paths use Base; blank uses Base.");
-        draw_window_text(win,3,2,6,"To:");
+        draw_window_text(win,1,2,10,"From/Base:");
+        draw_window_path(win,1,13,w-15,base);
+        draw_window_text(win,2,2,w-4,*warning?"Edit To or Browse; Review again.":"Relative paths use Base; original names.");
+        draw_window_text(win,3,2,6,focus==DESTINATION?">To:":" To:");
         int col=field_draw(win,3,8,w-10,&field,focus==DESTINATION);
         wattron(win,COLOR_PAIR(*warning?UI_ERROR:UI_MUTED));
-        draw_window_text(win,h-3,2,w-4,query.pending?"Checking destination... Esc: cancel; F10: exit":*warning?warning:"Enter: review targets  Tab: focus  Esc: cancel");
+        draw_window_text(win,h-3,2,w-4,query.pending?"Checking destination... Esc: cancel; F10: exit":*warning?warning:checked?"To checked; Review rechecks | Esc: cancel":"Enter: Review | Tab: next | Esc: cancel");
         wattroff(win,COLOR_PAIR(*warning?UI_ERROR:UI_MUTED));
-        for(int i=0;i<3;i++) dialog_button(win,h-2,xs[i],buttons[i],focus==i+1,true);
+        for(int i=0;i<3;i++) dialog_button(win,h-2,xs[i],buttons[i],focus==i+1,i==2 || !query.pending);
         curs_set(focus==DESTINATION); if(focus==DESTINATION) wmove(win,3,8+col);
         dialog_refresh(win);
         wint_t key=0;int kind=ERR,action=-1;
@@ -114,7 +117,7 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
         if(kind==KEY_CODE_YES && key==KEY_F(10)) { core_request_shutdown();break; }
         if(kind==OK && key==27 && (query.pending || pending_action>=0)) {
             ui_path_query_close(&query);pending_action=-1;
-            snprintf(warning,sizeof warning,"Destination check cancelled; inputs kept");continue;
+            checked=false;snprintf(warning,sizeof warning,"Destination check cancelled; inputs kept");continue;
         }
         if(kind==ERR && action<0)continue;
         if((kind==OK&&key==27)||(kind==KEY_CODE_YES&&key==KEY_RESIZE)) break;
@@ -125,16 +128,16 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
             int y,x; getbegyx(win,y,x); y=e.y-y; x=e.x-x;
             if(y==3&&x>=8&&x<w-2) { focus=DESTINATION; field_click(&field,x-8); continue; }
             if(y==h-2) for(int i=0;i<3;i++)
-                if(dialog_button_hit(win,&e,h-2,xs[i],buttons[i],true)) action=focus=i+1;
+                if(dialog_button_hit(win,&e,h-2,xs[i],buttons[i],i==2 || !query.pending)) action=focus=i+1;
         }
-        if(kind==OK&&key=='\t') { focus=(focus+1)%FIELDS; continue; }
-        if(kind==KEY_CODE_YES&&key==KEY_BTAB) { focus=(focus+FIELDS-1)%FIELDS; continue; }
+        if(kind==OK&&key=='\t') { focus=dialog_focus_next(focus,FIELDS,false,query.pending?((1u<<BROWSE)|(1u<<NEXT)):0); continue; }
+        if(kind==KEY_CODE_YES&&key==KEY_BTAB) { focus=dialog_focus_next(focus,FIELDS,true,query.pending?((1u<<BROWSE)|(1u<<NEXT)):0); continue; }
         if((kind==OK&&(key=='\n'||key=='\r'))||(kind==KEY_CODE_YES&&key==KEY_ENTER)) action=focus==DESTINATION?NEXT:focus;
         if(action<0) {
             if(focus==DESTINATION) {
                 UiField before=field;field_edit(&field,kind,key);
                 if(before.len!=field.len || wmemcmp(before.value,field.value,field.len)) {
-                    ui_path_query_close(&query);pending_action=-1;warning[0]=0;
+                    ui_path_query_close(&query);pending_action=-1;warning[0]=0;checked=false;
                 }
             }
             continue;
@@ -148,14 +151,16 @@ static void batch_transfer_form(UiContext *ui,BatchJob *job) {
         if(action==NEXT && !query.ready) {
             ui_path_query_start(&query,ui->async_reads,base,*input?input:".",false,false);pending_action=action;continue;
         }
+        pending_action=-1;
+        if(action==BROWSE) { ui_path_query_close(&query);checked=false; }
         int old_h=LINES,old_w=COLS; bool resized=false;
         char *resolved=query.directory;query.directory=NULL;query.ready=false;
-        Result r=query.result;
+        Result r=query.result;if(action==NEXT)checked=r.code==RESULT_OK;
         if(action==BROWSE) {
             char picked[UI_INPUT_CAP];
             char *start=*input=='/' ? text_copy(input) : core_path_join(base,*input?input:".");
             if(start && pick_path(ui,true,start,picked,&resized)) {
-                field_init(&field,picked); warning[0]=0; context.destination_status=result_make(RESULT_OK,NULL);
+                field_init(&field,picked); warning[0]=0;checked=false; context.destination_status=result_make(RESULT_OK,NULL);
             }
             if(!start) snprintf(warning,sizeof warning,"Out of memory; destination unchanged");
             free(start);

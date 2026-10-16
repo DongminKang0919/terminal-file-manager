@@ -21,9 +21,11 @@ for w,h in [(50,9),(100,24)]:
    cursor=src/'a cursor';target=src/'z marked';cursor.write_text('cursor');target.write_text('target')
    t=Terminal(str(src),w,h)
    try:
-    assert 'Space: Mark' in t.screen.row(h-1) and 'e: Vim' in t.screen.row(h-1)
+    assert 'Space: Mark' in t.screen.row(h-1) and 'F5: Copy' in t.screen.row(h-1)
+    if w>=80:assert 'e: Vim cursor' in t.screen.row(h-1)
+    else:assert 'F9: Menu' in t.screen.row(h-1)
     t.send(END+' '+HOME);marks(t,1)
-    assert 'Targets: 1 marked' in body(t),body(t)
+    assert 'Target: 1 marked' in body(t),body(t)
     assert any('> a cursor' in t.screen.row(i) for i in range(h))
     assert any(' *z marked' in t.screen.row(i) for i in range(h))
     if action in ['copy','move']:
@@ -70,7 +72,7 @@ for w,h in [(50,9),(100,24)]:
   try:
    t.send(F9+DOWN*18+'\n'+'a');marks(t,2)
    t.send('\t');marks(t,0);assert 'Right*' in t.screen.row(h-2);assert 'Target: cursor' in body(t),body(t)
-   t.send(' ');marks(t,1);assert 'Right*' in t.screen.row(h-2);t.send('\t');marks(t,2);assert 'Left*' in t.screen.row(h-2);assert 'Targets: 2 marked' in body(t)
+   t.send(' ');marks(t,1);assert 'Right*' in t.screen.row(h-2);t.send('\t');marks(t,2);assert 'Left*' in t.screen.row(h-2);assert 'Target: 2 marked' in body(t)
    t.send('u');marks(t,0);t.send('\t');marks(t,1)
    t.send('a'+'t');assert 'Batch Trash confirmation' in body(t) and 'Targets: 2' in body(t)
    t.send('\x1bOF');assert '/b' in body(t);t.send('\n');assert len(list(src.iterdir()))==2;marks(t,2)
