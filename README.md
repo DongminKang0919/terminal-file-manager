@@ -2,6 +2,8 @@
 
 **Linux와 WSL에서 쓰는 터미널 파일 관리자입니다.** 파일을 찾고, 내용을 미리 보고, 복사하거나 옮기는 작업을 한 화면에서 할 수 있습니다. C11과 ncursesw로 구현했으며 키보드와 마우스를 지원합니다.
 
+경북대학교 컴퓨터학부 시스템프로그래밍 수업의 팀 프로젝트에서 제가 제안한 아이디어로 시작했습니다. 수업 이후 코드를 새로 작성하고 파일 관리 기능과 사용성을 고도화한 개인 후속 프로젝트입니다.
+
 ![파일 목록과 텍스트 미리보기를 나란히 표시한 tfile 실행 화면](docs/images/tfile_main.png)
 
 _이전 버전의 실행 화면입니다. 현재 버전에서는 작업 대상과 패널 초점을 화면 하단에서 확인할 수 있습니다._
@@ -115,11 +117,17 @@ make check-docs     # 문서 링크와 앵커 검사
 
 버전은 [src/version.h](src/version.h)에서 관리합니다. [Linux CI](.github/workflows/linux.yml)는 GCC·Clang 검사와 sanitizer를 실행하도록 구성되어 있습니다. PTY 검사는 가상 터미널의 입력과 출력을 확인합니다. 실제 터미널의 Sixel 표시와 화면 지우기 검증 범위는 [미디어 검증 기록](docs/MEDIA_PREVIEW_VALIDATION.md)에서 확인할 수 있습니다.
 
-## 프로젝트 배경과 문서
+## 앞으로 할 일
 
-경북대학교 컴퓨터학부 시스템프로그래밍 수업의 팀 프로젝트에서 직접 제안한 디자인 아이디어를 이어받아, 코드를 새로 구현한 개인 후속 프로젝트입니다.
+- 앱 내 휴지통 복원과 안전한 교차 파일시스템 이동
+- 이름 충돌 처리 개선과 텍스트 미리보기 검색
+- README 실행 화면 갱신과 GitHub Releases 테스트 배포 준비
 
-[설치 안내](docs/INSTALL.md) · [사용자 안내](docs/USER_GUIDE.md) · [동작·구현 상세](docs/REFERENCE.md) · [기능 체크리스트](docs/FEATURE_CHECKLIST.md) · [배포 계획](docs/RELEASE_PLAN.md) · [문서 목차](docs/README.md)
+[기능 체크리스트](docs/FEATURE_CHECKLIST.md) · [배포 계획](docs/RELEASE_PLAN.md)
+
+## 상세 문서
+
+[설치 안내](docs/INSTALL.md) · [사용자 안내](docs/USER_GUIDE.md) · [동작·구현 상세](docs/REFERENCE.md) · [문서 목차](docs/README.md)
 
 ## 라이선스
 
